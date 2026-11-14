@@ -15,6 +15,8 @@ def render(c):
 </div>
 <div class="flist" id="firms-list"></div>
 <p class="hint" id="firms-none" hidden>{E(F["none"])}</p>
+<div id="firms-sentinel" class="firms-sentinel" aria-hidden="true"></div>
+<p class="hint" id="firms-more" hidden data-loading="{E(F["loading"])}" data-end="{E(F["end"])}"></p>
 </div>
 </div>
 <div class="filters-backdrop" id="filters-backdrop" hidden></div>

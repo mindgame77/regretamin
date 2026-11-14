@@ -1,4 +1,4 @@
-// Investors directory: read the cache first, then firm_directory, then firms.json.
+// Investors directory loads one page at a time from firm_directory_page.
 // node --test tests/firm_directory_cache.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -13,21 +13,32 @@ function el() {
     hidden: true,
     style: {},
     value: '',
+    textContent: '',
     classList: { add() {}, remove() {}, contains() { return false; } },
     attrs: {},
+    listeners: {},
     getAttribute(name) { return this.attrs[name] || ''; },
     setAttribute(name, value) { this.attrs[name] = String(value); },
-    addEventListener() {},
+    addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); },
     querySelector() { return null; },
     closest() { return null; },
     contains() { return false; },
+    insertAdjacentHTML(_pos, html) { this.innerHTML += html; },
   };
 }
 
 function boot(fetchImpl, regret) {
   const els = {};
+  let observer = null;
+  function IntersectionObserver(cb) {
+    observer = cb;
+    this.observe = function () {};
+    this.disconnect = function () {};
+  }
   const sandbox = {
     console,
+    setTimeout,
+    clearTimeout,
     addEventListener() {},
     innerWidth: 1280,
     document: {
@@ -39,13 +50,20 @@ function boot(fetchImpl, regret) {
       },
     },
     fetch: fetchImpl,
-    window: { REGRET: regret, REGRET_ROOT: '/', addEventListener() {}, innerWidth: 1280 },
+    window: {
+      REGRET: regret,
+      REGRET_ROOT: '/',
+      addEventListener() {},
+      innerWidth: 1280,
+      innerHeight: 800,
+      IntersectionObserver,
+    },
   };
   sandbox.window.window = sandbox.window;
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(src, sandbox, { filename: 'firms.js' });
-  return els;
+  return { els, intersect() { if (observer) observer([{ isIntersecting: true }]); } };
 }
 
 function jsonResponse(status, body) {
@@ -60,59 +78,151 @@ async function flush() {
   for (let i = 0; i < 8; i++) await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-test('a cached payload is the firm list', async () => {
+function page(rows, total, facets) {
+  return { rows, total, facets: facets === undefined ? null : facets };
+}
+
+function many(n, name, slug) {
+  return Array.from({ length: n }, (_, i) => ({
+    slug: slug + (i ? '-' + i : ''),
+    name: i ? name + ' ' + i : name,
+    added: '2024-01-02',
+  }));
+}
+
+test('the first request is 100 firms, newest first, and renders that page', async () => {
   const calls = [];
-  const els = boot((url) => {
-    calls.push(String(url));
-    return Promise.resolve(jsonResponse(200, {
-      payload: [{ slug: 'a16z', name: 'Andreessen Horowitz', added: '2024-01-02' }],
-      built_at: '2026-11-12T18:00:00Z',
-    }));
+  const { els } = boot((url, opts) => {
+    calls.push({ url: String(url), body: JSON.parse(opts.body) });
+    return Promise.resolve(jsonResponse(200, page(
+      many(100, 'Andreessen Horowitz', 'a16z'),
+      150,
+      { region: [{ value: 'europe', count: 4 }], industry: [], stage: [], legal: [], info: [], status: [] }
+    )));
   }, { url: 'https://db.test', key: 'anon-key', copy: {} });
   await flush();
-  assert.deepEqual(calls, ['https://db.test/rest/v1/rpc/firm_directory_cached']);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'https://db.test/rest/v1/rpc/firm_directory_page');
+  assert.equal(calls[0].body.p_limit, 100);
+  assert.equal(calls[0].body.p_offset, 0);
+  assert.equal(calls[0].body.p_sort, 'newest');
+  assert.equal(calls[0].body.p_asc, false);
+  assert.deepEqual(calls[0].body.p_search, []);
   assert.match(els['firms-list'].innerHTML, /Andreessen Horowitz/);
+  assert.equal(els['firms-none'].hidden, true);
+  assert.equal(els['firms-more'].hidden, true);
+  assert.match(els['facet-groups'].innerHTML, /Europe/);
+  assert.match(els['facet-groups'].innerHTML, />4</);
 });
 
-test('null cache and a failed cache both fall back to firm_directory', async () => {
-  for (const cached of [null, { payload: null, built_at: '2026-11-12T18:00:00Z' }]) {
-    const calls = [];
-    const els = boot((url) => {
-      calls.push(String(url));
-      if (String(url).endsWith('/firm_directory_cached')) return Promise.resolve(jsonResponse(200, cached));
-      return Promise.resolve(jsonResponse(200, [{ slug: 'yc', name: 'Y Combinator', added: '2024-02-02' }]));
-    }, { url: 'https://db.test', key: 'anon-key', copy: {} });
-    await flush();
-    assert.deepEqual(calls, [
-      'https://db.test/rest/v1/rpc/firm_directory_cached',
-      'https://db.test/rest/v1/rpc/firm_directory',
-    ]);
-    assert.match(els['firms-list'].innerHTML, /Y Combinator/);
-  }
-
+test('scrolling near the bottom loads the next 100 and keeps the first rows', async () => {
   const calls = [];
-  const els = boot((url) => {
-    calls.push(String(url));
-    if (String(url).endsWith('/firm_directory_cached')) return Promise.resolve(jsonResponse(500, { message: 'timeout' }));
-    return Promise.resolve(jsonResponse(200, [{ slug: 'sequoia', name: 'Sequoia', added: '2024-03-03' }]));
+  const { els, intersect } = boot((url, opts) => {
+    const body = JSON.parse(opts.body);
+    calls.push(body);
+    const rows = body.p_offset === 0
+      ? many(100, 'Andreessen Horowitz', 'a16z')
+      : [{ slug: 'sequoia', name: 'Sequoia', added: '2024-03-03' }];
+    return Promise.resolve(jsonResponse(200, page(rows, 150, null)));
   }, { url: 'https://db.test', key: 'anon-key', copy: {} });
   await flush();
-  assert.deepEqual(calls, [
-    'https://db.test/rest/v1/rpc/firm_directory_cached',
-    'https://db.test/rest/v1/rpc/firm_directory',
-  ]);
+  intersect();
+  await flush();
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].p_offset, 100);
+  assert.equal(calls[1].p_limit, 100);
+  assert.match(els['firms-list'].innerHTML, /Andreessen Horowitz/);
   assert.match(els['firms-list'].innerHTML, /Sequoia/);
 });
 
-test('an empty cached list is shown and does not call firm_directory', async () => {
+test('the last page shows the end of the list and does not ask for another', async () => {
   const calls = [];
-  const els = boot((url) => {
-    calls.push(String(url));
-    return Promise.resolve(jsonResponse(200, { payload: [], built_at: '2026-11-12T18:00:00Z' }));
+  const { els, intersect } = boot((url, opts) => {
+    calls.push(JSON.parse(opts.body));
+    return Promise.resolve(jsonResponse(200, page(
+      [{ slug: 'yc', name: 'Y Combinator', added: '2024-02-02' }],
+      1,
+      null
+    )));
   }, { url: 'https://db.test', key: 'anon-key', copy: {} });
   await flush();
-  assert.deepEqual(calls, ['https://db.test/rest/v1/rpc/firm_directory_cached']);
+  intersect();
+  await flush();
+  assert.equal(calls.length, 1);
+  assert.equal(els['firms-more'].hidden, false);
+  assert.equal(els['firms-more'].textContent, 'End of the list');
+  assert.match(els['firms-list'].innerHTML, /Y Combinator/);
+});
+
+test('a filter change asks the server again from the first page', async () => {
+  const calls = [];
+  const { els } = boot((url, opts) => {
+    calls.push(JSON.parse(opts.body));
+    return Promise.resolve(jsonResponse(200, page(
+      [{ slug: 'a16z', name: 'Andreessen Horowitz', added: '2024-01-02' }],
+      1,
+      null
+    )));
+  }, { url: 'https://db.test', key: 'anon-key', copy: {} });
+  await flush();
+  const input = {
+    checked: true,
+    closest(sel) {
+      if (sel === 'input[type="checkbox"]') return input;
+      if (sel === 'label') return { getAttribute(name) { return name === 'data-facet' ? 'region' : 'europe'; } };
+      return null;
+    },
+  };
+  els['facet-groups'].listeners.change[0]({ target: input });
+  await flush();
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].p_offset, 0);
+  assert.deepEqual(calls[1].p_region, ['europe']);
+});
+
+test('typing a search waits, then asks the server from the first page', async () => {
+  const calls = [];
+  const { els } = boot((url, opts) => {
+    calls.push(JSON.parse(opts.body));
+    return Promise.resolve(jsonResponse(200, page([], 0, null)));
+  }, { url: 'https://db.test', key: 'anon-key', copy: {} });
+  await flush();
+  const q = els['firms-q'];
+  q.value = 'sequoia';
+  q.listeners.input[0]();
+  await flush();
+  assert.equal(calls.length, 1);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].p_offset, 0);
+  assert.deepEqual(calls[1].p_search, ['sequoia']);
   assert.equal(els['firms-none'].hidden, false);
+});
+
+test('sorting by name asks the server and starts ascending', async () => {
+  const calls = [];
+  const { els } = boot((url, opts) => {
+    calls.push(JSON.parse(opts.body));
+    return Promise.resolve(jsonResponse(200, page(
+      [{ slug: 'a16z', name: 'Andreessen Horowitz', added: '2024-01-02' }],
+      1,
+      null
+    )));
+  }, { url: 'https://db.test', key: 'anon-key', copy: {} });
+  await flush();
+  els['firms-list'].listeners.click[0]({
+    preventDefault() {},
+    target: {
+      closest(sel) {
+        if (sel === '.frow.h [data-sort]') return { getAttribute() { return 'name'; } };
+        return null;
+      },
+    },
+  });
+  await flush();
+  assert.equal(calls[1].p_sort, 'name');
+  assert.equal(calls[1].p_asc, true);
+  assert.equal(calls[1].p_offset, 0);
 });
 
 test('no Supabase config still reads firms.json', async () => {

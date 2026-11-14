@@ -45,7 +45,7 @@ def test_rollback_unschedules_the_job_and_drops_only_the_cache():
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="node not installed")
-def test_investors_page_tries_the_cache_then_the_live_rpc():
+def test_investors_page_loads_pages():
     r = subprocess.run(
         ["node", "--test", "tests/firm_directory_cache.test.mjs"],
         cwd=ROOT,
