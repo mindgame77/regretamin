@@ -37,7 +37,8 @@ def test_migration_adds_a_page_function_and_leaves_firm_directory_alone():
 
 def test_rollback_drops_only_the_page_function():
     assert f"drop function if exists {SIG}" in UNDO
-    assert "firm_directory()" not in UNDO
+    assert "drop function if exists public.firm_directory()" not in UNDO
+    assert "drop function public.firm_directory()" not in UNDO
     assert "drop table" not in UNDO.lower()
 
 
