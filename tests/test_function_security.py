@@ -18,6 +18,7 @@ ANON_ALLOWED = {
     "firm_activity_list",
     "firm_check_status",
     "firm_directory_cached",
+    "firm_directory_page",
     "firm_is_public",
     "firm_meta",
     "firm_page",

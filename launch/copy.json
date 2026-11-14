@@ -981,6 +981,8 @@
     "sub": "Newest first",
     "search": "Search an investor or startup",
     "none": "No investors match those filters.",
+    "loading": "Loading more investors",
+    "end": "End of the list",
     "count": "{n} investors, newest first",
     "sort_aria": "Sort investors",
     "sort_newest": "Newest",
