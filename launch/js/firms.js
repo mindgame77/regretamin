@@ -119,9 +119,12 @@
       return '<span style="color:' + sectorColor(name) + '">' + esc(name) + '</span>';
     }).join(', ') + (more > 0 ? ' +' + more : '');
   }
-  // Total investments. firm_directory_page already returns deals. Zero and null stay blank.
+  // Total investments: dated shown deals + undated portfolio-only rows.
+  // firm_directory_page returns that as `investments` and keeps `deals` dated-only
+  // for the Activity label. Zero and null stay blank.
   function investmentCount(f) {
-    const n = Number(f && f.deals);
+    const raw = (f && f.investments != null && f.investments !== '') ? f.investments : (f && f.deals);
+    const n = Number(raw);
     if (!Number.isFinite(n) || n <= 0) return '';
     return String(Math.trunc(n));
   }
@@ -344,7 +347,8 @@
           }
           if (sort === 'deals') {
             const count = function (row) {
-              const n = Number(row && row.deals);
+              const raw = (row && row.investments != null && row.investments !== '') ? row.investments : (row && row.deals);
+              const n = Number(raw);
               return Number.isFinite(n) && n > 0 ? n : null;
             };
             const blank = cmpBlankLast(count(a), count(b));
@@ -358,6 +362,8 @@
               const rule = window.RegretActivity;
               if (!rule) return null;
               const yearN = Number(row.deals_this_year);
+              // Dated-only total. Do not use `investments`, or a firm with only
+              // undated portfolio rows would sort and label as Not active.
               const totalN = Number(row.deals);
               const year = Number.isFinite(yearN) && yearN > 0 ? Math.trunc(yearN) : 0;
               const deals = Number.isFinite(totalN) && totalN > 0 ? Math.trunc(totalN) : 0;
