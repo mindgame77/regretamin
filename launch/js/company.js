@@ -1992,7 +1992,7 @@
       tiles.push(u ? '<a class="att ' + tone + '" href="' + esc(u) + '" target="_blank" rel="noopener">' + inner + '</a>' : '<div class="att ' + tone + '">' + inner + '</div>');
     }
     const yearKnown = Array.isArray(A.deals);
-    const yearCount = yearKnown ? countThisYear(A.deals) : Number(A.deals_12m) || 0;
+    const yearCount = yearKnown ? window.RegretActivity.countThisYear(A.deals) : Number(A.deals_12m) || 0;
     if (yearKnown ? yearCount > 0 : A.deals_12m > 0) {
       const when = d0 ? (dealWhen(d0) || yearOf(d0.date)) : '';
       const sub = d0 && d0.company ? 'Last deal: ' + d0.company + (when ? ' · ' + when : '') : '';
@@ -2053,10 +2053,6 @@
     if (!d) return '';
     if (yearOnly(d)) return dealYear(d);
     return fdate(d.date) || '';
-  }
-  function countThisYear(deals) {
-    const y = pacificYear();
-    return (deals || []).filter(d => dealYear(d) === y).length;
   }
   function periodDeals(all, period) {
     const rows = (all || []).filter(d => dealYear(d));

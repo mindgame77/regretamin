@@ -114,27 +114,47 @@
 })(typeof window !== 'undefined' ? window : globalThis);
 
 /* Activity labels for the Investors list and the firm-page tile.
-   A deal's year is extract(year from deal_date). current_date is UTC.
+   From January through May 31, count the previous UTC year and the current
+   UTC year together. From June 1, count only the current UTC year.
    YYYY-01-01 counts for that year. */
 (function (root) {
   function yearOf(date) {
     const m = String(date || '').match(/(\d{4})/);
     return m ? m[1] : '';
   }
-  function countThisYear(deals) {
-    const y = String(new Date().getUTCFullYear());
-    return (deals || []).filter(function (d) { return yearOf(d && d.date) === y; }).length;
+  function activityYear(now) {
+    const d = now instanceof Date && !isNaN(now) ? now : new Date();
+    const y = d.getUTCFullYear();
+    return String(d.getUTCMonth() < 5 ? y - 1 : y);
+  }
+  function countThisYear(deals, now) {
+    const d = now instanceof Date && !isNaN(now) ? now : new Date();
+    const start = activityYear(d);
+    const end = String(d.getUTCFullYear());
+    return (deals || []).filter(function (deal) {
+      const y = yearOf(deal && deal.date);
+      return y >= start && y <= end;
+    }).length;
+  }
+  function rank(dealsThisYear, totalDeals) {
+    const yearN = Number(dealsThisYear);
+    const totalN = Number(totalDeals);
+    const year = Number.isFinite(yearN) && yearN > 0 ? Math.trunc(yearN) : 0;
+    const deals = Number.isFinite(totalN) && totalN > 0 ? Math.trunc(totalN) : 0;
+    if (year >= 3) return 3;
+    if (year >= 1) return 2;
+    if (deals > 0) return 1;
+    return 0;
   }
   function label(dealsThisYear, totalDeals) {
     if (dealsThisYear == null || dealsThisYear === '') return null;
     const year = Number(dealsThisYear);
     if (!Number.isFinite(year) || year < 0) return null;
-    const total = Number(totalDeals);
-    const hasDeals = Number.isFinite(total) && total > 0;
-    if (year >= 3) return { cls: 'act-on', text: 'Active' };
-    if (year >= 1) return { cls: 'act-low', text: 'Low activity' };
-    if (hasDeals) return { cls: 'act-off', text: 'Not active' };
+    const r = rank(dealsThisYear, totalDeals);
+    if (r === 3) return { cls: 'act-on', text: 'Active' };
+    if (r === 2) return { cls: 'act-low', text: 'Low activity' };
+    if (r === 1) return { cls: 'act-off', text: 'Not active' };
     return { cls: 'act-new', text: 'Not checked yet' };
   }
-  root.RegretActivity = { countThisYear: countThisYear, label: label };
+  root.RegretActivity = { activityYear: activityYear, countThisYear: countThisYear, rank: rank, label: label };
 })(typeof window !== 'undefined' ? window : globalThis);
