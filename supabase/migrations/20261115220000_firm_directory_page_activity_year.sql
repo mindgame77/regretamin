@@ -1,6 +1,7 @@
--- Activity year for deals_this_year: previous UTC calendar year from January
--- through May 31, current UTC year from June 1 on. A YYYY-01-01 date counts
--- for that year. Only that comparison changes. Not applied by this change.
+-- deals_this_year from January through May 31 is the previous UTC year and the
+-- current UTC year together. From June 1 it is only the current UTC year.
+-- A YYYY-01-01 date counts for that year. Only that comparison changes.
+-- Not applied by this change.
 
 do $mig$
 begin
@@ -335,7 +336,7 @@ begin
             left join (
               select d.firm_id,
                      count(*) as deals,
-                     count(*) filter (where extract(year from d.deal_date) = extract(year from current_date) - case when extract(month from current_date) < 6 then 1 else 0 end) as deals_this_year
+                     count(*) filter (where extract(year from d.deal_date) between extract(year from current_date) - case when extract(month from current_date) < 6 then 1 else 0 end and extract(year from current_date)) as deals_this_year
                 from v2_deals d
                 join v2_startups su on su.startup_id = d.startup_id and su.is_current and not su.archived
                where d.firm_id = any(v_matched)
@@ -399,7 +400,7 @@ begin
       ),
       dagg as (
         select firm_id, count(*) as deals,
-               count(*) filter (where extract(year from deal_date) = extract(year from current_date) - case when extract(month from current_date) < 6 then 1 else 0 end) as deals_this_year,
+               count(*) filter (where extract(year from deal_date) between extract(year from current_date) - case when extract(month from current_date) < 6 then 1 else 0 end and extract(year from current_date)) as deals_this_year,
                count(*) filter (where deal_date >= current_date - 365) as deals_12m,
                count(*) filter (where deal_date >= current_date - 365 and led) as led_12m,
                array_agg(distinct startup_name) filter (where startup_name is not null) as startups,

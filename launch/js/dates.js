@@ -114,8 +114,9 @@
 })(typeof window !== 'undefined' ? window : globalThis);
 
 /* Activity labels for the Investors list and the firm-page tile.
-   The activity year is the previous UTC calendar year from January through
-   May 31, and the current UTC year from June 1 on. YYYY-01-01 counts for that year. */
+   From January through May 31, count the previous UTC year and the current
+   UTC year together. From June 1, count only the current UTC year.
+   YYYY-01-01 counts for that year. */
 (function (root) {
   function yearOf(date) {
     const m = String(date || '').match(/(\d{4})/);
@@ -127,8 +128,13 @@
     return String(d.getUTCMonth() < 5 ? y - 1 : y);
   }
   function countThisYear(deals, now) {
-    const y = activityYear(now);
-    return (deals || []).filter(function (d) { return yearOf(d && d.date) === y; }).length;
+    const d = now instanceof Date && !isNaN(now) ? now : new Date();
+    const start = activityYear(d);
+    const end = String(d.getUTCFullYear());
+    return (deals || []).filter(function (deal) {
+      const y = yearOf(deal && deal.date);
+      return y >= start && y <= end;
+    }).length;
   }
   function rank(dealsThisYear, totalDeals) {
     const yearN = Number(dealsThisYear);
