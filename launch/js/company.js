@@ -1982,10 +1982,14 @@
     const A = P.activity, firm = P.firm.name;
     if (!A) return '';
     const n = A.counts || {}, d0 = A.latest_deal, tiles = [];
-    if (Number(A.deals_12m) > 0 || (A.deals_12m == null && A.active && d0)) {
+    const allDeals = Array.isArray(A.deals) ? A.deals : null;
+    const rule = window.RegretActivity;
+    const actLab = allDeals && rule ? rule.label(rule.countThisYear(allDeals), allDeals.length) : null;
+    if (actLab) {
       const u = d0 && safeUrl(d0.url);
-      const inner = '<i></i><div><b>' + esc(AC.active) + '</b></div>';
-      tiles.push(u ? '<a class="att aon" href="' + esc(u) + '" target="_blank" rel="noopener">' + inner + '</a>' : '<div class="att aon">' + inner + '</div>');
+      const inner = '<i></i><div><b>' + esc(actLab.text) + '</b></div>';
+      const tone = actLab.cls === 'act-on' ? 'aon' : 'aon ' + actLab.cls;
+      tiles.push(u ? '<a class="att ' + tone + '" href="' + esc(u) + '" target="_blank" rel="noopener">' + inner + '</a>' : '<div class="att ' + tone + '">' + inner + '</div>');
     }
     const yearKnown = Array.isArray(A.deals);
     const yearCount = yearKnown ? countThisYear(A.deals) : Number(A.deals_12m) || 0;

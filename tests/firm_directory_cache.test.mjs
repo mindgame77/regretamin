@@ -67,6 +67,9 @@ function boot(fetchImpl, regret) {
   sandbox.window.window = sandbox.window;
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(new URL('../launch/js/dates.js', import.meta.url), 'utf8'), sandbox, { filename: 'dates.js' });
+  sandbox.RegretDate = sandbox.window.RegretDate;
+  sandbox.RegretActivity = sandbox.window.RegretActivity;
   vm.runInContext(src, sandbox, { filename: 'firms.js' });
   return { els, intersect() { if (observer) observer([{ isIntersecting: true }]); } };
 }
