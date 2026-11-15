@@ -1633,8 +1633,11 @@
   const labRound = (r) => roundName(r).replace(/\s*\([^()]*\)/g, '').split(';')[0].replace(/[\s,]+$/, '').trim();
   // Company name links to the startup's own website (deal.website_url, else https://<domain>); plain text when neither.
   // Same pattern as press headlines (.pih): ink color, underline on hover, new tab.
+  // st_status colors that name only. Shut down is red, Acquired is green. Any other value, or none, stays as it is. No tag.
   const coSite = (d) => safeUrl(d && (d.website_url || (d.domain ? 'https://' + String(d.domain).replace(/^https?:\/\//i, '').replace(/\/.*$/, '') : '')));
-  const coName = (d) => { const w = coSite(d), t = esc((d && d.company) || ''); return w && t ? '<a class="co" href="' + esc(w) + '" target="_blank" rel="noopener">' + t + '</a>' : t; };
+  const coStatus = (d) => { const s = String(d && d.st_status || '').trim(); return s === 'Shut down' ? ' st-down' : s === 'Acquired' ? ' st-acq' : ''; };
+  const coName = (d) => { const w = coSite(d), t = esc((d && d.company) || ''), cls = 'co' + coStatus(d); if (!t) return '';
+    return w ? '<a class="' + cls + '" href="' + esc(w) + '" target="_blank" rel="noopener">' + t + '</a>' : '<span class="' + cls + '">' + t + '</span>'; };
   function dealRows(ds, lab) {
     const src = (u) => u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener"' + fullA(hostOf(u)) + '>' + esc(capL(hostOf(u))) + '</a>' : '<span></span>';
     if (lab) return '<div class="adl"><div class="ad adh s5"><span>' + esc(AC.h_company) + '</span><span>' + esc(AC.h_sector) + '</span><span>' + esc(AC.h_round) + '</span><span>' + esc(AC.h_date) + '</span><span>' + esc(AC.h_source) + '</span></div>'
