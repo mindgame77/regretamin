@@ -1988,7 +1988,8 @@
     if (actLab) {
       const u = d0 && safeUrl(d0.url);
       const inner = '<i></i><div><b>' + esc(actLab.text) + '</b></div>';
-      tiles.push(u ? '<a class="att aon" href="' + esc(u) + '" target="_blank" rel="noopener">' + inner + '</a>' : '<div class="att aon">' + inner + '</div>');
+      const tone = actLab.cls === 'act-on' ? 'aon' : 'aon ' + actLab.cls;
+      tiles.push(u ? '<a class="att ' + tone + '" href="' + esc(u) + '" target="_blank" rel="noopener">' + inner + '</a>' : '<div class="att ' + tone + '">' + inner + '</div>');
     }
     const yearKnown = Array.isArray(A.deals);
     const yearCount = yearKnown ? countThisYear(A.deals) : Number(A.deals_12m) || 0;
