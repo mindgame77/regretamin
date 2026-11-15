@@ -355,11 +355,13 @@
           if (sort === 'activity') {
             const pack = function (row) {
               if (!row || row.deals_this_year == null || row.deals_this_year === '') return null;
+              const rule = window.RegretActivity;
+              if (!rule) return null;
               const yearN = Number(row.deals_this_year);
               const totalN = Number(row.deals);
               const year = Number.isFinite(yearN) && yearN > 0 ? Math.trunc(yearN) : 0;
               const deals = Number.isFinite(totalN) && totalN > 0 ? Math.trunc(totalN) : 0;
-              return { rank: year >= 3 ? 3 : year >= 1 ? 2 : deals > 0 ? 1 : 0, year: year, deals: deals };
+              return { rank: rule.rank(year, deals), year: year, deals: deals };
             };
             const ap = pack(a);
             const bp = pack(b);
