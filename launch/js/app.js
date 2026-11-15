@@ -433,7 +433,7 @@
     const was = b && b._html;
     if (b) { const since = b._pd ? performance.now() - b._pd : 0; b._pd = 0; b.classList.add('prs'); await new Promise(r => setTimeout(r, Math.max(0, 140 - since))); } // keep the pressed frame on screen >=120ms
     if (b) { b.classList.remove('prs'); b.disabled = true; b.classList.add('ld'); b.innerHTML = '<span class="spin" aria-hidden="true"></span><span class="gl">' + esc(T.google_loading) + '</span>'; }
-    try { if (/^\/vc\/[^/]+\/(full\/)?$/.test(location.pathname)) sessionStorage.setItem('rg_ret', JSON.stringify({ p: location.pathname, t: Date.now() })); } catch (x) {} // return to this firm page after Google sign-in
+    try { if (/^\/vc\/[^/]+\/((?:full|checks)\/)?$/.test(location.pathname)) sessionStorage.setItem('rg_ret', JSON.stringify({ p: location.pathname, t: Date.now() })); } catch (x) {} // return to this firm page after Google sign-in
     const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: back() } }).catch((x) => ({ error: x }));
     if (error && b) { b.disabled = false; b.classList.remove('ld'); b.innerHTML = was; }
   };
@@ -471,7 +471,7 @@
   });
   document.querySelectorAll('[data-magic]').forEach(f => f.onsubmit = (e) => { e.preventDefault(); magic(f.email.value.trim(), f.parentNode.parentNode.querySelector('[data-magicmsg]')); });
   if (sb) sb.auth.onAuthStateChange((ev, session) => {
-    if ((ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION') && session) { try { const r = JSON.parse(sessionStorage.getItem('rg_ret') || 'null'); sessionStorage.removeItem('rg_ret'); if (r && Date.now() - r.t < 600000 && typeof r.p === 'string' && /^\/vc\/[^/]+\/(full\/)?$/.test(r.p) && r.p !== location.pathname) { location.replace(location.origin + r.p); return; } } catch (x) {} }
+    if ((ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION') && session) { try { const r = JSON.parse(sessionStorage.getItem('rg_ret') || 'null'); sessionStorage.removeItem('rg_ret'); if (r && Date.now() - r.t < 600000 && typeof r.p === 'string' && /^\/vc\/[^/]+\/((?:full|checks)\/)?$/.test(r.p) && r.p !== location.pathname) { location.replace(location.origin + r.p); return; } } catch (x) {} }
     if (ev === 'SIGNED_IN') setTimeout(() => { PAINT_TRY = 0; paint(); }, 0); // nothing transfers at sign-in: the account has its own 4
     else if ((ev === 'INITIAL_SESSION' || ev === 'TOKEN_REFRESHED') && session && !ACCT && !PAINT_TRY) setTimeout(() => { paint(); }, 0); // session became usable after the first paint
     if (ev === 'SIGNED_OUT') setTimeout(() => { PAINT_TRY = 0; ACCT = null; BAL_OK = null; paint(); }, 0);
@@ -669,15 +669,15 @@
     if (!window.RegretCompany || !window.RegretCompany.applyTab) return;
     const y = window.scrollY;
     window.RegretCompany.applyTab(main, which);
-    const base = location.pathname.replace(/full\/$/, '');
-    const url = (which === 'full' ? base + 'full/' : base) + location.search;
+    const base = location.pathname.replace(/(?:full|checks)\/$/, '');
+    const url = (which === 'checks' ? base + 'checks/' : base) + location.search;
     if (location.pathname + location.search !== url) history.pushState({ tab: which }, '', url);
     window.scrollTo(0, y);
   }
   if (main) {
     window.addEventListener('popstate', () => {
       const y = window.scrollY;
-      if (window.RegretCompany && window.RegretCompany.applyTab) window.RegretCompany.applyTab(main, /\/full\/$/.test(location.pathname) ? 'full' : 'checks');
+      if (window.RegretCompany && window.RegretCompany.applyTab) window.RegretCompany.applyTab(main, /\/checks\/$/.test(location.pathname) ? 'checks' : 'full');
       window.scrollTo(0, y);
     });
     // Tab buttons show the other panel in place. Anchors still scroll, and do not jump back to the top.

@@ -184,7 +184,7 @@ def skel():  # loading placeholder for the checks table (same table markup, grey
 def ftabs(on):  # Checks and Full report are both in the page. js/app.js shows one; the address changes without a reload.
     Q = S['summary']
     b = lambda k, t, n: f'<button type="button" class="rgt-tab{" on" if on == k else ""}" data-tab="{k}" aria-selected="{"true" if on == k else "false"}">{t}{n}</button>'
-    return f'<nav class="rgt-tabs" aria-label="{Q["tabs_aria"]}">' + b('checks', Q['tab_checks'], ' <em>10</em>') + b('full', Q['tab_full'], ' <em class="rgt-n" hidden></em>') + '</nav>'
+    return f'<nav class="rgt-tabs" aria-label="{Q["tabs_aria"]}">' + b('full', Q['tab_full'], ' <em class="rgt-n" hidden></em>') + b('checks', Q['tab_checks'], ' <em>10</em>') + '</nav>'
 
 def pay_case(root=''):  # simpler unlock popup (approved mockup). Summary and /full/ both include it.
     p = S['pay']
@@ -212,11 +212,14 @@ def firm_shell(F, root, tab):  # both tabs in one shell. tab is the one shown be
 <p class="fine">{r["fine"]}</p></main>
 {pay_case(root)}'''
 
-def summary(F, root='./'):  # /vc/<slug>/ opens on Checks. Full report is already in the page.
-    return firm_shell(F, root, 'checks')
-
-def result(F, root='../'):  # /vc/<slug>/full/ opens on Full report. Checks is already in the page.
+def summary(F, root='./'):  # /vc/<slug>/ opens on Full report. Checks is the other panel.
     return firm_shell(F, root, 'full')
+
+def result(F, root='../'):  # /vc/<slug>/full/ still opens on Full report.
+    return firm_shell(F, root, 'full')
+
+def checks(F, root='../'):  # /vc/<slug>/checks/ opens on Checks and stays there on refresh.
+    return firm_shell(F, root, 'checks')
 
 A, M, SO = S['account'], S['my_checks'], S['signed_out']
 def why(k, q):  # optional exit question; values match exit_reasons.reason
@@ -284,10 +287,11 @@ def main():
     T = {'name': T_NAME, 'slug': T_SLUG}
     page(os.path.join(OUT, '_tpl', 'summary.html'), summary(T, '../../'), '../../', T_NAME + S['title_suffix'], company=True, head=T_HEAD)
     page(os.path.join(OUT, '_tpl', 'full.html'), result(T, '../../../'), '../../../', T_NAME + S['title_suffix'], company=True, head=T_HEAD)
+    page(os.path.join(OUT, '_tpl', 'checks.html'), checks(T, '../../../'), '../../../', T_NAME + S['title_suffix'], company=True, head=T_HEAD)
     nf = COPY.get('not_found', {'h1': 'We could not find that firm', 'p': 'It may not be checked yet. Search for it and we will start a check.'})
     page(os.path.join(OUT, '_tpl', '404.html'), f'<main class="wrap"><div class="hero"><h1>{E(nf["h1"])}</h1><p>{E(nf["p"])}</p>{SB()}</div></main>', '/', 'Not found' + S['title_suffix'], head='<meta name="robots" content="noindex">')
     # Site-wide 404: Cloudflare Pages serves /404.html with status 404 for unknown paths (no soft-404 SPA fallback).
-    tpl = {v: open(os.path.join(OUT, '_tpl', v + '.html')).read() for v in ('summary', 'full')}
+    tpl = {v: open(os.path.join(OUT, '_tpl', v + '.html')).read() for v in ('summary', 'full', 'checks')}
     # Edge cache key version: changes whenever the template or edge renderer changes, so a deploy never serves stale heads.
     import hashlib
     edge = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'edge', 'firm.mjs')).read()
@@ -301,10 +305,10 @@ def main():
                   for F in built if F.get('slug') and F.get('name')]
     }, ensure_ascii=False, separators=(',', ':')))
     live_slugs = ','.join(sorted(F['slug'] for F in built))
-    open(os.path.join(OUT, '_tpl', 'version.txt'), 'w').write(hashlib.sha256((edge + tpl['summary'] + tpl['full'] + '\n' + live_slugs + '\n' + live_token).encode()).hexdigest()[:12])
+    open(os.path.join(OUT, '_tpl', 'version.txt'), 'w').write(hashlib.sha256((edge + tpl['summary'] + tpl['full'] + tpl['checks'] + '\n' + live_slugs + '\n' + live_token).encode()).hexdigest()[:12])
     for F in built:
         firms.append(F['slug'])
-        for v, sub in (('summary', ''), ('full', 'full')):
+        for v, sub in (('summary', ''), ('full', 'full'), ('checks', 'checks')):
             d = os.path.join(OUT, 'vc', F['slug'], sub); os.makedirs(d, exist_ok=True)
             open(os.path.join(d, 'index.html'), 'w').write(fill(tpl[v], F, v == 'full'))
     context = SimpleNamespace(**globals())

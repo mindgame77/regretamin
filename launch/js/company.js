@@ -2184,13 +2184,16 @@
   function paintCharts(main, P) {
     if (!main || !main.querySelectorAll) return;
     const all = (P && P.activity && P.activity.deals) || [];
+    // activity.deals is the firm's whole list. Fewer than 3 this year: All time only, no switch.
+    const allTimeOnly = window.RegretActivity.countThisYear(all) < 3;
+    if (allTimeOnly) CHART_PERIOD = 'all';
     const ranged = periodDeals(all, CHART_PERIOD);
     const allTime = periodDeals(all, 'all');
     main.querySelectorAll('[data-chart]').forEach(tile => {
       const k = tile.getAttribute('data-chart');
       const ds = k === 'd' ? allTime : ranged;
       const sw = tile.querySelector('.segw'), box = tile.querySelector('.cc');
-      if (sw) sw.innerHTML = k === 'd' ? '' : segHtml();
+      if (sw) sw.innerHTML = (k === 'd' || allTimeOnly) ? '' : segHtml();
       if (box) box.innerHTML = k === 's' ? donutHtml(ds) : k === 'r' ? roundsHtml(ds) : barsHtml(ds);
     });
     if (P && P.open && typeof actModal === 'function' && typeof document !== 'undefined' && document.body && main.querySelector('[data-chart="s"]')) {
@@ -2306,7 +2309,7 @@
   function paint(main, P, st) {
     const full = render(main, P);
     const view = summary(main, P, st);
-    applyTab(main, main.dataset.tab || 'checks');
+    applyTab(main, main.dataset.tab || 'full');
     view.total = full.total; view.head = full.head;
     return view;
   }
