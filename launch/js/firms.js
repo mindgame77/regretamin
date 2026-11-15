@@ -125,17 +125,9 @@
     if (!Number.isFinite(n) || n <= 0) return '';
     return String(Math.trunc(n));
   }
-  // deals_this_year is added by the directory migration. Until that field is present, leave the cell blank.
   function activityOf(f) {
-    if (!f || f.deals_this_year == null || f.deals_this_year === '') return null;
-    const year = Number(f.deals_this_year);
-    if (!Number.isFinite(year) || year < 0) return null;
-    const total = Number(f.deals);
-    const hasDeals = Number.isFinite(total) && total > 0;
-    if (year >= 3) return { cls: 'act-on', text: pageCopy.activity_active || 'Active' };
-    if (year >= 1) return { cls: 'act-low', text: pageCopy.activity_low || 'Low activity' };
-    if (hasDeals) return { cls: 'act-off', text: pageCopy.activity_none || 'Not active' };
-    return { cls: 'act-new', text: pageCopy.activity_unchecked || 'Not checked yet' };
+    const rule = window.RegretActivity;
+    return rule ? rule.label(f && f.deals_this_year, f && f.deals) : null;
   }
   function activityHtml(f) {
     const a = activityOf(f);

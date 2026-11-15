@@ -67,6 +67,7 @@ function boot(fetchImpl, regret) {
   sandbox.window.window = sandbox.window;
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(new URL('../launch/js/activity.js', import.meta.url), 'utf8'), sandbox, { filename: 'activity.js' });
   vm.runInContext(src, sandbox, { filename: 'firms.js' });
   return { els, intersect() { if (observer) observer([{ isIntersecting: true }]); } };
 }
