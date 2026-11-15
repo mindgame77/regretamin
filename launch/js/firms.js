@@ -352,6 +352,116 @@
 
       let chips = [];
       const placeholder = (q && q.getAttribute('placeholder')) || '';
+      const miss = document.getElementById('firms-miss');
+      const missForm = document.getElementById('firms-miss-form');
+      const missMsg = document.getElementById('firms-miss-msg');
+      const noneText = none ? none.textContent : '';
+      const missOut = (miss && miss.getAttribute('data-out')) || '';
+      const missIn = (miss && miss.getAttribute('data-in')) || '';
+      const jsCopy = (C.copy && C.copy.js) || {};
+      const watched = new Set();
+      let signedIn = false;
+      let idleTimer = null;
+      const sb = C.url && C.key && window.supabase ? window.supabase.createClient(C.url, C.key) : null;
+
+      function anonKey() {
+        const k = 'regretamin.anon';
+        let a = localStorage.getItem(k);
+        if (!a) { a = crypto.randomUUID(); localStorage.setItem(k, a); }
+        return a;
+      }
+      function cachedToken() {
+        try {
+          const ref = (String(C.url || '').match(/https:\/\/([^.]+)/) || [])[1];
+          if (!ref) return '';
+          const raw = localStorage.getItem('sb-' + ref + '-auth-token');
+          if (!raw) return '';
+          return (JSON.parse(raw) || {}).access_token || '';
+        } catch (e) { return ''; }
+      }
+      const loggedTerms = new Set();
+      let lastResult = null;
+      let wantLog = null;
+      let missTerms = [];
+      function setMissMsg(text, bad) {
+        if (!missMsg) return;
+        missMsg.textContent = text || '';
+        if (missMsg.classList && typeof missMsg.classList.toggle === 'function') missMsg.classList.toggle('err', !!bad);
+      }
+      function watchTerm(term, email) {
+        const key = String(term || '').trim().toLowerCase();
+        if (!key || key.length < 2 || !C.url || !C.key) return Promise.resolve(null);
+        if (!email && watched.has(key)) return Promise.resolve({ status: 'ok', already: true });
+        const token = cachedToken();
+        return fetch(C.url + '/rest/v1/rpc/v2_watch_firm', {
+          method: 'POST',
+          headers: { apikey: C.key, Authorization: 'Bearer ' + (token || C.key), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_term: String(term || '').trim().slice(0, 100), p_email: email || null, p_anon: anonKey() })
+        }).then(function (r) {
+          return r.json().then(function (data) {
+            if (r.ok && data && data.status === 'ok' && !email) watched.add(key);
+            return r.ok ? data : null;
+          }).catch(function () { return null; });
+        }).catch(function () { return null; });
+      }
+      function filtersOn() {
+        return Object.keys(active).some(function (k) { return active[k].length; });
+      }
+      function rawTerms() {
+        const terms = chips.map(function (c) { return String(c || '').trim(); }).filter(Boolean);
+        const typed = q && q.value ? q.value.trim() : '';
+        if (typed) terms.push(typed);
+        return terms;
+      }
+      function searchKey() {
+        return searchTerms().join('\n');
+      }
+      function paintSearch(totalCount) {
+        const terms = rawTerms().filter(function (t) { return t.length >= 2; });
+        const show = terms.length > 0 && totalCount === 0 && !filtersOn();
+        missTerms = show ? terms : [];
+        if (none) {
+          none.hidden = totalCount !== 0;
+          none.textContent = show ? (signedIn ? missIn : missOut) : noneText;
+        }
+        if (missForm) missForm.hidden = !show || signedIn;
+        if (miss) miss.hidden = (!show || signedIn) && !(missMsg && missMsg.textContent);
+        if (!show) setMissMsg('');
+        if (show && signedIn) terms.forEach(function (t) { watchTerm(t); });
+      }
+      function flushLog(result) {
+        if (!wantLog || !result || wantLog.key !== result.key) return;
+        const terms = wantLog.terms;
+        wantLog = null;
+        const log = window.RegretSearch && window.RegretSearch.logSearch;
+        terms.forEach(function (term) {
+          const key = term.toLowerCase();
+          if (loggedTerms.has(key)) return;
+          loggedTerms.add(key);
+          if (!log) return;
+          try { log(term, location.pathname || '/', result.total, result.slug); } catch (e) {}
+        });
+      }
+      function armLog() {
+        const terms = rawTerms().filter(function (t) { return t.length >= 2 && !loggedTerms.has(t.toLowerCase()); });
+        if (!terms.length) return;
+        wantLog = { key: searchKey(), terms: terms };
+        if (lastResult && lastResult.key === wantLog.key) flushLog(lastResult);
+      }
+      function queueSettle() {
+        clearTimeout(idleTimer);
+        const typed = q && q.value ? q.value.trim() : '';
+        if (typed.length < 2) return;
+        idleTimer = setTimeout(function () {
+          if (!q || q.value.trim() !== typed) return;
+          armLog();
+        }, 1500);
+      }
+      function notePageResult(key, totalCount, slug) {
+        lastResult = { key: key, total: totalCount, slug: slug || null };
+        flushLog(lastResult);
+        paintSearch(totalCount);
+      }
 
       function searchTerms() {
         const terms = chips.map(function (c) { return c.toLowerCase(); });
@@ -467,6 +577,8 @@
         if (panel && !panel.hidden && panelKey) renderPanel();
       }
       function fetchPage(token) {
+        const pageOffset = offset;
+        const key = searchKey();
         const body = {
           p_limit: PAGE,
           p_offset: offset,
@@ -499,7 +611,8 @@
           offset += rows.length;
           done = rows.length === 0 || offset >= total;
           loading = false;
-          if (none) none.hidden = total !== 0;
+          if (pageOffset === 0) notePageResult(key, total, rows[0] && rows[0].slug);
+          else if (none) none.hidden = total !== 0;
           showStatus();
           if (!done && nearBottom()) more();
         }).catch(function () {
@@ -510,12 +623,15 @@
         });
       }
       function appendLocal() {
+        const first = offset === 0;
+        const key = searchKey();
         const slice = localShown.slice(offset, offset + PAGE);
         appendRows(slice);
         offset += slice.length;
         done = offset >= total;
         loading = false;
-        if (none) none.hidden = total !== 0;
+        if (first) notePageResult(key, total, localShown[0] && localShown[0].slug);
+        else if (none) none.hidden = total !== 0;
         showStatus();
         if (!done && slice.length && nearBottom()) appendLocal();
       }
@@ -706,7 +822,9 @@
             q.value = rest.replace(/^\s+/, '');
             if (added) { renderChips(); chipsChanged = true; }
           }
+          queueSettle();
           clearTimeout(searchTimer);
+          if (chipsChanged) armLog();
           if (chipsChanged || !remote) draw();
           else searchTimer = setTimeout(draw, 250);
         });
@@ -714,7 +832,13 @@
           if (e.isComposing || e.keyCode === 229) return;
           if (e.key === 'Enter') {
             e.preventDefault();
-            if (q.value.trim()) { commitTyped(); draw(); }
+            clearTimeout(idleTimer);
+            clearTimeout(searchTimer);
+            if (q.value.trim()) {
+              commitTyped();
+              armLog();
+              draw();
+            }
           } else if (e.key === 'Backspace' && !q.value && chips.length) {
             e.preventDefault();
             removeChip(chips.length - 1);
@@ -733,6 +857,37 @@
         if (q) q.focus();
         draw();
       });
+
+      if (missForm) missForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const email = missForm.email.value.trim();
+        const terms = missTerms.slice();
+        const btn = missForm.querySelector('button');
+        if (!terms.length || !email) return;
+        if (btn) btn.disabled = true;
+        Promise.all(terms.map(function (t) { return watchTerm(t, email); })).then(function (rows) {
+          const data = rows.filter(Boolean);
+          const st = (data.find(function (r) { return r.status && r.status !== 'ok'; }) || data[0] || {}).status || '';
+          const allAlready = data.length > 0 && data.every(function (r) { return r.status === 'ok' && r.already; });
+          const bad = !data.length || st === 'bad_email' || st === 'rate_limited' || st === 'ignored';
+          const text = bad ? (st === 'bad_email' ? jsCopy.req_bad_email : st === 'rate_limited' ? jsCopy.req_rate : jsCopy.error)
+            : allAlready ? jsCopy.req_dup
+            : jsCopy.notify_ok;
+          setMissMsg(text || jsCopy.error, bad);
+          if (miss) miss.hidden = false;
+          if (btn) btn.disabled = false;
+        });
+      });
+      if (sb) {
+        sb.auth.getSession().then(function (res) {
+          signedIn = !!(res && res.data && res.data.session);
+          if (signedIn && lastResult && lastResult.total === 0) paintSearch(0);
+        }).catch(function () {});
+        sb.auth.onAuthStateChange(function (_ev, session) {
+          signedIn = !!session;
+          if (signedIn && lastResult && lastResult.total === 0) paintSearch(0);
+        });
+      }
 
       renderFacets();
       updateBadge();
