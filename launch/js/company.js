@@ -2185,7 +2185,7 @@
     if (!main || !main.querySelectorAll) return;
     const all = (P && P.activity && P.activity.deals) || [];
     // activity.deals is the firm's whole list. Fewer than 3 this year: All time only, no switch.
-    const allTimeOnly = countThisYear(all) < 3;
+    const allTimeOnly = window.RegretActivity.countThisYear(all) < 3;
     if (allTimeOnly) CHART_PERIOD = 'all';
     const ranged = periodDeals(all, CHART_PERIOD);
     const allTime = periodDeals(all, 'all');
