@@ -1006,11 +1006,11 @@ main.wrap.firms-pg{max-width:1320px}
 .frow.h .arrow{font-size:11px;letter-spacing:0;text-transform:none;color:var(--mute)}
 .frow.h button.sorted .arrow{color:var(--vio)}
 .frow.h [data-sort="newest"]{justify-self:end;text-align:right}
-.frow.h span.hunsortable.finv{justify-self:end;justify-content:flex-end;text-align:right;white-space:nowrap}
+.frow.h [data-sort="deals"]{justify-self:center;justify-content:center;text-align:center}
 .frow .fnm b{display:block;font:700 16px/1.3 'DM Sans',sans-serif}
 .frow .fcity{font:400 13.5px/1.35 'DM Sans',sans-serif;color:var(--ink2)}
 .frow .finds{font:400 13.5px/1.35 'DM Sans',sans-serif;color:var(--ink)}
-.frow .finv{justify-self:end;text-align:right;font:700 14px/1.35 'DM Sans',sans-serif;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.frow .finv{justify-self:center;text-align:center;font:700 14px/1.35 'DM Sans',sans-serif;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
 .frow .fdeal{font:600 13.5px/1.35 'DM Sans',sans-serif;color:var(--ink)}
 .frow .fdeal .dwhen{white-space:nowrap}
 .frow .rdt{color:var(--mute);font-size:14px;text-align:right;white-space:nowrap}
@@ -1052,7 +1052,7 @@ main.wrap.firms-pg{max-width:1320px}
 /* The sixth column needs the list wider than the other five at their minimums. Below that, drop it so those columns stay as they are. */
 @container firms (max-width:840px){
   .frow{grid-template-columns:minmax(140px,1.3fr) minmax(90px,.7fr) minmax(120px,1fr) minmax(150px,1.4fr) 110px}
-  .frow.h span.finv,a.frow .finv{display:none}
+  .frow.h [data-sort="deals"],a.frow .finv{display:none}
 }
 @media (max-width:900px){
   .sidebar-layout{grid-template-columns:1fr}
@@ -1073,6 +1073,7 @@ main.wrap.firms-pg{max-width:1320px}
   .frow.h button{border:1.5px solid var(--line);border-radius:99px;padding:6px 10px;background:#fff;letter-spacing:.04em}
   .frow.h button.sorted{border-color:var(--vio);background:var(--viobg);color:var(--vio)}
   .frow.h span.hunsortable{display:none}
+  .frow.h button[data-sort="deals"]{display:inline-flex}
   .frow.h [data-sort="newest"]{justify-self:auto}
   .frow{grid-template-columns:1fr auto;padding:14px 16px;row-gap:4px}
   .frow .fnm{grid-column:1;grid-row:1}
@@ -1080,7 +1081,7 @@ main.wrap.firms-pg{max-width:1320px}
   .frow .fcity{grid-column:1/-1;grid-row:2}
   .frow .fcity:empty,.frow .finds:empty,.frow .fdeal:empty,a.frow .finv:empty{display:none}
   .frow .finds{grid-column:1/-1;grid-row:3;color:var(--ink2)}
-  a.frow .finv:not(:empty){display:block;grid-column:2;grid-row:3;align-self:start;font-size:13px}
+  a.frow .finv:not(:empty){display:block;grid-column:2;grid-row:3;align-self:start;justify-self:end;font-size:13px}
   .frow:has(> .finv:not(:empty)) .finds{grid-column:1;padding-right:10px}
   .frow .fdeal{grid-column:1/-1;grid-row:4}
   .panel-option-grid{grid-template-columns:1fr}

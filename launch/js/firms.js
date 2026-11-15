@@ -332,6 +332,16 @@
             const d = stamp(a.latest_deal_date) - stamp(b.latest_deal_date);
             return d ? d * dir : String(a.name || '').localeCompare(String(b.name || ''));
           }
+          if (sort === 'deals') {
+            const count = function (row) {
+              const n = Number(row && row.deals);
+              return Number.isFinite(n) && n > 0 ? n : null;
+            };
+            const blank = cmpBlankLast(count(a), count(b));
+            if (blank) return blank;
+            const d = count(a) - count(b);
+            return d ? d * dir : String(a.name || '').localeCompare(String(b.name || ''));
+          }
           let d = 0;
           if (sort === 'name') d = String(a.name || '').localeCompare(String(b.name || ''));
           else {
@@ -349,13 +359,11 @@
           + esc(label) + (arrow ? '<span class="arrow">' + arrow + '</span>' : '') + '</button>';
       }
       function headHtml() {
-        // firm_directory_page accepts newest, name, city, and deal (latest date) only.
-        // A deals-count sort is not one of those, so Investments is not a sort button.
         return '<div class="frow h" role="row">'
           + headerCell('name', pageCopy.col_firm || 'Investor')
           + headerCell('city', pageCopy.col_city || 'City')
           + '<span class="hunsortable">' + esc(pageCopy.col_invests || 'Invests in') + '</span>'
-          + '<span class="hunsortable finv">' + esc(pageCopy.col_investments || 'Investments') + '</span>'
+          + headerCell('deals', pageCopy.col_investments || 'Investments')
           + headerCell('deal', pageCopy.col_deal || 'Latest deal')
           + headerCell('newest', pageCopy.col_added || 'Added')
           + '</div>';
