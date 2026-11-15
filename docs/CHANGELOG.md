@@ -3,7 +3,7 @@ Update this file after every change.
 One line per change: date/time PT | what changed | PR link | how to roll back.
 PL/pgSQL variables start with v_ so they never clash with table aliases.
 
-2026-11-15 3:27 AM PT | The investors list reads firm_directory_page_v2. The page shape is the same. It is filled from firm_summary, which the database already keeps up to date. firm_directory_page stays. No wording or layout changes. Already applied. | PR | Point launch/js/firms.js back at firm_directory_page, then run supabase/rollbacks/20261115120000_firm_summary.sql. The summary table and firm_directory_page_v2 go away. Firm rows stay.
+2026-11-15 3:27 AM PT | The investors list reads firm_directory_page_v2. The page shape is the same. It is filled from firm_summary, which the database already keeps up to date. firm_directory_page stays. No wording or layout changes. Already applied. | https://github.com/mindgame77/regrettamine/pull/403 | Point launch/js/firms.js back at firm_directory_page, then run supabase/rollbacks/20261115120000_firm_summary.sql. The summary table and firm_directory_page_v2 go away. Firm rows stay.
 
 2026-11-14 1:55 PM PT | The average-check pill shows min_amount and max_amount when currency is set and is not USD, with that currency's symbol or code (€1M–€10M, £500K–£2M, CHF 1M). A null currency, or USD, stays the min_usd / max_usd dollar pill. No second dollar line. No rows are written. The ingest door is unchanged. Not applied yet. | https://github.com/mindgame77/regrettamine/pull/395 | Run supabase/rollbacks/20261114220000_v2_check_size_original_currency.sql, then revert the pull request. Check-size rows stay.
 
