@@ -99,9 +99,6 @@
   function cityLabel(f) {
     return prettyCity(f.city) || COUNTRY[f.country] || '';
   }
-  function countryLabel(code) {
-    return COUNTRY[code] || code || '';
-  }
   function regionOf(f) {
     return REGION[f.country] || (f.country ? 'unknown' : 'unknown');
   }
@@ -183,23 +180,18 @@
     }).sort(function (a, b) { return (b.count - a.count) || a.label.localeCompare(b.label); });
   }
 
-  // Live data: one call to the read-only firm_directory() RPC with the public anon key.
+  // Live data: firm_directory_page(), 100 firms at a time. Search, filters and sort
+  // are arguments, so a firm that is not on screen yet can still be found.
   // Builds without Supabase config fall back to the build-time firms.json.
   const C = window.REGRET || {};
   function loadFirms() {
-    if (C.url && C.key) {
-      return fetch(C.url + '/rest/v1/rpc/firm_directory', {
-        method: 'POST',
-        headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
-        body: '{}'
-      }).then(function (r) { if (!r.ok) throw new Error('firm_directory'); return r.json(); })
-        .then(function (rows) { return { firms: Array.isArray(rows) ? rows : [] }; });
-    }
+    if (C.url && C.key) return Promise.resolve({ remote: true, firms: [] });
     return fetch(root + 'firms.json', { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('firms.json'); return r.json(); });
   }
   loadFirms()
     .then(function (data) {
+      const remote = !!(data && data.remote);
       const firms = (data && data.firms) || [];
       const q = document.getElementById('firms-q');
       const none = document.getElementById('firms-none');
@@ -216,36 +208,47 @@
       let draft = [];
       const active = { region: [], industry: [], stage: [], legal: [], info: [], status: [] };
 
-      const regionCounts = countBy(firms, regionOf);
-      const regionOpts = REGION_OPTIONS.map(function (pair) {
-        return { value: pair[0], label: pair[1], count: regionCounts[pair[0]] || 0 };
-      }).sort(function (a, b) { return (b.count - a.count) || a.label.localeCompare(b.label); });
-
-      const countryCounts = countBy(firms, function (f) { return f.country || 'unknown'; });
-      const countryOpts = Object.keys(countryCounts).map(function (k) {
-        return { value: k, label: k === 'unknown' ? 'Not disclosed' : countryLabel(k), count: countryCounts[k] };
-      }).sort(function (a, b) { return (b.count - a.count) || a.label.localeCompare(b.label); });
-
-      const industryOpts = uniqueOptions(firms, function (f) { return f.industries || []; });
-      const stageOpts = uniqueOptions(firms, function (f) { return f.stages || []; });
-
-      const legalCounts = countBy(firms, function (f) { return f.legal_status || 'unknown'; });
-      const legalOpts = [
-        { value: 'unknown', label: 'No result available', count: legalCounts.unknown || 0 },
-        { value: 'has', label: 'Has records', count: legalCounts.has || 0 },
-        { value: 'none', label: 'None found', count: legalCounts.none || 0 }
-      ].sort(function (a, b) { return (b.count - a.count) || a.label.localeCompare(b.label); });
-
-      const infoOpts = [
-        { value: 'deals', label: 'Deals in last 12 months', count: firms.filter(function (f) { return f.deals_12m > 0; }).length },
-        { value: 'lead', label: 'Led deals in 12 months', count: firms.filter(function (f) { return f.led_12m > 0; }).length },
-        { value: 'legal', label: 'Legal / regulatory', count: firms.filter(function (f) { return f.legal_records > 0; }).length }
-      ];
-
-      const statusCounts = countBy(firms, function (f) { return f.firm_status || 'Active'; });
-      const statusOpts = Object.keys(statusCounts).map(function (k) {
-        return { value: k, label: k, count: statusCounts[k] };
-      }).sort(function (a, b) { return (b.count - a.count) || a.label.localeCompare(b.label); });
+      let regionOpts, industryOpts, stageOpts, legalOpts, infoOpts, statusOpts;
+      if (remote) {
+        regionOpts = REGION_OPTIONS.map(function (pair) {
+          return { value: pair[0], label: pair[1], count: 0 };
+        });
+        industryOpts = [];
+        stageOpts = [];
+        legalOpts = [
+          { value: 'unknown', label: 'No result available', count: 0 },
+          { value: 'has', label: 'Has records', count: 0 },
+          { value: 'none', label: 'None found', count: 0 }
+        ];
+        infoOpts = [
+          { value: 'deals', label: 'Deals in last 12 months', count: 0 },
+          { value: 'lead', label: 'Led deals in 12 months', count: 0 },
+          { value: 'legal', label: 'Legal / regulatory', count: 0 }
+        ];
+        statusOpts = [];
+      } else {
+        const regionCounts = countBy(firms, regionOf);
+        regionOpts = REGION_OPTIONS.map(function (pair) {
+          return { value: pair[0], label: pair[1], count: regionCounts[pair[0]] || 0 };
+        }).sort(function (a, b) { return (b.count - a.count) || a.label.localeCompare(b.label); });
+        industryOpts = uniqueOptions(firms, function (f) { return f.industries || []; });
+        stageOpts = uniqueOptions(firms, function (f) { return f.stages || []; });
+        const legalCounts = countBy(firms, function (f) { return f.legal_status || 'unknown'; });
+        legalOpts = [
+          { value: 'unknown', label: 'No result available', count: legalCounts.unknown || 0 },
+          { value: 'has', label: 'Has records', count: legalCounts.has || 0 },
+          { value: 'none', label: 'None found', count: legalCounts.none || 0 }
+        ].sort(function (a, b) { return (b.count - a.count) || a.label.localeCompare(b.label); });
+        infoOpts = [
+          { value: 'deals', label: 'Deals in last 12 months', count: firms.filter(function (f) { return f.deals_12m > 0; }).length },
+          { value: 'lead', label: 'Led deals in 12 months', count: firms.filter(function (f) { return f.led_12m > 0; }).length },
+          { value: 'legal', label: 'Legal / regulatory', count: firms.filter(function (f) { return f.legal_records > 0; }).length }
+        ];
+        const statusCounts = countBy(firms, function (f) { return f.firm_status || 'Active'; });
+        statusOpts = Object.keys(statusCounts).map(function (k) {
+          return { value: k, label: k, count: statusCounts[k] };
+        }).sort(function (a, b) { return (b.count - a.count) || a.label.localeCompare(b.label); });
+      }
 
       const GROUPS = {
         region: { title: 'Region', singular: 'regions', options: regionOpts },
@@ -356,7 +359,6 @@
       const missOut = (miss && miss.getAttribute('data-out')) || '';
       const missIn = (miss && miss.getAttribute('data-in')) || '';
       const jsCopy = (C.copy && C.copy.js) || {};
-      const settled = new Set();
       const watched = new Set();
       let signedIn = false;
       let idleTimer = null;
@@ -377,15 +379,14 @@
           return (JSON.parse(raw) || {}).access_token || '';
         } catch (e) { return ''; }
       }
-      function unmatched() {
-        return searchTerms().filter(function (t) {
-          return !firms.some(function (f) { return searchMatch(f, t); });
-        });
-      }
+      const loggedTerms = new Set();
+      let lastResult = null;
+      let wantLog = null;
+      let missTerms = [];
       function setMissMsg(text, bad) {
         if (!missMsg) return;
         missMsg.textContent = text || '';
-        missMsg.classList.toggle('err', !!bad);
+        if (missMsg.classList && typeof missMsg.classList.toggle === 'function') missMsg.classList.toggle('err', !!bad);
       }
       function watchTerm(term, email) {
         const key = String(term || '').trim().toLowerCase();
@@ -403,17 +404,49 @@
           }).catch(function () { return null; });
         }).catch(function () { return null; });
       }
-      function settle(raw) {
-        const term = String(raw || '').trim().replace(/\s+/g, ' ');
-        const key = term.toLowerCase();
-        if (key.length < 2) return;
-        settled.add(key);
-        const hits = firms.filter(function (f) { return searchMatch(f, key); });
-        const log = window.RegretSearch && window.RegretSearch.logSearch;
-        if (log) {
-          try { log(term, location.pathname || '/', hits.length, hits[0] && hits[0].slug); } catch (e) {}
+      function filtersOn() {
+        return Object.keys(active).some(function (k) { return active[k].length; });
+      }
+      function rawTerms() {
+        const terms = chips.map(function (c) { return String(c || '').trim(); }).filter(Boolean);
+        const typed = q && q.value ? q.value.trim() : '';
+        if (typed) terms.push(typed);
+        return terms;
+      }
+      function searchKey() {
+        return searchTerms().join('\n');
+      }
+      function paintSearch(totalCount) {
+        const terms = rawTerms().filter(function (t) { return t.length >= 2; });
+        const show = terms.length > 0 && totalCount === 0 && !filtersOn();
+        missTerms = show ? terms : [];
+        if (none) {
+          none.hidden = totalCount !== 0;
+          none.textContent = show ? (signedIn ? missIn : missOut) : noneText;
         }
-        if (!hits.length && signedIn) watchTerm(term);
+        if (missForm) missForm.hidden = !show || signedIn;
+        if (miss) miss.hidden = (!show || signedIn) && !(missMsg && missMsg.textContent);
+        if (!show) setMissMsg('');
+        if (show && signedIn) terms.forEach(function (t) { watchTerm(t); });
+      }
+      function flushLog(result) {
+        if (!wantLog || !result || wantLog.key !== result.key) return;
+        const terms = wantLog.terms;
+        wantLog = null;
+        const log = window.RegretSearch && window.RegretSearch.logSearch;
+        terms.forEach(function (term) {
+          const key = term.toLowerCase();
+          if (loggedTerms.has(key)) return;
+          loggedTerms.add(key);
+          if (!log) return;
+          try { log(term, location.pathname || '/', result.total, result.slug); } catch (e) {}
+        });
+      }
+      function armLog() {
+        const terms = rawTerms().filter(function (t) { return t.length >= 2 && !loggedTerms.has(t.toLowerCase()); });
+        if (!terms.length) return;
+        wantLog = { key: searchKey(), terms: terms };
+        if (lastResult && lastResult.key === wantLog.key) flushLog(lastResult);
       }
       function queueSettle() {
         clearTimeout(idleTimer);
@@ -421,21 +454,13 @@
         if (typed.length < 2) return;
         idleTimer = setTimeout(function () {
           if (!q || q.value.trim() !== typed) return;
-          settle(typed);
-          draw();
+          armLog();
         }, 1500);
       }
-      function updateMiss(shownCount) {
-        const terms = searchTerms();
-        const ready = terms.length > 0 && terms.every(function (t) { return settled.has(t); });
-        const show = shownCount === 0 && ready && unmatched().length === terms.length;
-        if (none) {
-          none.hidden = shownCount !== 0;
-          none.textContent = show ? (signedIn ? missIn : missOut) : noneText;
-        }
-        if (missForm) missForm.hidden = !show || signedIn;
-        if (miss) miss.hidden = (!show || signedIn) && !(missMsg && missMsg.textContent);
-        if (!show) setMissMsg('');
+      function notePageResult(key, totalCount, slug) {
+        lastResult = { key: key, total: totalCount, slug: slug || null };
+        flushLog(lastResult);
+        paintSearch(totalCount);
       }
 
       function searchTerms() {
@@ -476,13 +501,174 @@
         if (q) q.value = '';
         if (added) renderChips();
       }
+      const PAGE = 100;
+      let offset = 0;
+      let total = 0;
+      let loading = false;
+      let done = false;
+      let gen = 0;
+      let seen = {};
+      let localShown = [];
+      let searchTimer = 0;
+      const moreEl = document.getElementById('firms-more');
+      const loadingText = (moreEl && moreEl.getAttribute('data-loading')) || pageCopy.loading || 'Loading more investors';
+      const endText = (moreEl && moreEl.getAttribute('data-end')) || pageCopy.end || 'End of the list';
+      function showStatus() {
+        if (!moreEl) return;
+        if (loading) {
+          moreEl.hidden = false;
+          moreEl.textContent = loadingText;
+        } else if (done && total > 0) {
+          moreEl.hidden = false;
+          moreEl.textContent = endText;
+        } else {
+          moreEl.hidden = true;
+          moreEl.textContent = '';
+        }
+      }
+      function appendRows(rows) {
+        const html = rows.filter(function (f) {
+          const slug = f && f.slug;
+          if (!slug || seen[slug]) return false;
+          seen[slug] = true;
+          return true;
+        }).map(row).join('');
+        if (!html) return;
+        if (typeof list.insertAdjacentHTML === 'function') list.insertAdjacentHTML('beforeend', html);
+        else list.innerHTML += html;
+      }
+      function nearBottom() {
+        const el = document.getElementById('firms-sentinel');
+        if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+        const r = el.getBoundingClientRect();
+        if (!r || (!r.top && !r.bottom && !r.height)) return false;
+        return r.top < (window.innerHeight || 800) + 240;
+      }
+      function byCount(a, b) { return (b.count - a.count) || String(a.label || '').localeCompare(String(b.label || '')); }
+      function applyFacets(facets) {
+        const regionCounts = {};
+        (facets.region || []).forEach(function (o) { regionCounts[o.value] = Number(o.count) || 0; });
+        GROUPS.region.options = REGION_OPTIONS.map(function (pair) {
+          return { value: pair[0], label: pair[1], count: regionCounts[pair[0]] || 0 };
+        }).sort(byCount);
+        function opts(list) {
+          return (list || []).map(function (o) {
+            return { value: o.value, label: o.label || o.value, count: Number(o.count) || 0 };
+          }).sort(byCount);
+        }
+        GROUPS.industry.options = opts(facets.industry);
+        GROUPS.stage.options = opts(facets.stage);
+        const legalCounts = {};
+        (facets.legal || []).forEach(function (o) { legalCounts[o.value] = Number(o.count) || 0; });
+        GROUPS.legal.options = [
+          { value: 'unknown', label: 'No result available', count: legalCounts.unknown || 0 },
+          { value: 'has', label: 'Has records', count: legalCounts.has || 0 },
+          { value: 'none', label: 'None found', count: legalCounts.none || 0 }
+        ].sort(byCount);
+        const infoCounts = {};
+        (facets.info || []).forEach(function (o) { infoCounts[o.value] = Number(o.count) || 0; });
+        GROUPS.info.options = [
+          { value: 'deals', label: 'Deals in last 12 months', count: infoCounts.deals || 0 },
+          { value: 'lead', label: 'Led deals in 12 months', count: infoCounts.lead || 0 },
+          { value: 'legal', label: 'Legal / regulatory', count: infoCounts.legal || 0 }
+        ];
+        GROUPS.status.options = opts(facets.status);
+        renderFacets();
+        if (panel && !panel.hidden && panelKey) renderPanel();
+      }
+      function fetchPage(token) {
+        const pageOffset = offset;
+        const key = searchKey();
+        const body = {
+          p_limit: PAGE,
+          p_offset: offset,
+          p_sort: sort,
+          p_asc: asc,
+          p_search: searchTerms(),
+          p_region: active.region,
+          p_industry: active.industry,
+          p_stage: active.stage,
+          p_legal: active.legal,
+          p_info: active.info,
+          p_status: active.status
+        };
+        loading = true;
+        showStatus();
+        fetch(C.url + '/rest/v1/rpc/firm_directory_page', {
+          method: 'POST',
+          headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).then(function (r) {
+          if (!r.ok) throw new Error('firm_directory_page');
+          return r.json();
+        }).then(function (payload) {
+          if (token !== gen) return;
+          const data = typeof payload === 'string' ? JSON.parse(payload) : (payload || {});
+          const rows = Array.isArray(data.rows) ? data.rows : [];
+          total = Number(data.total) || 0;
+          if (data.facets) applyFacets(data.facets);
+          appendRows(rows);
+          offset += rows.length;
+          done = rows.length === 0 || offset >= total;
+          loading = false;
+          if (pageOffset === 0) notePageResult(key, total, rows[0] && rows[0].slug);
+          else if (none) none.hidden = total !== 0;
+          showStatus();
+          if (!done && nearBottom()) more();
+        }).catch(function () {
+          if (token !== gen) return;
+          loading = false;
+          done = true;
+          showStatus();
+        });
+      }
+      function appendLocal() {
+        const first = offset === 0;
+        const key = searchKey();
+        const slice = localShown.slice(offset, offset + PAGE);
+        appendRows(slice);
+        offset += slice.length;
+        done = offset >= total;
+        loading = false;
+        if (first) notePageResult(key, total, localShown[0] && localShown[0].slug);
+        else if (none) none.hidden = total !== 0;
+        showStatus();
+        if (!done && slice.length && nearBottom()) appendLocal();
+      }
+      function more() {
+        if (loading || done) return;
+        if (remote) fetchPage(gen);
+        else appendLocal();
+      }
       function draw() {
+        clearTimeout(searchTimer);
+        seen = {};
+        offset = 0;
+        done = false;
+        list.innerHTML = headHtml();
+        if (none) none.hidden = true;
+        if (remote) {
+          const token = ++gen;
+          total = 0;
+          fetchPage(token);
+          return;
+        }
         const terms = searchTerms();
-        const shown = sorted(firms.filter(function (f) {
+        localShown = sorted(firms.filter(function (f) {
           return matchesFilters(f) && (!terms.length || terms.some(function (t) { return searchMatch(f, t); }));
         }));
-        list.innerHTML = headHtml() + shown.map(row).join('');
-        updateMiss(shown.length);
+        total = localShown.length;
+        loading = false;
+        gen += 1;
+        appendLocal();
+      }
+      function watchScroll() {
+        const el = document.getElementById('firms-sentinel');
+        if (!el || typeof window.IntersectionObserver !== 'function') return;
+        const io = new window.IntersectionObserver(function (entries) {
+          if (entries.some(function (e) { return e.isIntersecting; })) more();
+        }, { rootMargin: '0px 0px 240px 0px' });
+        io.observe(el);
       }
       function toggleFacet(key, val, on) {
         active[key] = on
@@ -627,25 +813,30 @@
       });
       if (q) {
         q.addEventListener('input', function () {
+          let chipsChanged = false;
           if (q.value.indexOf(',') !== -1) {
             const parts = q.value.split(',');
             const rest = parts.pop();
             let added = false;
-            parts.forEach(function (part) { if (addChip(part)) added = true; settle(part); });
+            parts.forEach(function (part) { if (addChip(part)) added = true; });
             q.value = rest.replace(/^\s+/, '');
-            if (added) renderChips();
+            if (added) { renderChips(); chipsChanged = true; }
           }
           queueSettle();
-          draw();
+          clearTimeout(searchTimer);
+          if (chipsChanged) armLog();
+          if (chipsChanged || !remote) draw();
+          else searchTimer = setTimeout(draw, 250);
         });
         q.addEventListener('keydown', function (e) {
           if (e.isComposing || e.keyCode === 229) return;
           if (e.key === 'Enter') {
             e.preventDefault();
+            clearTimeout(idleTimer);
+            clearTimeout(searchTimer);
             if (q.value.trim()) {
-              const parts = q.value.split(',');
               commitTyped();
-              parts.forEach(settle);
+              armLog();
               draw();
             }
           } else if (e.key === 'Backspace' && !q.value && chips.length) {
@@ -670,7 +861,7 @@
       if (missForm) missForm.addEventListener('submit', function (e) {
         e.preventDefault();
         const email = missForm.email.value.trim();
-        const terms = unmatched().filter(function (t) { return settled.has(t); });
+        const terms = missTerms.slice();
         const btn = missForm.querySelector('button');
         if (!terms.length || !email) return;
         if (btn) btn.disabled = true;
@@ -690,18 +881,17 @@
       if (sb) {
         sb.auth.getSession().then(function (res) {
           signedIn = !!(res && res.data && res.data.session);
-          if (signedIn) unmatched().forEach(function (t) { if (settled.has(t)) watchTerm(t); });
-          draw();
+          if (signedIn && lastResult && lastResult.total === 0) paintSearch(0);
         }).catch(function () {});
         sb.auth.onAuthStateChange(function (_ev, session) {
           signedIn = !!session;
-          if (signedIn) unmatched().forEach(function (t) { if (settled.has(t)) watchTerm(t); });
-          draw();
+          if (signedIn && lastResult && lastResult.total === 0) paintSearch(0);
         });
       }
 
       renderFacets();
       updateBadge();
+      watchScroll();
       draw();
     })
     .catch(function () { /* keep the empty list if firms.json is missing */ });

@@ -70,7 +70,7 @@ function element(id) {
 }
 
 test('an unknown investors search asks for an email after a pause and logs once', async () => {
-  const ids = ['firms-list', 'firms-q', 'firms-none', 'firms-sidebar', 'facet-groups', 'facet-panel', 'firms-chips', 'filters-backdrop', 'filters-open', 'filters-open-badge', 'panel-close', 'panel-clear', 'panel-apply', 'facet-search', 'pinned-options', 'remaining-label', 'full-options', 'draft-count', 'panel-title', 'panel-total', 'firms-miss', 'firms-miss-form', 'firms-miss-msg'];
+  const ids = ['firms-list', 'firms-q', 'firms-none', 'firms-sidebar', 'facet-groups', 'facet-panel', 'firms-chips', 'filters-backdrop', 'filters-open', 'filters-open-badge', 'panel-close', 'panel-clear', 'panel-apply', 'facet-search', 'pinned-options', 'remaining-label', 'full-options', 'draft-count', 'panel-title', 'panel-total', 'firms-miss', 'firms-miss-form', 'firms-miss-msg', 'firms-more', 'firms-sentinel'];
   const els = Object.fromEntries(ids.map((id) => [id, element(id)]));
   els['firms-none'].textContent = 'No investors match those filters.';
   els['firms-none'].hidden = true;
@@ -92,9 +92,14 @@ test('an unknown investors search asks for an email after a pause and logs once'
     crypto: { randomUUID: () => '11111111-1111-4111-8111-111111111111' },
     fetch(url, opts) {
       calls.push({ url: String(url), body: opts && opts.body, keepalive: !!(opts && opts.keepalive) });
-      const payload = String(url).includes('firm_directory')
-        ? [{ slug: 'acme', name: 'Acme Ventures', website: 'https://acme.example', industries: [], stages: [], added: '2026-01-01' }]
-        : { status: 'ok', already: false };
+      let payload = { status: 'ok', already: false };
+      if (String(url).includes('firm_directory_page')) {
+        const search = ((opts && opts.body) ? JSON.parse(opts.body).p_search : []) || [];
+        const term = String(search[0] || '').toLowerCase();
+        if (!term) payload = { rows: [{ slug: 'acme', name: 'Acme Ventures' }], total: 2, facets: {} };
+        else if (term.indexOf('acme') !== -1) payload = { rows: [{ slug: 'acme', name: 'Acme Ventures' }], total: 1, facets: {} };
+        else payload = { rows: [], total: 0, facets: {} };
+      }
       return Promise.resolve({ ok: true, json: async () => payload });
     },
     document: {
@@ -133,11 +138,11 @@ test('an unknown investors search asks for an email after a pause and logs once'
 
   input.value = 'Northwind';
   input.listeners.input.forEach((fn) => fn());
-  assert.equal(els['firms-none'].hidden, false);
-  assert.equal(els['firms-none'].textContent, 'No investors match those filters.');
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  assert.equal(calls.some((c) => c.url.includes('firm_directory_page')), true);
   assert.equal(calls.some((c) => c.url.includes('v2_log_search')), false);
 
-  await new Promise((resolve) => setTimeout(resolve, 1600));
+  await new Promise((resolve) => setTimeout(resolve, 1300));
   const logs = calls.filter((c) => c.url.includes('v2_log_search'));
   assert.equal(logs.length, 1);
   assert.equal(logs[0].keepalive, true);

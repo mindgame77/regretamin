@@ -19,6 +19,8 @@ def render(c):
 <form class="frm" id="firms-miss-form"><input class="in" type="email" name="email" required maxlength="200" placeholder="{E(F["miss_placeholder"])}" aria-label="{E(F["miss_placeholder"])}" autocomplete="email"><button class="btn" type="submit">{E(F["miss_button"])}</button></form>
 <p class="msg" id="firms-miss-msg"></p>
 </div>
+<div id="firms-sentinel" class="firms-sentinel" aria-hidden="true"></div>
+<p class="hint" id="firms-more" hidden data-loading="{E(F["loading"])}" data-end="{E(F["end"])}"></p>
 </div>
 </div>
 <div class="filters-backdrop" id="filters-backdrop" hidden></div>

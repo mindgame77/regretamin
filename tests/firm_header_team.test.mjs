@@ -164,6 +164,24 @@ test('formatted check bounds render in the pill and a sentence would only if the
   assert.match(sentence, /Initial investments generally range from \$25 million to \$75 million/);
 });
 
+test('a non-USD amount stays in the same pill, with no dollar line', () => {
+  const mig = read('supabase/migrations/20261114220000_v2_check_size_original_currency.sql');
+  const select = mig.slice(mig.indexOf("$new$'check_size'"), mig.indexOf(',$new$;'));
+  assert.match(select, /c\.currency is not null and c\.currency <> 'USD'/);
+  assert.match(select, /public\._money_display\(c\.min_amount,c\.currency\) \|\| '–' \|\| public\._money_display\(c\.max_amount,c\.currency\)/);
+  assert.match(select, /else case when c\.min_usd is not null/);
+  assert.match(select, /public\._money_display\(c\.min_usd,'USD'\)/);
+  assert.doesNotMatch(select, /about/i);
+  for (const amount of ['€1M–€10M', '£500K–£2M', 'CHF 1M', 'Up to €10M', '¥1M+']) {
+    const html = headerHtml({ name: 'Example Firm', stages: ['Seed'], check_size: amount });
+    const esc = amount.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    assert.match(html, new RegExp('<span class="htag-k">AVG CHECK</span><span class="hp">' + esc + '</span>'));
+    assert.equal((html.match(/AVG CHECK/g) || []).length, 1);
+    assert.doesNotMatch(html, /about/i);
+    assert.equal((html.match(/class="hp"/g) || []).length, 2);
+  }
+});
+
 test('check size text is escaped and the page reads one published amount_text', () => {
   const html = headerHtml({ name: 'Example Firm', stages: ['Seed'], check_size: '<b>$250K</b>' });
   assert.match(html, /&lt;b&gt;\$250K&lt;\/b&gt;/);

@@ -205,9 +205,10 @@
   // Industries and stages sit under the meta line and social row, above the activity cards.
   // One investment-focus rule for every firm (F.11). Website labels are the stored words. The source stays in the database and is not drawn.
   // An empty list draws nothing, including its label. No arrow or chevron.
-  // Average check is firm.check_size: one published amount, the formatted US dollar bounds.
+  // Average check is firm.check_size: one published amount.
+  // No currency, or USD: the formatted US dollar bounds. Another currency: min_amount and max_amount, with that symbol or code.
   // It sits on the stages pill line, after those pills, with a thin divider and the label.
-  // No value: no label and no divider. The source sentence stays in the database and is not drawn.
+  // No value: no label and no divider. The source sentence stays in the database and is not drawn. The dollar conversion is not drawn beside a non-USD amount.
   const STAGE_ORDER = ['Pre-seed', 'Seed', 'Series A', 'Series B', 'Series C and later', 'Growth'];
   function tagBits(list, key) {
     return (list || []).map(x => String(x && typeof x === 'object' ? (x[key] || x.stage || x.text || '') : (x == null ? '' : x)).trim()).filter(Boolean);
@@ -1632,8 +1633,11 @@
   const labRound = (r) => roundName(r).replace(/\s*\([^()]*\)/g, '').split(';')[0].replace(/[\s,]+$/, '').trim();
   // Company name links to the startup's own website (deal.website_url, else https://<domain>); plain text when neither.
   // Same pattern as press headlines (.pih): ink color, underline on hover, new tab.
+  // st_status colors that name only. Shut down is red, Acquired is green. Any other value, or none, stays as it is. No tag.
   const coSite = (d) => safeUrl(d && (d.website_url || (d.domain ? 'https://' + String(d.domain).replace(/^https?:\/\//i, '').replace(/\/.*$/, '') : '')));
-  const coName = (d) => { const w = coSite(d), t = esc((d && d.company) || ''); return w && t ? '<a class="co" href="' + esc(w) + '" target="_blank" rel="noopener">' + t + '</a>' : t; };
+  const coStatus = (d) => { const s = String(d && d.st_status || '').trim(); return s === 'Shut down' ? ' st-down' : s === 'Acquired' ? ' st-acq' : ''; };
+  const coName = (d) => { const w = coSite(d), t = esc((d && d.company) || ''), cls = 'co' + coStatus(d); if (!t) return '';
+    return w ? '<a class="' + cls + '" href="' + esc(w) + '" target="_blank" rel="noopener">' + t + '</a>' : '<span class="' + cls + '">' + t + '</span>'; };
   function dealRows(ds, lab) {
     const src = (u) => u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener"' + fullA(hostOf(u)) + '>' + esc(capL(hostOf(u))) + '</a>' : '<span></span>';
     if (lab) return '<div class="adl"><div class="ad adh s5"><span>' + esc(AC.h_company) + '</span><span>' + esc(AC.h_sector) + '</span><span>' + esc(AC.h_round) + '</span><span>' + esc(AC.h_date) + '</span><span>' + esc(AC.h_source) + '</span></div>'

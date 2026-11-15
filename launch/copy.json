@@ -981,6 +981,8 @@
     "sub": "Newest first",
     "search": "Search an investor or startup",
     "none": "No investors match those filters.",
+    "loading": "Loading more investors",
+    "end": "End of the list",
     "miss_out": "We don't have this firm yet. Leave your email and we'll let you know when we add it.",
     "miss_in": "We'll notify you when we find this firm.",
     "miss_button": "Request this firm",
