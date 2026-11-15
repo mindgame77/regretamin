@@ -225,6 +225,28 @@ test('sorting by name asks the server and starts ascending', async () => {
   assert.equal(calls[1].p_offset, 0);
 });
 
+test('investments column shows deals after industries and is not sortable', async () => {
+  const { els } = boot((url, opts) => {
+    assert.notEqual(JSON.parse(opts.body).p_sort, 'deals');
+    return Promise.resolve(jsonResponse(200, page([
+      { slug: 'a16z', name: 'Andreessen Horowitz', industries: ['AI agents', 'Fintech', 'Bio'], deals: 128, latest_company: 'OpenAI', latest_round: 'Series C', latest_deal_date: '2024-03-01', added: '2024-01-02' },
+      { slug: 'zero', name: 'Zero Deals', industries: ['Health'], deals: 0, added: '2024-01-03' },
+      { slug: 'nil', name: 'Missing Deals', industries: ['Climate & Energy'], added: '2024-01-04' },
+    ], 3, null)));
+  }, { url: 'https://db.test', key: 'anon-key', copy: { site: { pages: { investors: { col_investments: 'Investments' } } } } });
+  await flush();
+  const html = els['firms-list'].innerHTML;
+  assert.match(html, /<span class="hunsortable finv">Investments<\/span>/);
+  assert.doesNotMatch(html, /data-sort="deals"/);
+  const a16z = html.slice(html.indexOf('Andreessen Horowitz'));
+  const finds = a16z.indexOf('class="finds"');
+  const finv = a16z.indexOf('class="finv">128');
+  const fdeal = a16z.indexOf('class="fdeal"');
+  assert.ok(finds > -1 && finv > finds && fdeal > finv);
+  assert.match(a16z, /class="finv">128<\/span><span class="fdeal">/);
+  assert.equal((html.match(/class="finv"><\/span>/g) || []).length, 2);
+});
+
 test('no Supabase config still reads firms.json', async () => {
   const calls = [];
   boot((url) => {

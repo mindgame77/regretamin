@@ -997,6 +997,7 @@
     "col_firm": "Investor",
     "col_city": "City",
     "col_invests": "Invests in",
+    "col_investments": "Investments",
     "col_deal": "Latest deal",
     "col_added": "Added",
     "filter_status": "Investor status"

@@ -119,10 +119,17 @@
       return '<span style="color:' + sectorColor(name) + '">' + esc(name) + '</span>';
     }).join(', ') + (more > 0 ? ' +' + more : '');
   }
+  // Total investments. firm_directory_page already returns deals. Zero and null stay blank.
+  function investmentCount(f) {
+    const n = Number(f && f.deals);
+    if (!Number.isFinite(n) || n <= 0) return '';
+    return String(Math.trunc(n));
+  }
   function row(f) {
     const date = fmtDate(f.added);
     const city = cityLabel(f);
     const inds = invests(f, 2);
+    const investments = investmentCount(f);
     const dealMain = (f.latest_company && f.latest_deal_date)
       ? [f.latest_company, roundName(f.latest_round)].filter(Boolean).join(' · ') : '';
     const dealDate = (f.latest_company && f.latest_deal_date) ? fmtDate(f.latest_deal_date) : '';
@@ -133,6 +140,7 @@
       + '<span class="fnm"><b>' + esc(f.name) + '</b></span>'
       + '<span class="fcity">' + esc(city) + '</span>'
       + '<span class="finds">' + inds + '</span>'
+      + '<span class="finv">' + esc(investments) + '</span>'
       + '<span class="fdeal">' + dealHtml + '</span>'
       + (date ? '<span class="rdt">' + esc(date) + '</span>' : '<span class="rdt"></span>')
       + '</a>';
@@ -341,10 +349,13 @@
           + esc(label) + (arrow ? '<span class="arrow">' + arrow + '</span>' : '') + '</button>';
       }
       function headHtml() {
+        // firm_directory_page accepts newest, name, city, and deal (latest date) only.
+        // A deals-count sort is not one of those, so Investments is not a sort button.
         return '<div class="frow h" role="row">'
           + headerCell('name', pageCopy.col_firm || 'Investor')
           + headerCell('city', pageCopy.col_city || 'City')
           + '<span class="hunsortable">' + esc(pageCopy.col_invests || 'Invests in') + '</span>'
+          + '<span class="hunsortable finv">' + esc(pageCopy.col_investments || 'Investments') + '</span>'
           + headerCell('deal', pageCopy.col_deal || 'Latest deal')
           + headerCell('newest', pageCopy.col_added || 'Added')
           + '</div>';
