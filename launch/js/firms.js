@@ -119,10 +119,34 @@
       return '<span style="color:' + sectorColor(name) + '">' + esc(name) + '</span>';
     }).join(', ') + (more > 0 ? ' +' + more : '');
   }
+  // Total investments. firm_directory_page already returns deals. Zero and null stay blank.
+  function investmentCount(f) {
+    const n = Number(f && f.deals);
+    if (!Number.isFinite(n) || n <= 0) return '';
+    return String(Math.trunc(n));
+  }
+  // deals_this_year is added by the directory migration. Until that field is present, leave the cell blank.
+  function activityOf(f) {
+    if (!f || f.deals_this_year == null || f.deals_this_year === '') return null;
+    const year = Number(f.deals_this_year);
+    if (!Number.isFinite(year) || year < 0) return null;
+    const total = Number(f.deals);
+    const hasDeals = Number.isFinite(total) && total > 0;
+    if (year >= 3) return { cls: 'act-on', text: pageCopy.activity_active || 'Active' };
+    if (year >= 1) return { cls: 'act-low', text: pageCopy.activity_low || 'Low activity' };
+    if (hasDeals) return { cls: 'act-off', text: pageCopy.activity_none || 'Not active' };
+    return { cls: 'act-new', text: pageCopy.activity_unchecked || 'Not checked yet' };
+  }
+  function activityHtml(f) {
+    const a = activityOf(f);
+    if (!a) return '<span class="fact"></span>';
+    return '<span class="fact"><span class="alab ' + a.cls + '">' + esc(a.text) + '</span></span>';
+  }
   function row(f) {
     const date = fmtDate(f.added);
     const city = cityLabel(f);
     const inds = invests(f, 2);
+    const investments = investmentCount(f);
     const dealMain = (f.latest_company && f.latest_deal_date)
       ? [f.latest_company, roundName(f.latest_round)].filter(Boolean).join(' · ') : '';
     const dealDate = (f.latest_company && f.latest_deal_date) ? fmtDate(f.latest_deal_date) : '';
@@ -133,6 +157,8 @@
       + '<span class="fnm"><b>' + esc(f.name) + '</b></span>'
       + '<span class="fcity">' + esc(city) + '</span>'
       + '<span class="finds">' + inds + '</span>'
+      + '<span class="finv">' + esc(investments) + '</span>'
+      + activityHtml(f)
       + '<span class="fdeal">' + dealHtml + '</span>'
       + (date ? '<span class="rdt">' + esc(date) + '</span>' : '<span class="rdt"></span>')
       + '</a>';
@@ -324,6 +350,16 @@
             const d = stamp(a.latest_deal_date) - stamp(b.latest_deal_date);
             return d ? d * dir : String(a.name || '').localeCompare(String(b.name || ''));
           }
+          if (sort === 'deals') {
+            const count = function (row) {
+              const n = Number(row && row.deals);
+              return Number.isFinite(n) && n > 0 ? n : null;
+            };
+            const blank = cmpBlankLast(count(a), count(b));
+            if (blank) return blank;
+            const d = count(a) - count(b);
+            return d ? d * dir : String(a.name || '').localeCompare(String(b.name || ''));
+          }
           let d = 0;
           if (sort === 'name') d = String(a.name || '').localeCompare(String(b.name || ''));
           else {
@@ -345,6 +381,8 @@
           + headerCell('name', pageCopy.col_firm || 'Investor')
           + headerCell('city', pageCopy.col_city || 'City')
           + '<span class="hunsortable">' + esc(pageCopy.col_invests || 'Invests in') + '</span>'
+          + headerCell('deals', pageCopy.col_investments || 'Investments')
+          + '<span class="hunsortable fact">' + esc(pageCopy.col_activity || 'Activity') + '</span>'
           + headerCell('deal', pageCopy.col_deal || 'Latest deal')
           + headerCell('newest', pageCopy.col_added || 'Added')
           + '</div>';
@@ -533,6 +571,9 @@
           seen[slug] = true;
           return true;
         }).map(row).join('');
+        if (rows.some(function (f) { return f && f.deals_this_year != null && f.deals_this_year !== ''; })) {
+          list.classList.add('has-activity');
+        }
         if (!html) return;
         if (typeof list.insertAdjacentHTML === 'function') list.insertAdjacentHTML('beforeend', html);
         else list.innerHTML += html;
@@ -645,6 +686,7 @@
         seen = {};
         offset = 0;
         done = false;
+        list.classList.remove('has-activity');
         list.innerHTML = headHtml();
         if (none) none.hidden = true;
         if (remote) {

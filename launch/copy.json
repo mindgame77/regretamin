@@ -1001,6 +1001,12 @@
     "col_firm": "Investor",
     "col_city": "City",
     "col_invests": "Invests in",
+    "col_investments": "Investments",
+    "col_activity": "Activity",
+    "activity_active": "Active",
+    "activity_low": "Low activity",
+    "activity_none": "Not active",
+    "activity_unchecked": "Not checked yet",
     "col_deal": "Latest deal",
     "col_added": "Added",
     "filter_status": "Investor status"

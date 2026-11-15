@@ -35,6 +35,24 @@ def test_migration_adds_a_page_function_and_leaves_firm_directory_alone():
     assert "drop table" not in MIG.lower()
 
 
+def test_deals_sort_keeps_the_live_directory_filters():
+    mig = (ROOT / "supabase/migrations/20261115180000_firm_directory_page_deals_sort.sql").read_text(encoding="utf-8")
+    assert "p_sort in ('newest', 'name', 'city', 'deal', 'deals')" in mig
+    assert "v_sort = 'deals'" in mig
+    assert "case when v_asc then dc.deals end asc nulls last" in mig
+    assert "case when v_asc then f.display_name end asc nulls last" in mig
+    assert mig.count("and not coalesce(f.demand_hidden, false)") == 2
+    for code in (
+        "UA", "PL", "LU", "EE", "CZ", "BG", "CY", "IS", "IM", "LV", "LT", "RO",
+        "HU", "SK", "SI", "HR", "RS", "GR", "MT", "MC", "LI", "JE", "GG", "GI",
+        "BA", "MK", "AL", "ME", "MD", "AD", "SM",
+    ):
+        assert mig.count(f"when '{code}' then 'europe'") == 2
+    assert "extract(year from deal_date) = extract(year from current_date)" in mig
+    assert "'deals_this_year', coalesce(a.deals_this_year, 0)" in mig
+    assert "create or replace function public.firm_directory(" not in mig
+
+
 def test_rollback_drops_only_the_page_function():
     assert f"drop function if exists {SIG}" in UNDO
     assert "drop function if exists public.firm_directory()" not in UNDO
