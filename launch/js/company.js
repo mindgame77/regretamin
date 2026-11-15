@@ -1638,26 +1638,37 @@
   const coStatus = (d) => { const s = String(d && d.st_status || '').trim(); return s === 'Shut down' ? ' st-down' : s === 'Acquired' ? ' st-acq' : ''; };
   const coName = (d) => { const w = coSite(d), t = esc((d && d.company) || ''), cls = 'co' + coStatus(d); if (!t) return '';
     return w ? '<a class="' + cls + '" href="' + esc(w) + '" target="_blank" rel="noopener">' + t + '</a>' : '<span class="' + cls + '">' + t + '</span>'; };
+  const isPortfolioOnly = (d) => !!(d && (d.portfolio_only || (!d.date && d.amount == null)));
+  const dashCell = () => '<span class="nd">—</span>';
   function dealRows(ds, lab) {
-    const src = (u) => u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener"' + fullA(hostOf(u)) + '>' + esc(capL(hostOf(u))) + '</a>' : '<span></span>';
-    if (lab) return '<div class="adl"><div class="ad adh s5"><span>' + esc(AC.h_company) + '</span><span>' + esc(AC.h_sector) + '</span><span>' + esc(AC.h_round) + '</span><span>' + esc(AC.h_date) + '</span><span>' + esc(AC.h_source) + '</span></div>'
-      + ds.map(d => { const u = safeUrl(d.url), r = [labRound(d.round), dealAmt(d.amount, d.currency), d.lead ? AC.lead : ''].filter(Boolean).join(' · ');
-        return '<div class="ad s5"><b>' + coName(d) + '</b>' + sectorMark(d, 'span')
-          + '<span>' + esc(r) + '</span><span>' + esc(dealWhen(d)) + '</span>' + src(u) + '</div>'; }).join('') + '</div>';
-    return '<div class="adl"><div class="ad adh"><span>' + esc(AC.h_company) + '</span><span>' + esc(AC.h_round) + '</span><span>' + esc(AC.h_date) + '</span><span>' + esc(AC.h_source) + '</span></div>'
-      + ds.map(d => { const u = safeUrl(d.url);
-        return '<div class="ad"><b>' + coName(d) + '</b><span>' + esc(roundName(d.round)) + '</span><span>' + esc(dealWhen(d)) + '</span>'
-          + src(u) + '</div>'; }).join('') + '</div>';
+    const src = (u, bare) => u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener"' + fullA(hostOf(u)) + '>' + esc(capL(hostOf(u))) + '</a>' : (bare ? dashCell() : '<span></span>');
+    const split = (d, i) => i && isPortfolioOnly(d) && !isPortfolioOnly(ds[i - 1]) ? '<div class="adp">Also in the portfolio</div>' : '';
+    const row = (d, i) => {
+      const bare = isPortfolioOnly(d), u = safeUrl(d.url);
+      if (lab) {
+        const r = bare ? '—' : [labRound(d.round), dealAmt(d.amount, d.currency), d.lead ? AC.lead : ''].filter(Boolean).join(' · ');
+        const sec = bare && !((d.sector || d.industry_name)) ? dashCell() : sectorMark(d, 'span');
+        return split(d, i) + '<div class="ad s5"><b>' + coName(d) + '</b>' + sec
+          + (bare ? dashCell() : '<span>' + esc(r) + '</span>') + (bare ? dashCell() : '<span>' + esc(dealWhen(d)) + '</span>') + src(u, bare) + '</div>';
+      }
+      return split(d, i) + '<div class="ad"><b>' + coName(d) + '</b>' + (bare ? dashCell() : '<span>' + esc(roundName(d.round)) + '</span>') + (bare ? dashCell() : '<span>' + esc(dealWhen(d)) + '</span>') + src(u, bare) + '</div>';
+    };
+    const head = lab
+      ? '<div class="ad adh s5"><span>' + esc(AC.h_company) + '</span><span>' + esc(AC.h_sector) + '</span><span>' + esc(AC.h_round) + '</span><span>' + esc(AC.h_date) + '</span><span>' + esc(AC.h_source) + '</span></div>'
+      : '<div class="ad adh"><span>' + esc(AC.h_company) + '</span><span>' + esc(AC.h_round) + '</span><span>' + esc(AC.h_date) + '</span><span>' + esc(AC.h_source) + '</span></div>';
+    return '<div class="adl">' + head + ds.map(row).join('') + '</div>';
   }
   function dealCards(ds) {
-    return '<div class="dcards">' + ds.map(d => {
+    return '<div class="dcards">' + ds.map((d, i) => {
+      const bare = isPortfolioOnly(d);
       const u = safeUrl(d.url);
-      const r = [labRound(d.round) || '—', dealAmt(d.amount, d.currency) || '—', d.lead ? AC.lead : ''].filter(Boolean).join(' · ');
+      const r = bare ? '—' : [labRound(d.round) || '—', dealAmt(d.amount, d.currency) || '—', d.lead ? AC.lead : ''].filter(Boolean).join(' · ');
       const src = u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(hostOf(u)) + '</a>' : '—';
       const sec = sectorMark(d, 'b');
-      return '<article class="dcard"><div class="dname">' + coName(d) + '</div><div class="dmeta">'
+      const split = i && bare && !isPortfolioOnly(ds[i - 1]) ? '<p class="adp">Also in the portfolio</p>' : '';
+      return split + '<article class="dcard"><div class="dname">' + coName(d) + '</div><div class="dmeta">'
         + '<div><span>Sector</span>' + sec + '</div><div><span>Round</span><b>' + esc(r) + '</b></div>'
-        + '<div><span>Date</span><b>' + esc(dealWhen(d) || '—') + '</b></div><div><span>Source</span><b>' + src + '</b></div></div></article>';
+        + '<div><span>Date</span><b>' + esc(bare ? '—' : (dealWhen(d) || '—')) + '</b></div><div><span>Source</span><b>' + src + '</b></div></div></article>';
     }).join('') + '</div>';
   }
   // Sector share (PAGE_DATA_GUIDE B6e.9/A9.17, with Alex's 2026-11-04 change to B6e.9.5): stored sector_12m from firm_page.
@@ -1983,6 +1994,7 @@
     if (!A) return '';
     const n = A.counts || {}, d0 = A.latest_deal, tiles = [];
     const allDeals = Array.isArray(A.deals) ? A.deals : null;
+    const portOnly = Array.isArray(A.portfolio_only) ? A.portfolio_only : [];
     const rule = window.RegretActivity;
     const actLab = allDeals && rule ? rule.label(rule.countThisYear(allDeals), allDeals.length) : null;
     if (actLab) {
@@ -2022,9 +2034,10 @@
     }
     // Full lists for Show all. A lazy page loads them on open.
     const full = (list, nAll, min = 2) => !A.lazy && Array.isArray(list) && list.length >= min ? list : (nAll >= min ? null : undefined);
-    const fd = full(A.deals, n.deals), fr = full(A.reviews, n.reviews, 1); // a single review still gets its popup so tapping the card opens it
+    const listed = (Array.isArray(A.deals) ? A.deals : []).concat(portOnly);
+    const fd = full(listed, listed.length), fr = full(A.reviews, n.reviews, 1); // a single review still gets its popup so tapping the card opens it
     const lab = labFirm(P);
-    if (P.open && fd !== undefined) actModal('actdeals', fmt(AC.deals_title, { n: fd ? fd.length : n.deals, firm }), fd ? dealRows(fd, lab) : '', !fd && { slug: P.firm.slug, kind: 'deals', lab, head: '' });
+    if (P.open && fd !== undefined) actModal('actdeals', fmt(AC.deals_title, { n: fd ? fd.length : listed.length, firm }), fd ? dealRows(fd, lab) : '', !fd && { slug: P.firm.slug, kind: 'deals', lab, head: '' });
     if (P.open && fr !== undefined) actModal('actrevs', fmt(AC.reviews_title, { n: fr ? fr.length : n.reviews, firm }), fr ? fr.map(revCard).join('') : '', !fr && { slug: P.firm.slug, kind: 'revs' });
     if (!tiles.length && !lone) return '';
     return '<div class="ats">' + (tiles.length ? tiles.join('') : fundsLine(P, showN)) + '</div>';
@@ -2180,20 +2193,23 @@
   function paintCharts(main, P) {
     if (!main || !main.querySelectorAll) return;
     const all = (P && P.activity && P.activity.deals) || [];
-    // activity.deals is the firm's whole list. Fewer than 3 this year: All time only, no switch.
+    const port = (P && P.activity && Array.isArray(P.activity.portfolio_only)) ? P.activity.portfolio_only : [];
+    // activity.deals is the dated list only. Fewer than 3 this year: All time only, no switch.
     const allTimeOnly = window.RegretActivity.countThisYear(all) < 3;
     if (allTimeOnly) CHART_PERIOD = 'all';
     const ranged = periodDeals(all, CHART_PERIOD);
     const allTime = periodDeals(all, 'all');
+    // Undated portfolio companies belong in Sectors (all time) only, not Rounds or Announced.
+    const sectorsDs = CHART_PERIOD === 'all' ? allTime.concat(port) : ranged;
     main.querySelectorAll('[data-chart]').forEach(tile => {
       const k = tile.getAttribute('data-chart');
-      const ds = k === 'd' ? allTime : ranged;
+      const ds = k === 'd' ? allTime : k === 's' ? sectorsDs : ranged;
       const sw = tile.querySelector('.segw'), box = tile.querySelector('.cc');
       if (sw) sw.innerHTML = (k === 'd' || allTimeOnly) ? '' : segHtml();
       if (box) box.innerHTML = k === 's' ? donutHtml(ds) : k === 'r' ? roundsHtml(ds) : barsHtml(ds);
     });
     if (P && P.open && typeof actModal === 'function' && typeof document !== 'undefined' && document.body && main.querySelector('[data-chart="s"]')) {
-      actModal('actsectors', 'All startups by sector', sectorDialogHtml(ranged));
+      actModal('actsectors', 'All startups by sector', sectorDialogHtml(sectorsDs));
     }
   }
   function bentoCard(id, titleHtml, inner, foot, fill) {
@@ -2204,9 +2220,11 @@
     const by = {};
     (secs || []).forEach(s => { by[s.key] = s; });
     const deals = (P.activity && Array.isArray(P.activity.deals)) ? P.activity.deals : [];
+    const portfolio = (P.activity && Array.isArray(P.activity.portfolio_only)) ? P.activity.portfolio_only : [];
     let h = '';
-    if (deals.length) {
-      h += chartShell('sectors', 'Sectors', 's') + chartShell('rounds', 'Rounds', 'r') + chartShell('announced', 'Deals announced', 'd');
+    if (deals.length || portfolio.length) {
+      h += chartShell('sectors', 'Sectors', 's');
+      if (deals.length) h += chartShell('rounds', 'Rounds', 'r') + chartShell('announced', 'Deals announced', 'd');
     }
     if (by.videos) h += bentoCard('videos', esc(by.videos.title), R.videos(by.videos.items, P, by.videos));
     if (by.people) h += bentoCard('team', esc(by.people.title), R.people(by.people.items, P, by.people));
@@ -2220,9 +2238,12 @@
       h += bentoCard('reviews', esc(AC.reviews || 'What founders say'), revHtml, nrev >= 1 ? showAllLink(!!P.open, 'actrevs') : '', true);
     }
     if (by.news) h += bentoCard('news', esc(by.news.title), R.news(by.news.items, P, by.news), '', true);
-    if (deals.length) {
-      const shown = deals.slice(0, 10);
-      h += bentoCard('deals', 'Recent deals', '<div class="dtable">' + dealRows(shown, labFirm(P)) + '</div>' + dealCards(shown), deals.length > shown.length ? showAllLink(!!P.open, 'actdeals') : '');
+    if (deals.length || portfolio.length) {
+      const shownDeals = deals.slice(0, 10);
+      const shownPort = portfolio.slice(0, 10);
+      const shown = shownDeals.concat(shownPort);
+      const more = deals.length > shownDeals.length || portfolio.length > shownPort.length;
+      h += bentoCard('deals', 'Recent deals', '<div class="dtable">' + dealRows(shown, labFirm(P)) + '</div>' + dealCards(shown), more ? showAllLink(!!P.open, 'actdeals') : '');
     }
     return h ? '<p class="invlab">Investment activity</p><div class="bento">' + h + '</div>' : '';
   }
