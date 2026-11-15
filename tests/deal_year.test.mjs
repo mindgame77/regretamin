@@ -92,6 +92,8 @@ test('Sectors and Rounds have This year \/ All time, and Deals announced is all 
   const { charts } = paint({
     deals: [
       { company: 'YearCo', date: y + '-01-01', date_precision: 'year', sector: 'Fintech', round: 'Seed' },
+      { company: 'YearTwo', date: y + '-04-02', date_precision: 'full date', sector: 'Health', round: 'Seed' },
+      { company: 'YearThree', date: y + '-05-03', date_precision: 'full date', sector: 'Bio', round: 'Series A' },
       { company: 'Old', date: '2019-06-01', date_precision: 'full date', sector: 'Security', round: 'Series A' },
     ],
   });
@@ -104,4 +106,18 @@ test('Sectors and Rounds have This year \/ All time, and Deals announced is all 
   assert.match(announced.box.innerHTML, new RegExp("'" + y.slice(2)));
   assert.match(announced.box.innerHTML, /'19/);
   assert.doesNotMatch(announced.box.innerHTML, /Jan|12 months/);
+});
+
+test('fewer than 3 deals this year hides the switch and shows all time', () => {
+  const y = String(new Date().getFullYear());
+  const { charts } = paint({
+    deals: [
+      { company: 'YearCo', date: y + '-01-01', date_precision: 'year', sector: 'Fintech', round: 'Seed' },
+      { company: 'Old', date: '2019-06-01', date_precision: 'full date', sector: 'Security', round: 'Series A' },
+    ],
+  });
+  assert.equal(charts[0].sw.innerHTML, '');
+  assert.equal(charts[1].sw.innerHTML, '');
+  assert.match(charts[0].box.innerHTML, /Security/);
+  assert.match(charts[2].box.innerHTML, /'19/);
 });

@@ -38,8 +38,9 @@ def test_built_a16z_full_page_uses_this_build_assets_and_investors_copy():
     assert built_js == company
     edge = (ROOT / 'launch/edge/firm.mjs').read_text()
     summary = (ROOT / 'site-launch/_tpl/summary.html').read_text()
+    checks = (ROOT / 'site-launch/_tpl/checks.html').read_text()
     slugs = ','.join(sorted(p.name for p in (ROOT / 'site-launch' / 'vc').iterdir() if p.is_dir()))
-    version = hashlib.sha256((edge + summary + tpl + '\n' + slugs + '\n' + 'lightspeed').encode()).hexdigest()[:12]
+    version = hashlib.sha256((edge + summary + tpl + checks + '\n' + slugs + '\n' + 'lightspeed').encode()).hexdigest()[:12]
     assert (ROOT / 'site-launch/_tpl/version.txt').read_text() == version
     headers = (ROOT / 'site-launch/_headers').read_text()
     for name in ('/company.js', '/app.js', '/search.js', '/dates.js', '/style.css'):
