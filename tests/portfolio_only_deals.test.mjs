@@ -97,6 +97,7 @@ test('portfolio-only rows do not change the Activity label or deals this year', 
   assert.match(js, /k === 's' \? sectorsDs/);
   assert.match(js, /CHART_PERIOD === 'all' \? allTime\.concat\(port\) : ranged/);
   assert.match(js, /k === 'd' \? allTime : k === 's'/);
+  assert.match(js, /some\(isPortfolioOnly\) \? 'startups' : 'deals'/);
   assert.doesNotMatch(js, /periodDeals\(all\.concat\(port\)/);
   assert.ok(html.includes('id="sectors"'));
   assert.ok(html.includes('id="rounds"'));

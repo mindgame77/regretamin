@@ -2127,6 +2127,9 @@
     const T = topSectors(ds), c = {};
     ds.forEach(d => { const s = bucketOf(d, T); c[s] = (c[s] || 0) + 1; });
     const L = T.concat(c.Other ? ['Other'] : []), n = ds.length;
+    // All-time Sectors may include undated portfolio companies; call those "startups"
+    // so the total is not read as the same count as Deals announced.
+    const unit = (ds || []).some(isPortfolioOnly) ? 'startups' : 'deals';
     if (!n) return '<p class="cempty">No deals in this range</p>';
     let ang = 0;
     const arcs = L.map(s => {
@@ -2135,9 +2138,9 @@
       ang += sweep;
       return path;
     }).join('');
-    return '<div class="dw"><svg width="150" height="150" viewBox="0 0 160 160" role="img" aria-label="' + n + ' deals">' + arcs
+    return '<div class="dw"><svg width="150" height="150" viewBox="0 0 160 160" role="img" aria-label="' + n + ' ' + unit + '">' + arcs
       + '<text x="80" y="76" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="700" font-size="22">' + n + '</text>'
-      + '<text x="80" y="94" text-anchor="middle" fill="#8C88A3" font-size="12" font-family="DM Sans, sans-serif">deals</text></svg><div class="lg">'
+      + '<text x="80" y="94" text-anchor="middle" fill="#8C88A3" font-size="12" font-family="DM Sans, sans-serif">' + unit + '</text></svg><div class="lg">'
       + L.map(s => '<div><i style="background:' + sectorColor(s) + '"></i><span>' + esc(s) + '</span><em>' + (c[s] || 0) + '</em></div>').join('')
       + '</div></div>';
   }
