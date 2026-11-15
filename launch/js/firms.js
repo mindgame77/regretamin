@@ -125,6 +125,23 @@
     if (!Number.isFinite(n) || n <= 0) return '';
     return String(Math.trunc(n));
   }
+  // deals_this_year is added by the directory migration. Until that field is present, leave the cell blank.
+  function activityOf(f) {
+    if (!f || f.deals_this_year == null || f.deals_this_year === '') return null;
+    const year = Number(f.deals_this_year);
+    if (!Number.isFinite(year) || year < 0) return null;
+    const total = Number(f.deals);
+    const hasDeals = Number.isFinite(total) && total > 0;
+    if (year >= 3) return { cls: 'act-on', text: pageCopy.activity_active || 'Active' };
+    if (year >= 1) return { cls: 'act-low', text: pageCopy.activity_low || 'Low activity' };
+    if (hasDeals) return { cls: 'act-off', text: pageCopy.activity_none || 'Not active' };
+    return { cls: 'act-new', text: pageCopy.activity_unchecked || 'Not checked yet' };
+  }
+  function activityHtml(f) {
+    const a = activityOf(f);
+    if (!a) return '<span class="fact"></span>';
+    return '<span class="fact"><span class="alab ' + a.cls + '">' + esc(a.text) + '</span></span>';
+  }
   function row(f) {
     const date = fmtDate(f.added);
     const city = cityLabel(f);
@@ -141,6 +158,7 @@
       + '<span class="fcity">' + esc(city) + '</span>'
       + '<span class="finds">' + inds + '</span>'
       + '<span class="finv">' + esc(investments) + '</span>'
+      + activityHtml(f)
       + '<span class="fdeal">' + dealHtml + '</span>'
       + (date ? '<span class="rdt">' + esc(date) + '</span>' : '<span class="rdt"></span>')
       + '</a>';
@@ -364,6 +382,7 @@
           + headerCell('city', pageCopy.col_city || 'City')
           + '<span class="hunsortable">' + esc(pageCopy.col_invests || 'Invests in') + '</span>'
           + headerCell('deals', pageCopy.col_investments || 'Investments')
+          + '<span class="hunsortable fact">' + esc(pageCopy.col_activity || 'Activity') + '</span>'
           + headerCell('deal', pageCopy.col_deal || 'Latest deal')
           + headerCell('newest', pageCopy.col_added || 'Added')
           + '</div>';
@@ -442,6 +461,9 @@
           seen[slug] = true;
           return true;
         }).map(row).join('');
+        if (rows.some(function (f) { return f && f.deals_this_year != null && f.deals_this_year !== ''; })) {
+          list.classList.add('has-activity');
+        }
         if (!html) return;
         if (typeof list.insertAdjacentHTML === 'function') list.insertAdjacentHTML('beforeend', html);
         else list.innerHTML += html;
@@ -548,6 +570,7 @@
         seen = {};
         offset = 0;
         done = false;
+        list.classList.remove('has-activity');
         list.innerHTML = headHtml();
         if (none) none.hidden = true;
         if (remote) {

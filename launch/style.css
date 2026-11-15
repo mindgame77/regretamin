@@ -1011,6 +1011,15 @@ main.wrap.firms-pg{max-width:1320px}
 .frow .fcity{font:400 13.5px/1.35 'DM Sans',sans-serif;color:var(--ink2)}
 .frow .finds{font:400 13.5px/1.35 'DM Sans',sans-serif;color:var(--ink)}
 .frow .finv{justify-self:center;text-align:center;font:700 14px/1.35 'DM Sans',sans-serif;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.flist.has-activity .frow{grid-template-columns:minmax(130px,1.2fr) minmax(80px,.6fr) minmax(100px,.9fr) 100px 120px minmax(130px,1.2fr) 104px}
+.frow.h span.fact{justify-self:center;text-align:center}
+.frow .fact{justify-self:center;text-align:center}
+.frow .alab{display:inline-flex;align-items:center;border-radius:99px;padding:3px 8px;font:700 12px/1.2 'DM Sans',sans-serif;white-space:nowrap}
+.frow .alab.act-on{background:var(--mintbg);color:#0E8A55}
+.frow .alab.act-low{background:#F1F0F5;color:#6B6782}
+.frow .alab.act-off{background:#FFE3DE;color:#C4281C}
+.frow .alab.act-new{background:#E6E4EE;color:var(--mute)}
+.flist:not(.has-activity) .frow.h span.fact,.flist:not(.has-activity) a.frow .fact{display:none}
 .frow .fdeal{font:600 13.5px/1.35 'DM Sans',sans-serif;color:var(--ink)}
 .frow .fdeal .dwhen{white-space:nowrap}
 .frow .rdt{color:var(--mute);font-size:14px;text-align:right;white-space:nowrap}
@@ -1049,10 +1058,10 @@ main.wrap.firms-pg{max-width:1320px}
 .empty-options{font-size:12px;padding:16px;color:var(--mute)}
 .filters-backdrop{position:fixed;inset:0;background:#14112B44;z-index:10}
 .filters-backdrop[hidden]{display:none}
-/* The sixth column needs the list wider than the other five at their minimums. Below that, drop it so those columns stay as they are. */
-@container firms (max-width:840px){
-  .frow{grid-template-columns:minmax(140px,1.3fr) minmax(90px,.7fr) minmax(120px,1fr) minmax(150px,1.4fr) 110px}
-  .frow.h [data-sort="deals"],a.frow .finv{display:none}
+/* Investments and Activity need the list wider than the original five columns. Below that, drop both. */
+@container firms (max-width:900px){
+  .frow,.flist.has-activity .frow,.flist:not(.has-activity) .frow{grid-template-columns:minmax(140px,1.3fr) minmax(90px,.7fr) minmax(120px,1fr) minmax(150px,1.4fr) 110px}
+  .frow.h [data-sort="deals"],.frow.h span.fact,a.frow .finv,a.frow .fact{display:none}
 }
 @media (max-width:900px){
   .sidebar-layout{grid-template-columns:1fr}
@@ -1079,10 +1088,11 @@ main.wrap.firms-pg{max-width:1320px}
   .frow .fnm{grid-column:1;grid-row:1}
   .frow .rdt{grid-column:2;grid-row:1;align-self:start;padding-top:2px}
   .frow .fcity{grid-column:1/-1;grid-row:2}
-  .frow .fcity:empty,.frow .finds:empty,.frow .fdeal:empty,a.frow .finv:empty{display:none}
+  .frow .fcity:empty,.frow .finds:empty,.frow .fdeal:empty,a.frow .finv:empty,a.frow .fact:empty{display:none}
   .frow .finds{grid-column:1/-1;grid-row:3;color:var(--ink2)}
   a.frow .finv:not(:empty){display:block;grid-column:2;grid-row:3;align-self:start;justify-self:end;font-size:13px}
   .frow:has(> .finv:not(:empty)) .finds{grid-column:1;padding-right:10px}
-  .frow .fdeal{grid-column:1/-1;grid-row:4}
+  a.frow .fact:not(:empty){display:block;grid-column:1/-1;grid-row:4;justify-self:start}
+  .frow .fdeal{grid-column:1/-1;grid-row:5}
   .panel-option-grid{grid-template-columns:1fr}
 }

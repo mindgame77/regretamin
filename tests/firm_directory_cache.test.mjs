@@ -14,7 +14,12 @@ function el() {
     style: {},
     value: '',
     textContent: '',
-    classList: { add() {}, remove() {}, contains() { return false; } },
+    classList: {
+      _s: new Set(),
+      add(name) { this._s.add(name); },
+      remove(name) { this._s.delete(name); },
+      contains(name) { return this._s.has(name); },
+    },
     attrs: {},
     listeners: {},
     getAttribute(name) { return this.attrs[name] || ''; },
@@ -268,8 +273,29 @@ test('investments column shows deals after industries and sorts like latest deal
   const finv = a16z.indexOf('class="finv">128');
   const fdeal = a16z.indexOf('class="fdeal"');
   assert.ok(finds > -1 && finv > finds && fdeal > finv);
-  assert.match(a16z, /class="finv">128<\/span><span class="fdeal">/);
+  assert.match(a16z, /class="finv">128<\/span><span class="fact"><\/span><span class="fdeal">/);
   assert.equal((html.match(/class="finv"><\/span>/g) || []).length, 2);
+});
+
+test('activity label follows deals this year and stays blank without that field', async () => {
+  const { els } = boot((url, opts) => {
+    return Promise.resolve(jsonResponse(200, page([
+      { slug: 'on', name: 'Active Firm', deals: 10, deals_this_year: 4 },
+      { slug: 'low', name: 'Low Firm', deals: 6, deals_this_year: 2 },
+      { slug: 'off', name: 'Quiet Firm', deals: 5, deals_this_year: 0 },
+      { slug: 'new', name: 'Unchecked Firm', deals: 0, deals_this_year: 0 },
+      { slug: 'old', name: 'Missing Field', deals: 3 },
+    ], 5, null)));
+  }, { url: 'https://db.test', key: 'anon-key', copy: {} });
+  await flush();
+  const html = els['firms-list'].innerHTML;
+  assert.match(html, /act-on">Active</);
+  assert.match(html, /act-low">Low activity</);
+  assert.match(html, /act-off">Not active</);
+  assert.match(html, /act-new">Not checked yet</);
+  const missing = html.slice(html.indexOf('Missing Field'));
+  assert.match(missing, /class="fact"><\/span>/);
+  assert.equal(els['firms-list'].classList.contains('has-activity'), true);
 });
 
 test('no Supabase config still reads firms.json', async () => {

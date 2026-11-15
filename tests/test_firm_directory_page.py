@@ -48,6 +48,8 @@ def test_deals_sort_keeps_the_live_directory_filters():
         "BA", "MK", "AL", "ME", "MD", "AD", "SM",
     ):
         assert mig.count(f"when '{code}' then 'europe'") == 2
+    assert "extract(year from deal_date) = extract(year from current_date)" in mig
+    assert "'deals_this_year', coalesce(a.deals_this_year, 0)" in mig
     assert "create or replace function public.firm_directory(" not in mig
 
 

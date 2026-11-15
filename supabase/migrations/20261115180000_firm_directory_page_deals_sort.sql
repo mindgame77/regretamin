@@ -4,6 +4,8 @@
 -- IS, CY, CZ, IM, LV, LT, RO, HU, SK, SI, HR, RS, GR, MT, MC, LI, JE, GG, GI,
 -- BA, MK, AL, ME, MD, AD, SM) in both region CASE blocks.
 -- deals sorts like latest deal: the count, nulls last, then name, then firm_id.
+-- Each row also includes deals_this_year: deals whose deal_date falls in
+-- extract(year from current_date). A year-only date stored as YYYY-01-01 counts.
 -- Does not replace firm_directory(). CI has no v2 tables, so this runs only where they exist.
 
 do $mig$
@@ -359,6 +361,7 @@ begin
       ),
       dagg as (
         select firm_id, count(*) as deals,
+               count(*) filter (where extract(year from deal_date) = extract(year from current_date)) as deals_this_year,
                count(*) filter (where deal_date >= current_date - 365) as deals_12m,
                count(*) filter (where deal_date >= current_date - 365 and led) as led_12m,
                array_agg(distinct startup_name) filter (where startup_name is not null) as startups,
@@ -409,7 +412,8 @@ begin
                'added', coalesce(p.last_fact, l.live_since), 'firm_status', l.firm_status,
                'industries', coalesce(i.industries, ds.industries, '[]'::json),
                'stages', coalesce(st.stages, '[]'::json),
-               'deals', coalesce(a.deals, 0), 'deals_12m', coalesce(a.deals_12m, 0), 'led_12m', coalesce(a.led_12m, 0),
+               'deals', coalesce(a.deals, 0), 'deals_this_year', coalesce(a.deals_this_year, 0),
+               'deals_12m', coalesce(a.deals_12m, 0), 'led_12m', coalesce(a.led_12m, 0),
                'latest_company', lt.startup_name, 'latest_round', lt.round, 'latest_deal_date', lt.deal_date,
                'legal_records', coalesce(lg.n, 0), 'legal_status', case when lg.n > 0 then 'has' else 'unknown' end,
                'startups', coalesce(to_json(a.startups), '[]'::json), 'startup_sites', coalesce(to_json(a.startup_sites), '[]'::json)
