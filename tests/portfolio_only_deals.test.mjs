@@ -125,3 +125,31 @@ test('a firm with only undated portfolio companies still gets Recent deals and S
   assert.doesNotMatch(pmain.innerHTML, /id="rounds"|id="announced"/);
   assert.doesNotMatch(actw.innerHTML, /<b>2<\/b>|<b>20<\/b>/);
 });
+
+test('a bare portfolio row is hidden when that startup already has a dated deal', () => {
+  const main = mainEl();
+  main.set('.actw', el());
+  const pmain = main.set('.pmain', el());
+  render(main, {
+    open: true, checks: [], sections: [],
+    firm: { name: 'Example', slug: 'example' },
+    activity: {
+      lazy: false,
+      deals: [
+        { company: 'Ledgy', date: '2024-03-01', sector: 'Fintech', round: 'Series A', amount: 20000000, currency: 'USD', website_url: 'https://ledgy.com' },
+      ],
+      portfolio_only: [
+        { company: 'Ledgy', portfolio_only: true, url: 'https://example.com/portfolio', website_url: 'https://ledgy.com' },
+        { company: 'Attribute', portfolio_only: true, sector: 'Developer tools', industry_name: 'Cloud & Data', url: 'https://www.menschvc.com/our-portfolio', website_url: 'https://attrb.io' },
+      ],
+      counts: { deals: 1, reviews: 0 },
+      deals_12m: 0,
+    },
+  });
+  const html = pmain.innerHTML;
+  const table = html.slice(html.indexOf('class="dtable"'), html.indexOf('class="dcards"'));
+  assert.equal((table.match(/Ledgy/g) || []).length, 1);
+  assert.match(table, /Series A/);
+  assert.match(table, /Attribute/);
+  assert.ok(table.indexOf('Also in the portfolio') < table.indexOf('Attribute'));
+});

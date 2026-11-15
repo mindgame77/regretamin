@@ -1639,6 +1639,17 @@
   const coName = (d) => { const w = coSite(d), t = esc((d && d.company) || ''), cls = 'co' + coStatus(d); if (!t) return '';
     return w ? '<a class="' + cls + '" href="' + esc(w) + '" target="_blank" rel="noopener">' + t + '</a>' : '<span class="' + cls + '">' + t + '</span>'; };
   const isPortfolioOnly = (d) => !!(d && (d.portfolio_only || (!d.date && d.amount == null)));
+  const dealCoKey = (d) => {
+    const host = String((d && (d.domain || d.website_url)) || '').toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '');
+    const name = String((d && d.company) || '').trim().toLowerCase();
+    return { host, name };
+  };
+  // Hide a bare portfolio row when that firm already has a dated deal in the same company.
+  const uniquePortfolio = (dated, port) => {
+    const seenHost = {}, seenName = {};
+    (dated || []).forEach(d => { const k = dealCoKey(d); if (k.host) seenHost[k.host] = 1; if (k.name) seenName[k.name] = 1; });
+    return (port || []).filter(d => { const k = dealCoKey(d); return !(k.host && seenHost[k.host]) && !(k.name && seenName[k.name]); });
+  };
   const dashCell = () => '<span class="nd">—</span>';
   function dealRows(ds, lab) {
     const src = (u, bare) => u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener"' + fullA(hostOf(u)) + '>' + esc(capL(hostOf(u))) + '</a>' : (bare ? dashCell() : '<span></span>');
@@ -1994,7 +2005,7 @@
     if (!A) return '';
     const n = A.counts || {}, d0 = A.latest_deal, tiles = [];
     const allDeals = Array.isArray(A.deals) ? A.deals : null;
-    const portOnly = Array.isArray(A.portfolio_only) ? A.portfolio_only : [];
+    const portOnly = uniquePortfolio(allDeals, Array.isArray(A.portfolio_only) ? A.portfolio_only : []);
     const rule = window.RegretActivity;
     const actLab = allDeals && rule ? rule.label(rule.countThisYear(allDeals), allDeals.length) : null;
     if (actLab) {
@@ -2196,7 +2207,7 @@
   function paintCharts(main, P) {
     if (!main || !main.querySelectorAll) return;
     const all = (P && P.activity && P.activity.deals) || [];
-    const port = (P && P.activity && Array.isArray(P.activity.portfolio_only)) ? P.activity.portfolio_only : [];
+    const port = uniquePortfolio(all, (P && P.activity && Array.isArray(P.activity.portfolio_only)) ? P.activity.portfolio_only : []);
     // activity.deals is the dated list only. Fewer than 3 this year: All time only, no switch.
     const allTimeOnly = window.RegretActivity.countThisYear(all) < 3;
     if (allTimeOnly) CHART_PERIOD = 'all';
@@ -2223,7 +2234,7 @@
     const by = {};
     (secs || []).forEach(s => { by[s.key] = s; });
     const deals = (P.activity && Array.isArray(P.activity.deals)) ? P.activity.deals : [];
-    const portfolio = (P.activity && Array.isArray(P.activity.portfolio_only)) ? P.activity.portfolio_only : [];
+    const portfolio = uniquePortfolio(deals, (P.activity && Array.isArray(P.activity.portfolio_only)) ? P.activity.portfolio_only : []);
     let h = '';
     if (deals.length || portfolio.length) {
       h += chartShell('sectors', 'Sectors', 's');

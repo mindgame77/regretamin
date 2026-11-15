@@ -1,5 +1,6 @@
 -- Firm page: return hidden bare deals (no date, no amount, D1.8 / v2_deals_check7)
--- as activity.portfolio_only. The shown flag is not changed. activity.deals,
+-- as activity.portfolio_only. A bare row is omitted when that firm already has a dated deal in the same startup.
+-- The shown flag is not changed. activity.deals,
 -- counts.deals, deals_12m and latest_deal stay dated-only.
 -- The v2 schema is not created by repo migrations. On a database without
 -- _v2_deals / v2_firm_page (CI) this is a no-op.
@@ -55,6 +56,11 @@ as $$
     where d.firm_id = fid and d.is_current and not d.archived and not d.nothing_found
       and d.deal_date is null and d.round_amount is null
       and not coalesce(d.shown, true)
+      and not exists (
+        select 1 from v2_deals x
+        where x.firm_id = d.firm_id and x.startup_id = d.startup_id
+          and x.is_current and not x.archived and not x.nothing_found
+          and coalesce(x.shown, true) and x.deal_date is not null)
   ) q
 $$
 $fn$;
