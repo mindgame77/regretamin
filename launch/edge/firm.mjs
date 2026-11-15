@@ -75,15 +75,17 @@ export function secTitle(s) {
 export const fillFirm = (tpl, F, full = false) =>
   tpl.split('{{HEAD}}').join(firmHead(F, full)).split('{{NAME}}').join(esc(F.name)).split('{{SLUG}}').join(esc(F.slug));
 
-// /vc/<slug>/ or /vc/<slug>/full/ -> {slug, full} | {redirect} | null
+// /vc/<slug>/ and /vc/<slug>/full/ are Full report. /vc/<slug>/checks/ is Checks.
+// -> {slug, full, checks} | {redirect} | null
 export function parseFirmPath(pathname) {
-  const m = pathname.match(/^\/vc\/([^/]+)(\/full)?(\/?)$/);
+  const m = pathname.match(/^\/vc\/([^/]+)(\/(?:full|checks))?(\/?)$/);
   if (!m) return null;
   const slug = decodeURIComponent(m[1]);
   if (!SLUG_RE.test(slug.toLowerCase())) return null;
-  const want = `/vc/${slug.toLowerCase()}/` + (m[2] ? 'full/' : '');
+  const tail = m[2] ? m[2].slice(1) + '/' : '';
+  const want = `/vc/${slug.toLowerCase()}/` + tail;
   if (want !== pathname) return { redirect: want };
-  return { slug, full: !!m[2] };
+  return { slug, full: tail === 'full/', checks: tail === 'checks/' };
 }
 
 async function rpc(env, fetchImpl, fn, args) {
@@ -115,11 +117,11 @@ export async function renderFirm({ request, env, assets, fetchImpl = fetch }) {
     let to = null;
     try { to = await rpc(env, fetchImpl, 'firm_redirect', { p_slug: p.slug }); } catch (e) { to = null; }
     if (typeof to === 'string' && /^[a-z0-9-]+$/.test(to) && to !== p.slug) {
-      return new Response(null, { status: 301, headers: { location: new URL(`/vc/${to}/${p.full ? "full/" : ""}${url.search}`, url.origin).toString(), 'cache-control': cacheHdr(3600) } });
+      return new Response(null, { status: 301, headers: { location: new URL(`/vc/${to}/${p.checks ? "checks/" : p.full ? "full/" : ""}${url.search}`, url.origin).toString(), 'cache-control': cacheHdr(3600) } });
     }
     return notFound();
   }
-  const tpl = await asset(p.full ? '/_tpl/full' : '/_tpl/summary');
+  const tpl = await asset(p.checks ? '/_tpl/checks' : p.full ? '/_tpl/full' : '/_tpl/summary');
   const headers = { 'content-type': HTML, 'cache-control': cacheHdr(3600) };
   if (env.NOINDEX === '1') headers['x-robots-tag'] = 'noindex';
   return new Response(fillFirm(tpl, F, p.full), { status: 200, headers });
