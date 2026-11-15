@@ -114,15 +114,20 @@
 })(typeof window !== 'undefined' ? window : globalThis);
 
 /* Activity labels for the Investors list and the firm-page tile.
-   A deal's year is extract(year from deal_date). current_date is UTC.
-   YYYY-01-01 counts for that year. */
+   The activity year is the previous UTC calendar year from January through
+   May 31, and the current UTC year from June 1 on. YYYY-01-01 counts for that year. */
 (function (root) {
   function yearOf(date) {
     const m = String(date || '').match(/(\d{4})/);
     return m ? m[1] : '';
   }
-  function countThisYear(deals) {
-    const y = String(new Date().getUTCFullYear());
+  function activityYear(now) {
+    const d = now instanceof Date && !isNaN(now) ? now : new Date();
+    const y = d.getUTCFullYear();
+    return String(d.getUTCMonth() < 5 ? y - 1 : y);
+  }
+  function countThisYear(deals, now) {
+    const y = activityYear(now);
     return (deals || []).filter(function (d) { return yearOf(d && d.date) === y; }).length;
   }
   function rank(dealsThisYear, totalDeals) {
@@ -145,5 +150,5 @@
     if (r === 1) return { cls: 'act-off', text: 'Not active' };
     return { cls: 'act-new', text: 'Not checked yet' };
   }
-  root.RegretActivity = { countThisYear: countThisYear, rank: rank, label: label };
+  root.RegretActivity = { activityYear: activityYear, countThisYear: countThisYear, rank: rank, label: label };
 })(typeof window !== 'undefined' ? window : globalThis);
