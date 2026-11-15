@@ -84,3 +84,29 @@ def test_investors_page_loads_a_page_then_the_next():
         text=True,
     )
     assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-2000:]
+
+def test_portfolio_investments_keeps_activity_dated_only():
+    mig = (ROOT / "supabase/migrations/20261116020000_firm_directory_page_portfolio_investments.sql").read_text(encoding="utf-8")
+    undo = (ROOT / "supabase/rollbacks/20261116020000_firm_directory_page_portfolio_investments.sql").read_text(encoding="utf-8")
+    js = (ROOT / "launch/js/firms.js").read_text(encoding="utf-8")
+    assert "'investments', coalesce(a.investments, a.deals, 0)" in mig
+    assert "count(*) as investments" in mig
+    assert "count(*) filter (where src = 'dated') as deals" in mig
+    assert "d.deal_date is null and d.round_amount is null" in mig
+    assert "website_url_norm" in mig
+    assert "when coalesce(dc.deals, 0) > 0 then 1" in mig
+    assert "and d.deal_date >= current_date - 365" in mig
+    assert "v_sort = 'deals'" in mig
+    assert "v_sort = 'activity'" in mig
+    assert "create or replace function public.firm_directory(" not in mig
+    assert "drop table" not in mig.lower()
+    assert "'investments', coalesce(a.investments, a.deals, 0)" not in undo
+    assert "create or replace function public.firm_directory_page(" in undo
+    assert "grant execute on function public.firm_directory_page" in undo
+    assert "drop table" not in undo.lower()
+    assert "row.investments" in js
+    assert "f.investments" in js
+    assert "rule.label(f && f.deals_this_year, f && f.deals)" in js
+    assert "Do not use `investments`" in js
+
+
