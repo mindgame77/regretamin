@@ -53,6 +53,21 @@ def test_deals_sort_keeps_the_live_directory_filters():
     assert "create or replace function public.firm_directory(" not in mig
 
 
+def test_activity_sort_keeps_the_directory_function():
+    mig = (ROOT / "supabase/migrations/20261115200000_firm_directory_page_activity_sort.sql").read_text(encoding="utf-8")
+    assert "p_sort in ('newest', 'name', 'city', 'deal', 'deals', 'activity')" in mig
+    assert "v_sort = 'activity'" in mig
+    assert "when coalesce(dc.deals_this_year, 0) >= 3 then 3" in mig
+    assert "when coalesce(dc.deals_this_year, 0) >= 1 then 2" in mig
+    assert "when coalesce(dc.deals, 0) > 0 then 1" in mig
+    assert "v_sort = 'deals'" in mig
+    assert "'deals_this_year', coalesce(a.deals_this_year, 0)" in mig
+    assert mig.count("and not coalesce(f.demand_hidden, false)") == 2
+    assert "grant execute on function public.firm_directory_page" in mig
+    assert mig.count("when 'UA' then 'europe'") == 2
+    assert "create or replace function public.firm_directory(" not in mig
+
+
 def test_rollback_drops_only_the_page_function():
     assert f"drop function if exists {SIG}" in UNDO
     assert "drop function if exists public.firm_directory()" not in UNDO

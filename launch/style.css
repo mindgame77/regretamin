@@ -1009,20 +1009,19 @@ main.wrap.firms-pg{max-width:1320px}
 .frow.h .arrow{font-size:11px;letter-spacing:0;text-transform:none;color:var(--mute)}
 .frow.h button.sorted .arrow{color:var(--vio)}
 .frow.h [data-sort="newest"]{justify-self:end;text-align:right}
-.frow.h [data-sort="deals"]{justify-self:center;justify-content:center;text-align:center}
+.frow.h [data-sort="deals"],.frow.h [data-sort="activity"]{justify-self:center;justify-content:center;text-align:center}
 .frow .fnm b{display:block;font:700 16px/1.3 'DM Sans',sans-serif}
 .frow .fcity{font:400 13.5px/1.35 'DM Sans',sans-serif;color:var(--ink2)}
 .frow .finds{font:400 13.5px/1.35 'DM Sans',sans-serif;color:var(--ink)}
 .frow .finv{justify-self:center;text-align:center;font:700 14px/1.35 'DM Sans',sans-serif;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
 .flist.has-activity .frow{grid-template-columns:minmax(130px,1.2fr) minmax(80px,.6fr) minmax(100px,.9fr) 100px 120px minmax(130px,1.2fr) 104px}
-.frow.h span.fact{justify-self:center;text-align:center}
 .frow .fact{justify-self:center;text-align:center}
 .frow .alab{display:inline-flex;align-items:center;border-radius:99px;padding:3px 8px;font:700 12px/1.2 'DM Sans',sans-serif;white-space:nowrap}
 .frow .alab.act-on{background:var(--mintbg);color:#0E8A55}
 .frow .alab.act-low{background:#F1F0F5;color:#6B6782}
 .frow .alab.act-off{background:#FFE3DE;color:#C4281C}
 .frow .alab.act-new{background:#E6E4EE;color:var(--mute)}
-.flist:not(.has-activity) .frow.h span.fact,.flist:not(.has-activity) a.frow .fact{display:none}
+.flist:not(.has-activity) .frow.h [data-sort="activity"],.flist:not(.has-activity) a.frow .fact{display:none}
 .frow .fdeal{font:600 13.5px/1.35 'DM Sans',sans-serif;color:var(--ink)}
 .frow .fdeal .dwhen{white-space:nowrap}
 .frow .rdt{color:var(--mute);font-size:14px;text-align:right;white-space:nowrap}
@@ -1068,7 +1067,7 @@ main.wrap.firms-pg{max-width:1320px}
 /* Investments and Activity need the list wider than the original five columns. Below that, drop both. */
 @container firms (max-width:900px){
   .frow,.flist.has-activity .frow,.flist:not(.has-activity) .frow{grid-template-columns:minmax(140px,1.3fr) minmax(90px,.7fr) minmax(120px,1fr) minmax(150px,1.4fr) 110px}
-  .frow.h [data-sort="deals"],.frow.h span.fact,a.frow .finv,a.frow .fact{display:none}
+  .frow.h [data-sort="deals"],.frow.h [data-sort="activity"],a.frow .finv,a.frow .fact{display:none}
 }
 @media (max-width:900px){
   .sidebar-layout{grid-template-columns:1fr}
@@ -1089,7 +1088,7 @@ main.wrap.firms-pg{max-width:1320px}
   .frow.h button{border:1.5px solid var(--line);border-radius:99px;padding:6px 10px;background:#fff;letter-spacing:.04em}
   .frow.h button.sorted{border-color:var(--vio);background:var(--viobg);color:var(--vio)}
   .frow.h span.hunsortable{display:none}
-  .frow.h button[data-sort="deals"]{display:inline-flex}
+  .frow.h button[data-sort="deals"],.frow.h button[data-sort="activity"]{display:inline-flex}
   .frow.h [data-sort="newest"]{justify-self:auto}
   .frow{grid-template-columns:1fr auto;padding:14px 16px;row-gap:4px}
   .frow .fnm{grid-column:1;grid-row:1}

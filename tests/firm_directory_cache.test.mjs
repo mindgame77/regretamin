@@ -280,6 +280,34 @@ test('investments column shows deals after industries and sorts like latest deal
   assert.equal((html.match(/class="finv"><\/span>/g) || []).length, 2);
 });
 
+test('activity header sorts like latest deal, active group first', async () => {
+  const calls = [];
+  const { els } = boot((url, opts) => {
+    calls.push(JSON.parse(opts.body));
+    return Promise.resolve(jsonResponse(200, page([
+      { slug: 'new', name: 'Unchecked', deals: 0, deals_this_year: 0 },
+      { slug: 'low', name: 'Low', deals: 4, deals_this_year: 1 },
+      { slug: 'on', name: 'Busy', deals: 9, deals_this_year: 4 },
+      { slug: 'off', name: 'Quiet', deals: 6, deals_this_year: 0 },
+    ], 4, null)));
+  }, { url: 'https://db.test', key: 'anon-key', copy: {} });
+  await flush();
+  assert.match(els['firms-list'].innerHTML, /data-sort="activity"[^>]*>Activity/);
+  function click() {
+    els['firms-list'].listeners.click[0]({
+      preventDefault() {},
+      target: { closest(sel) { return sel === '.frow.h [data-sort]' ? { getAttribute() { return 'activity'; } } : null; } },
+    });
+  }
+  click();
+  await flush();
+  assert.equal(calls[1].p_sort, 'activity');
+  assert.equal(calls[1].p_asc, false);
+  click();
+  await flush();
+  assert.equal(calls[2].p_asc, true);
+});
+
 test('activity label follows deals this year and stays blank without that field', async () => {
   const { els } = boot((url, opts) => {
     return Promise.resolve(jsonResponse(200, page([

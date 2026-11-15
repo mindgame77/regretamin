@@ -352,6 +352,27 @@
             const d = count(a) - count(b);
             return d ? d * dir : String(a.name || '').localeCompare(String(b.name || ''));
           }
+          if (sort === 'activity') {
+            const pack = function (row) {
+              if (!row || row.deals_this_year == null || row.deals_this_year === '') return null;
+              const yearN = Number(row.deals_this_year);
+              const totalN = Number(row.deals);
+              const year = Number.isFinite(yearN) && yearN > 0 ? Math.trunc(yearN) : 0;
+              const deals = Number.isFinite(totalN) && totalN > 0 ? Math.trunc(totalN) : 0;
+              return { rank: year >= 3 ? 3 : year >= 1 ? 2 : deals > 0 ? 1 : 0, year: year, deals: deals };
+            };
+            const ap = pack(a);
+            const bp = pack(b);
+            if (!ap || !bp) {
+              if (ap === bp) return String(a.name || '').localeCompare(String(b.name || ''));
+              return ap ? -1 : 1;
+            }
+            let d = ap.rank - bp.rank;
+            if (!d) d = ap.year - bp.year;
+            if (!d) d = ap.deals - bp.deals;
+            if (d) return d * dir;
+            return String(a.name || '').localeCompare(String(b.name || '')) * dir;
+          }
           let d = 0;
           if (sort === 'name') d = String(a.name || '').localeCompare(String(b.name || ''));
           else {
@@ -374,7 +395,7 @@
           + headerCell('city', pageCopy.col_city || 'City')
           + '<span class="hunsortable">' + esc(pageCopy.col_invests || 'Invests in') + '</span>'
           + headerCell('deals', pageCopy.col_investments || 'Investments')
-          + '<span class="hunsortable fact">' + esc(pageCopy.col_activity || 'Activity') + '</span>'
+          + headerCell('activity', pageCopy.col_activity || 'Activity')
           + headerCell('deal', pageCopy.col_deal || 'Latest deal')
           + headerCell('newest', pageCopy.col_added || 'Added')
           + '</div>';
