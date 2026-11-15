@@ -50,7 +50,7 @@ const dated = [
   { company: 'Old Co', date: '2022-01-15', sector: 'Fintech', round: 'Seed', amount: 4000000, currency: 'USD', url: 'https://techcrunch.com/old', website_url: 'https://old.example' },
 ];
 const portfolio = [
-  { company: 'Attribute', portfolio_only: true, url: 'https://www.menschvc.com/our-portfolio', website_url: 'https://attrb.io' },
+  { company: 'Attribute', portfolio_only: true, sector: 'Developer tools', industry_name: 'Cloud & Data', url: 'https://www.menschvc.com/our-portfolio', website_url: 'https://attrb.io' },
   { company: 'Bare Co', date: null, amount: null, url: 'https://www.menschvc.com/our-portfolio', website_url: 'https://bare.example' },
 ];
 
@@ -82,7 +82,9 @@ test('undated portfolio rows sit below dated deals, with dashes and the source l
   assert.match(table, /Seed · \$4M/);
   assert.match(table, /Jan 15, 2022/);
   assert.match(table, /href="https:\/\/www\.menschvc\.com\/our-portfolio"[^>]*>menschvc\.com/);
-  assert.equal((table.match(/class="nd">—<\/span>/g) || []).length, 6);
+  assert.match(table, /class="arty"[^>]*>Cloud &amp; Data</);
+  assert.doesNotMatch(table, /Bare Co[\s\S]{0,180}class="arty"/);
+  assert.equal((table.match(/class="nd">—<\/span>/g) || []).length, 5);
   assert.doesNotMatch(table, /Attribute[\s\S]{0,200}Seed|Attribute[\s\S]{0,200}Jan /);
 });
 
