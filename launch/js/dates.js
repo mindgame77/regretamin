@@ -112,3 +112,29 @@
   root.RegretLabel = { cap: capLabel, CAP: LABEL_CAP };
   root.RegretDate = { format, formatWhen, stamp, caseYear, TZ };
 })(typeof window !== 'undefined' ? window : globalThis);
+
+/* Activity labels for the Investors list and the firm-page tile.
+   A deal's year is extract(year from deal_date). current_date is UTC.
+   YYYY-01-01 counts for that year. */
+(function (root) {
+  function yearOf(date) {
+    const m = String(date || '').match(/(\d{4})/);
+    return m ? m[1] : '';
+  }
+  function countThisYear(deals) {
+    const y = String(new Date().getUTCFullYear());
+    return (deals || []).filter(function (d) { return yearOf(d && d.date) === y; }).length;
+  }
+  function label(dealsThisYear, totalDeals) {
+    if (dealsThisYear == null || dealsThisYear === '') return null;
+    const year = Number(dealsThisYear);
+    if (!Number.isFinite(year) || year < 0) return null;
+    const total = Number(totalDeals);
+    const hasDeals = Number.isFinite(total) && total > 0;
+    if (year >= 3) return { cls: 'act-on', text: 'Active' };
+    if (year >= 1) return { cls: 'act-low', text: 'Low activity' };
+    if (hasDeals) return { cls: 'act-off', text: 'Not active' };
+    return { cls: 'act-new', text: 'Not checked yet' };
+  }
+  root.RegretActivity = { countThisYear: countThisYear, label: label };
+})(typeof window !== 'undefined' ? window : globalThis);
