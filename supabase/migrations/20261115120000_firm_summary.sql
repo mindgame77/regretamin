@@ -1,10 +1,18 @@
 -- Investors page speed-up: one ready-made row per firm (firm_summary), kept fresh by triggers,
 -- read by firm_directory_page_v2. Additive only: the old firm_directory_page is not touched.
 -- Counting rules are copied from firm_directory_page (dated shown deals + undated portfolio-only rows).
+-- The v2 schema is not created by repo migrations. On a database without those tables (CI) this is a no-op.
 
+do $mig$
+begin
+  if to_regclass('public.v2_auto_published') is not null and to_regclass('public.v2_deals') is not null and to_regclass('public.v2_firm_industries') is not null and to_regclass('public.v2_firm_live') is not null and to_regclass('public.v2_firm_stages') is not null and to_regclass('public.v2_firms') is not null and to_regclass('public.v2_legal_items') is not null and to_regclass('public.v2_sector') is not null and to_regclass('public.v2_startup_sectors') is not null and to_regclass('public.v2_startups') is not null then
+    execute $fn$
 create index if not exists v2_deals_startup_id_idx on public.v2_deals (startup_id);
+$fn$;
+    execute $fn$
 create index if not exists v2_deals_firm_startup_idx on public.v2_deals (firm_id, startup_id);
-
+$fn$;
+    execute $fn$
 create table if not exists public.firm_summary (
   firm_id bigint primary key,
   listed boolean not null default false,       -- live, not archived, not merged, not demand_hidden
@@ -38,11 +46,17 @@ create table if not exists public.firm_summary (
   legal_records int not null default 0,
   refreshed_at timestamptz not null default now()
 );
+$fn$;
+    execute $fn$
 create index if not exists firm_summary_listed_idx on public.firm_summary (listed);
-
+$fn$;
+    execute $fn$
 alter table public.firm_summary enable row level security;
+$fn$;
+    execute $fn$
 revoke all on public.firm_summary from anon, authenticated;
-
+$fn$;
+    execute $fn$
 create or replace function public.firm_summary_region(p_country text)
 returns text language sql immutable as $$
   select case case when upper(btrim(p_country)) ~ '^[A-Z]{2}$' then upper(btrim(p_country)) end
@@ -58,7 +72,8 @@ returns text language sql immutable as $$
     when 'AE' then 'middle_east' when 'IL' then 'middle_east' when 'SA' then 'middle_east' when 'QA' then 'middle_east'
     else 'unknown' end
 $$;
-
+$fn$;
+    execute $fn$
 -- Recompute the rows for the given firms only.
 create or replace function public.refresh_firm_summary(p_ids bigint[])
 returns void language plpgsql security definer set search_path = public, pg_temp as $$
@@ -211,13 +226,15 @@ begin
     legal_records = excluded.legal_records, refreshed_at = excluded.refreshed_at;
 end
 $$;
-
+$fn$;
+    execute $fn$
 create or replace function public.refresh_firm_summary_all()
 returns void language sql security definer set search_path = public, pg_temp as $$
   select refresh_firm_summary(array(select firm_id from v2_firms));
   delete from firm_summary s where not exists (select 1 from v2_firms f where f.firm_id = s.firm_id);
 $$;
-
+$fn$;
+    execute $fn$
 -- Trigger helpers. A failure here never blocks the original write: it only logs a warning,
 -- and the hourly full refresh repairs the row.
 create or replace function public.firm_summary_by_firm_trg()
@@ -240,7 +257,8 @@ begin
   return null;
 end
 $$;
-
+$fn$;
+    execute $fn$
 create or replace function public.firm_summary_by_startup_trg()
 returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
 declare sids bigint[]; ids bigint[];
@@ -262,7 +280,8 @@ begin
   return null;
 end
 $$;
-
+$fn$;
+    execute $fn$
 create or replace function public.firm_summary_all_trg()
 returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
 begin
@@ -274,7 +293,8 @@ begin
   return null;
 end
 $$;
-
+$fn$;
+    execute $fn$
 do $$
 declare t text; k text; r record;
 begin
@@ -293,20 +313,29 @@ begin
   end loop;
 end
 $$;
-
+$fn$;
+    execute $fn$
 drop trigger if exists firm_summary_sector on public.v2_sector;
+$fn$;
+    execute $fn$
 create trigger firm_summary_sector after insert or update or delete on public.v2_sector
   for each statement execute function public.firm_summary_all_trg();
-
+$fn$;
+    execute $fn$
 revoke all on function public.refresh_firm_summary(bigint[]) from public, anon, authenticated;
+$fn$;
+    execute $fn$
 revoke all on function public.refresh_firm_summary_all() from public, anon, authenticated;
-
+$fn$;
+    execute $fn$
 -- Fill it now.
 select public.refresh_firm_summary_all();
-
+$fn$;
+    execute $fn$
 -- Safety net: full refresh every hour (repairs anything a trigger skipped).
 select cron.schedule('firm-summary-refresh', '23 * * * *', 'select public.refresh_firm_summary_all()');
-
+$fn$;
+    execute $fn$
 -- Same inputs and output as firm_directory_page, but reads firm_summary instead of counting deals.
 create or replace function public.firm_directory_page_v2(p_limit integer DEFAULT 100, p_offset integer DEFAULT 0, p_sort text DEFAULT 'newest'::text, p_asc boolean DEFAULT false, p_search text[] DEFAULT NULL::text[], p_region text[] DEFAULT NULL::text[], p_industry text[] DEFAULT NULL::text[], p_stage text[] DEFAULT NULL::text[], p_legal text[] DEFAULT NULL::text[], p_info text[] DEFAULT NULL::text[], p_status text[] DEFAULT NULL::text[])
 returns json
@@ -469,6 +498,15 @@ begin
   return json_build_object('rows', v_rows, 'total', v_total, 'facets', v_facets);
 end
 $function$;
-
+$fn$;
+    execute $fn$
 revoke all on function public.firm_directory_page_v2(integer, integer, text, boolean, text[], text[], text[], text[], text[], text[], text[]) from public;
+$fn$;
+    execute $fn$
 grant execute on function public.firm_directory_page_v2(integer, integer, text, boolean, text[], text[], text[], text[], text[], text[], text[]) to anon, authenticated, service_role;
+$fn$;
+  else
+    raise notice 'v2 schema missing, skipped';
+  end if;
+end
+$mig$;
