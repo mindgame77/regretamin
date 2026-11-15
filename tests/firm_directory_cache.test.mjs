@@ -1,4 +1,4 @@
-// Investors directory loads one page at a time from firm_directory_page.
+// Investors directory loads one page at a time from firm_directory_page_v2.
 // node --test tests/firm_directory_cache.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -110,7 +110,7 @@ test('the first request is 100 firms, newest first, and renders that page', asyn
   }, { url: 'https://db.test', key: 'anon-key', copy: {} });
   await flush();
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].url, 'https://db.test/rest/v1/rpc/firm_directory_page');
+  assert.equal(calls[0].url, 'https://db.test/rest/v1/rpc/firm_directory_page_v2');
   assert.equal(calls[0].body.p_limit, 100);
   assert.equal(calls[0].body.p_offset, 0);
   assert.equal(calls[0].body.p_sort, 'newest');

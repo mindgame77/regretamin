@@ -656,7 +656,7 @@
         };
         loading = true;
         showStatus();
-        fetch(C.url + '/rest/v1/rpc/firm_directory_page', {
+        fetch(C.url + '/rest/v1/rpc/firm_directory_page_v2', {
           method: 'POST',
           headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
