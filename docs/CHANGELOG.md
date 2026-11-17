@@ -3,6 +3,8 @@ Update this file after every change.
 One line per change: date/time PT | what changed | PR link | how to roll back.
 PL/pgSQL variables start with v_ so they never clash with table aliases.
 
+2026-11-17 3:05 PM PT | A section claim can hold up to 10 unfinished firms per key per section, so a researcher with helpers can work on several firms at once. Each claim hands out a new firm. A key already holding 10 is told to finish or mark one done, with those firm ids listed. Done is unchanged. Not applied yet. | PR_URL_PLACEHOLDER | Run supabase/rollbacks/20261117230000_v2_section_claim_multi.sql. Holds and firm rows stay.
+
 2026-11-17 1:15 PM PT | Enrichment bots can claim one section (legal, reviews, or youtube) of the biggest listed Active firm by the stored deal count, then mark it checked. The same existing bot key is used. Plain claim, done, and submit stay. A nothing-found row for reviews or videos can omit the content fields, and a legal nothing-found row can use source level 1. Those rows stay off the page. Not applied yet. | https://github.com/mindgame77/regretamin/pull/407 | Run supabase/rollbacks/20261117210000_v2_section_claim.sql. Real rows stay. A nothing-found row that omitted a content field has to be removed before that rollback can make the field required again.
 
 2026-11-15 3:41 AM PT | The firm_summary migration skips itself when the v2 tables are missing, the same way the other v2 migrations do. The statements inside are unchanged. Already applied. | https://github.com/mindgame77/regrettamine/pull/403 | Revert this pull request's guard. The live firm_summary table and firm_directory_page_v2 stay.
