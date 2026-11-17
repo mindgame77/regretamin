@@ -3,6 +3,8 @@ Update this file after every change.
 One line per change: date/time PT | what changed | PR link | how to roll back.
 PL/pgSQL variables start with v_ so they never clash with table aliases.
 
+2026-11-17 1:15 PM PT | Enrichment bots can claim one section (legal, reviews, or youtube) of the biggest listed Active firm by the stored deal count, then mark it checked. The same existing bot key is used. Plain claim, done, and submit stay. A nothing-found row for reviews or videos can omit the content fields, and a legal nothing-found row can use source level 1. Those rows stay off the page. Not applied yet. | | Run supabase/rollbacks/20261117210000_v2_section_claim.sql. Real rows stay. A nothing-found row that omitted a content field has to be removed before that rollback can make the field required again.
+
 2026-11-15 3:41 AM PT | The firm_summary migration skips itself when the v2 tables are missing, the same way the other v2 migrations do. The statements inside are unchanged. Already applied. | https://github.com/mindgame77/regrettamine/pull/403 | Revert this pull request's guard. The live firm_summary table and firm_directory_page_v2 stay.
 
 2026-11-15 3:27 AM PT | The investors list reads firm_directory_page_v2. The page shape is the same. It is filled from firm_summary, which the database already keeps up to date. firm_directory_page stays. No wording or layout changes. Already applied. | https://github.com/mindgame77/regrettamine/pull/403 | Point launch/js/firms.js back at firm_directory_page, then run supabase/rollbacks/20261115120000_firm_summary.sql. The summary table and firm_directory_page_v2 go away. Firm rows stay.
