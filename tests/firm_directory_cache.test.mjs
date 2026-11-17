@@ -313,6 +313,30 @@ test('activity header sorts like latest deal, active group first', async () => {
   assert.equal(calls[2].p_asc, true);
 });
 
+test('undated startups or finished research with nothing in the window are Not active', async () => {
+  const { els } = boot(() => Promise.resolve(jsonResponse(200, page([
+    { slug: 'sfc-capital', name: 'SFC Capital', deals: 0, deals_this_year: 0, investments: 440, researched: true },
+    { slug: 'done', name: 'Research Done', deals: 0, deals_this_year: 0, investments: 0, researched: true },
+    { slug: 'po', name: 'Portfolio Only', deals: 0, deals_this_year: 0, investments: 12, researched: false },
+    { slug: 'new', name: 'Unchecked', deals: 0, deals_this_year: 0, investments: 0, researched: false },
+    { slug: 'on', name: 'Busy', deals: 9, deals_this_year: 4, investments: 20, researched: true },
+  ], 5, null))), { url: 'https://db.test', key: 'anon-key', copy: {} });
+  await flush();
+  const html = els['firms-list'].innerHTML;
+  function rowOf(name) {
+    const start = html.indexOf(name);
+    const next = html.indexOf('<a class="frow"', start);
+    return html.slice(start, next === -1 ? undefined : next);
+  }
+  for (const name of ['SFC Capital', 'Research Done', 'Portfolio Only']) {
+    assert.match(rowOf(name), /act-off">Not active/);
+    assert.doesNotMatch(rowOf(name), /act-new">Not checked yet/);
+  }
+  assert.match(rowOf('Unchecked'), /act-new">Not checked yet/);
+  assert.doesNotMatch(rowOf('Unchecked'), /act-off">Not active/);
+  assert.match(rowOf('Busy'), /act-on">Active/);
+});
+
 test('activity label follows deals this year and stays blank without that field', async () => {
   const { els } = boot((url, opts) => {
     return Promise.resolve(jsonResponse(200, page([
@@ -452,6 +476,38 @@ test('a local list filters with the same activity labels as the column', async (
   assert.match(both, /Busy/);
   assert.match(both, /Unchecked/);
   assert.doesNotMatch(both, /Missing/);
+});
+
+test('the local activity filter uses the same Not active rule as the column', async () => {
+  const firms = [
+    { slug: 'on', name: 'Busy', deals: 9, deals_this_year: 4, investments: 9, researched: true, country: 'US' },
+    { slug: 'po', name: 'Portfolio Only', deals: 0, deals_this_year: 0, investments: 12, researched: false, country: 'US' },
+    { slug: 'done', name: 'Research Done', deals: 0, deals_this_year: 0, investments: 0, researched: true, country: 'US' },
+    { slug: 'new', name: 'Unchecked', deals: 0, deals_this_year: 0, investments: 0, researched: false, country: 'US' },
+  ];
+  const { els } = boot(() => Promise.resolve(jsonResponse(200, { firms })), { copy: {} });
+  await flush();
+  const menu = els['facet-groups'].innerHTML;
+  const status = menu.slice(menu.indexOf('id="facet-status"'));
+  assert.match(status, /Not active[\s\S]*?>2</);
+  assert.match(status, /Not checked yet[\s\S]*?>1</);
+  function click(value) {
+    const input = {
+      checked: true,
+      closest(sel) {
+        if (sel === 'input[type="checkbox"]') return input;
+        if (sel === 'label') return { getAttribute(name) { return name === 'data-facet' ? 'status' : value; } };
+        return null;
+      },
+    };
+    els['facet-groups'].listeners.change[0]({ target: input });
+  }
+  click('1');
+  const notActive = els['firms-list'].innerHTML;
+  assert.match(notActive, /Portfolio Only/);
+  assert.match(notActive, /Research Done/);
+  assert.match(notActive, /act-off">Not active/);
+  assert.doesNotMatch(notActive, /Unchecked|Busy/);
 });
 
 test('the industry show-all popup lists options alphabetically and the sidebar stays by count', async () => {

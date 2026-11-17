@@ -11,7 +11,7 @@ sandbox.window.window = sandbox.window;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(new URL('../launch/js/dates.js', import.meta.url), 'utf8'), sandbox, { filename: 'dates.js' });
-const { activityYear, countThisYear } = sandbox.window.RegretActivity;
+const { activityYear, countThisYear, rank, label } = sandbox.window.RegretActivity;
 const utc = (y, m, d, h) => new Date(Date.UTC(y, m - 1, d, h || 0));
 
 test('January through May 31 count both years, June 1 counts only the current year', () => {
@@ -24,4 +24,17 @@ test('January through May 31 count both years, June 1 counts only the current ye
   assert.equal(countThisYear(deals, utc(2027, 5, 31, 23)), 2);
   assert.equal(countThisYear(deals, utc(2027, 6, 1, 0)), 1);
   assert.equal(countThisYear(deals, utc(2026, 11, 15, 12)), 1);
+});
+
+test('nothing in the window is Not active when research is done or any deal is on record', () => {
+  assert.equal(rank(4, 4, 0, false), 3);
+  assert.equal(rank(1, 0, 9, true), 2);
+  assert.equal(rank(0, 6, 6, false), 1);
+  assert.equal(rank(0, 0, 12, false), 1);
+  assert.equal(rank(0, 0, 0, true), 1);
+  assert.equal(rank(0, 0, 0, false), 0);
+  assert.equal(label(0, 0, 440, true).text, 'Not active');
+  assert.equal(label(0, 0, 0, true).text, 'Not active');
+  assert.equal(label(0, 0, 0, false).text, 'Not checked yet');
+  assert.equal(label(3, 3, 0, true).text, 'Active');
 });

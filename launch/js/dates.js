@@ -136,21 +136,26 @@
       return y >= start && y <= end;
     }).length;
   }
-  function rank(dealsThisYear, totalDeals) {
+  // Active and Low activity use dated deals in the window only.
+  // Not active: nothing in the window, but there is a dated deal, an undated
+  // portfolio startup, or finished research. Not checked yet: none of those.
+  function rank(dealsThisYear, totalDeals, investments, researched) {
     const yearN = Number(dealsThisYear);
     const totalN = Number(totalDeals);
+    const invN = Number(investments);
     const year = Number.isFinite(yearN) && yearN > 0 ? Math.trunc(yearN) : 0;
     const deals = Number.isFinite(totalN) && totalN > 0 ? Math.trunc(totalN) : 0;
+    const inv = Number.isFinite(invN) && invN > 0 ? Math.trunc(invN) : 0;
     if (year >= 3) return 3;
     if (year >= 1) return 2;
-    if (deals > 0) return 1;
+    if (deals > 0 || inv > 0 || researched === true) return 1;
     return 0;
   }
-  function label(dealsThisYear, totalDeals) {
+  function label(dealsThisYear, totalDeals, investments, researched) {
     if (dealsThisYear == null || dealsThisYear === '') return null;
     const year = Number(dealsThisYear);
     if (!Number.isFinite(year) || year < 0) return null;
-    const r = rank(dealsThisYear, totalDeals);
+    const r = rank(dealsThisYear, totalDeals, investments, researched);
     if (r === 3) return { cls: 'act-on', text: 'Active' };
     if (r === 2) return { cls: 'act-low', text: 'Low activity' };
     if (r === 1) return { cls: 'act-off', text: 'Not active' };

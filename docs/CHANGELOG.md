@@ -3,6 +3,8 @@ Update this file after every change.
 One line per change: date/time PT | what changed | PR link | how to roll back.
 PL/pgSQL variables start with v_ so they never clash with table aliases.
 
+2026-11-17 2:30 PM PT | Investors activity: a firm with no dated deals in the year window is Not active when research is done or it has any deal on record, including undated portfolio startups. Not checked yet stays for a firm that has never been researched and has no deals. Active and Low activity stay dated deals in the window. The researched flag is stored on firm_summary. Not applied yet. | pull request pending | Run supabase/rollbacks/20261117222549_investor_activity_not_checked.sql, then revert the pull request. Firm rows stay.
+
 2026-11-15 3:41 AM PT | The firm_summary migration skips itself when the v2 tables are missing, the same way the other v2 migrations do. The statements inside are unchanged. Already applied. | https://github.com/mindgame77/regrettamine/pull/403 | Revert this pull request's guard. The live firm_summary table and firm_directory_page_v2 stay.
 
 2026-11-15 3:27 AM PT | The investors list reads firm_directory_page_v2. The page shape is the same. It is filled from firm_summary, which the database already keeps up to date. firm_directory_page stays. No wording or layout changes. Already applied. | https://github.com/mindgame77/regrettamine/pull/403 | Point launch/js/firms.js back at firm_directory_page, then run supabase/rollbacks/20261115120000_firm_summary.sql. The summary table and firm_directory_page_v2 go away. Firm rows stay.

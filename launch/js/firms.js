@@ -130,13 +130,13 @@
   }
   function activityOf(f) {
     const rule = window.RegretActivity;
-    return rule ? rule.label(f && f.deals_this_year, f && f.deals) : null;
+    return rule ? rule.label(f && f.deals_this_year, f && f.deals, f && f.investments, f && f.researched) : null;
   }
   // Same rank the Activity column shows. Blank when that column is blank.
   function activityValue(f) {
     const rule = window.RegretActivity;
     if (!rule || !activityOf(f)) return '';
-    return String(rule.rank(f && f.deals_this_year, f && f.deals));
+    return String(rule.rank(f && f.deals_this_year, f && f.deals, f && f.investments, f && f.researched));
   }
   // The four labels come from RegretActivity, in the same order as its ranks.
   function activityOptions(counts) {
@@ -375,12 +375,14 @@
               const rule = window.RegretActivity;
               if (!rule) return null;
               const yearN = Number(row.deals_this_year);
-              // Dated-only total. Do not use `investments`, or a firm with only
-              // undated portfolio rows would sort and label as Not active.
+              // Tiebreak stays the dated deal count. Investments and finished
+              // research only move a firm with nothing in the window to Not active.
               const totalN = Number(row.deals);
+              const invN = Number(row.investments);
               const year = Number.isFinite(yearN) && yearN > 0 ? Math.trunc(yearN) : 0;
               const deals = Number.isFinite(totalN) && totalN > 0 ? Math.trunc(totalN) : 0;
-              return { rank: rule.rank(year, deals), year: year, deals: deals };
+              const investments = Number.isFinite(invN) && invN > 0 ? Math.trunc(invN) : 0;
+              return { rank: rule.rank(year, deals, investments, row.researched), year: year, deals: deals };
             };
             const ap = pack(a);
             const bp = pack(b);
