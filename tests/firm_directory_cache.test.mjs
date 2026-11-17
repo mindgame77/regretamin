@@ -454,6 +454,100 @@ test('a local list filters with the same activity labels as the column', async (
   assert.doesNotMatch(both, /Missing/);
 });
 
+test('the industry show-all popup lists options alphabetically and the sidebar stays by count', async () => {
+  const industries = [
+    { value: 'zebra', label: 'Zebra', count: 3 },
+    { value: 'apple', label: 'apple', count: 4 },
+    { value: 'mango', label: 'Mango', count: 2 },
+    { value: 'fintech', label: 'fintech', count: 90 },
+    { value: 'ai', label: 'AI agents', count: 80 },
+    { value: 'bio', label: 'Bio', count: 60 },
+    { value: 'climate', label: 'Climate', count: 50 },
+    { value: 'consumer', label: 'Consumer', count: 40 },
+    { value: 'crypto', label: 'Crypto', count: 10 },
+  ];
+  const { els } = boot((url, opts) => {
+    const body = JSON.parse(opts.body);
+    const facets = body.p_offset === 0 && !body.p_industry.length ? {
+      region: [
+        { value: 'europe', count: 1 },
+        { value: 'asia', count: 50 },
+        { value: 'latam', count: 40 },
+        { value: 'africa', count: 30 },
+        { value: 'middle_east', count: 20 },
+        { value: 'north_america', count: 10 },
+        { value: 'unknown', count: 5 },
+      ],
+      industry: industries,
+      stage: [],
+      status: [],
+    } : null;
+    return Promise.resolve(jsonResponse(200, page(
+      [{ slug: 'a16z', name: 'Andreessen Horowitz', added: '2024-01-02' }],
+      1,
+      facets
+    )));
+  }, { url: 'https://db.test', key: 'anon-key', copy: {} });
+  await flush();
+
+  function optionLabels(html) {
+    return [...html.matchAll(/class="optlabel"[^>]*>([^<]*)</g)].map((m) => m[1]);
+  }
+  function pick(facet, value) {
+    const input = {
+      checked: true,
+      closest(sel) {
+        if (sel === 'input[type="checkbox"]') return input;
+        if (sel === 'label') {
+          return { getAttribute(name) { return name === 'data-facet' ? facet : value; } };
+        }
+        return null;
+      },
+    };
+    els['facet-groups'].listeners.change[0]({ target: input });
+  }
+  function openShowAll(key) {
+    els['facet-groups'].listeners.click[0]({
+      target: {
+        closest(sel) {
+          if (sel === '.show-all') return { getAttribute() { return key; } };
+          return null;
+        },
+      },
+    });
+  }
+
+  // Selection order is not alphabetical. ASCII would put Mango and Zebra before apple.
+  pick('industry', 'zebra');
+  pick('industry', 'mango');
+  pick('industry', 'apple');
+  await flush();
+
+  const menu = els['facet-groups'].innerHTML;
+  const sidebar = optionLabels(menu.slice(menu.indexOf('id="facet-industry"'), menu.indexOf('id="facet-stage"')));
+  assert.deepEqual(sidebar.slice(0, 5), ['fintech', 'AI agents', 'Bio', 'Climate', 'Consumer']);
+
+  openShowAll('industry');
+  const byLabel = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' });
+  const selected = optionLabels(els['pinned-options'].innerHTML);
+  const remaining = optionLabels(els['full-options'].innerHTML);
+  assert.deepEqual(selected, ['apple', 'Mango', 'Zebra']);
+  assert.deepEqual(selected, ['apple', 'Mango', 'Zebra'].slice().sort(byLabel));
+  assert.notDeepEqual(selected, ['Mango', 'Zebra', 'apple']);
+  assert.deepEqual(remaining, ['AI agents', 'Bio', 'Climate', 'Consumer', 'Crypto', 'fintech']);
+  assert.deepEqual(remaining, remaining.slice().sort(byLabel));
+  assert.notDeepEqual(remaining, ['fintech', 'AI agents', 'Bio', 'Climate', 'Consumer', 'Crypto']);
+
+  const menuAfter = els['facet-groups'].innerHTML;
+  const sidebarAfter = optionLabels(menuAfter.slice(menuAfter.indexOf('id="facet-industry"'), menuAfter.indexOf('id="facet-stage"')));
+  assert.deepEqual(sidebarAfter.slice(0, 5), ['fintech', 'AI agents', 'Bio', 'Climate', 'Consumer']);
+
+  openShowAll('region');
+  const regions = optionLabels(els['full-options'].innerHTML);
+  assert.deepEqual(regions, ['Asia', 'LatAm', 'Africa', 'Middle East', 'US / North America', 'Not disclosed', 'Europe']);
+  assert.equal(els['pinned-options'].innerHTML, '');
+});
+
 test('the show-all popup keeps its footer inside the viewport', () => {
   const css = fs.readFileSync(new URL('../launch/style.css', import.meta.url), 'utf8');
   assert.match(css, /\.facet-panel-box\{[^}]*max-height:calc\(100dvh - 16px\)/);
