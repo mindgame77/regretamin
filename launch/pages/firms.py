@@ -25,6 +25,7 @@ def render(c):
 </div>
 <div class="filters-backdrop" id="filters-backdrop" hidden></div>
 <aside id="facet-panel" class="facet-panel" role="dialog" aria-modal="false" aria-labelledby="panel-title" hidden>
+<div class="facet-panel-box">
 <div class="panel-top">
 <div class="panel-title-row"><h2><span id="panel-title">Industries</span><span id="panel-total" class="panel-total"></span></h2><button type="button" id="panel-close" aria-label="Close">×</button></div>
 <label class="panel-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="m15 15 6 6"></path></svg><input id="facet-search" placeholder="Search"></label>
@@ -33,5 +34,6 @@ def render(c):
 <div id="remaining-label" class="list-caption panel-list-label"></div>
 <div class="scroll-options"><div id="full-options" class="panel-option-grid"></div></div>
 <div class="panel-bottom"><div><button type="button" class="panel-clear" id="panel-clear">Clear</button><span id="draft-count" class="draft-count"></span></div><button type="button" class="primary" id="panel-apply">Apply filters →</button></div>
+</div>
 </aside>
 </main>"""
