@@ -794,6 +794,14 @@
         const remaining = opts.filter(function (o) {
           return draft.indexOf(o.value) === -1 && o.label.toLowerCase().indexOf(query) !== -1;
         });
+        // Show all for Industries only. The sidebar stays top 5 by count.
+        if (panelKey === 'industry') {
+          const byLabel = function (a, b) {
+            return String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' });
+          };
+          selected.sort(byLabel);
+          remaining.sort(byLabel);
+        }
         document.getElementById('pinned-options').innerHTML = selected.length
           ? '<div class="list-caption">SELECTED <span>' + selected.length + '</span></div><div class="panel-option-grid">'
             + selected.map(function (o) { return facetOption(o, panelKey, true); }).join('') + '</div>'
