@@ -1,7 +1,7 @@
 /* /investors/ directory. Columns are the v3 grid. Filters reuse the
-   firm-directory concept-2-filters facet sidebar (Region, Headquarters,
-   Industries, Investment stages, Legal records, Recorded information,
-   Firm status) from /workspace/regretamin-design/firm-directory. */
+   firm-directory concept-2-filters facet sidebar (Region, Industries,
+   Investment stages, Investor status) from /workspace/regretamin-design/firm-directory.
+   Legal records and Recorded information are not in the menu. */
 (function () {
   // Same parent hues as launch/js/company.js. A sub-industry uses its parent. Other stays slate.
   const SECTOR_PALETTE = ['#4B2BD6', '#14D9A5', '#FFB020', '#FF5C8A', '#2EA8FF', '#8A63F5', '#18BBD4', '#FF9566', '#9EDB51', '#788BFF', '#F26C68', '#42CFC3', '#D781EF', '#E6BE45', '#3773DB', '#EC7DA8', '#77C9A1', '#A7A2C2'];
@@ -132,6 +132,26 @@
     const rule = window.RegretActivity;
     return rule ? rule.label(f && f.deals_this_year, f && f.deals) : null;
   }
+  // Same rank the Activity column shows. Blank when that column is blank.
+  function activityValue(f) {
+    const rule = window.RegretActivity;
+    if (!rule || !activityOf(f)) return '';
+    return String(rule.rank(f && f.deals_this_year, f && f.deals));
+  }
+  // The four labels come from RegretActivity, in the same order as its ranks.
+  function activityOptions(counts) {
+    const rule = window.RegretActivity;
+    return [3, 2, 1, 0].map(function (rank) {
+      const year = rank > 1 ? rank : 0;
+      const deals = rank === 1 ? 1 : 0;
+      const labeled = rule ? rule.label(year, deals) : null;
+      return {
+        value: String(rank),
+        label: labeled ? labeled.text : '',
+        count: Number(counts && counts[String(rank)]) || 0
+      };
+    });
+  }
   function activityHtml(f) {
     const a = activityOf(f);
     if (!a) return '<span class="fact"></span>';
@@ -227,26 +247,30 @@
       let asc = false;
       let panelKey = null;
       let draft = [];
-      const active = { region: [], industry: [], stage: [], legal: [], info: [], status: [] };
+      const active = { region: [], industry: [], stage: [], status: [] };
 
-      let regionOpts, industryOpts, stageOpts, legalOpts, infoOpts, statusOpts;
+      // Older links put legal, info, or firm_status in the query string.
+      // Those groups are gone. Ignore the params so the page still loads.
+      function ignoreRemovedFilterParams() {
+        try {
+          const search = window.location && window.location.search;
+          if (!search) return;
+          const params = new URLSearchParams(search);
+          ['legal', 'info', 'p_legal', 'p_info', 'status', 'p_status'].forEach(function (key) {
+            params.getAll(key);
+          });
+        } catch (e) { /* a bad query string never blocks the list */ }
+      }
+      ignoreRemovedFilterParams();
+
+      let regionOpts, industryOpts, stageOpts, statusOpts;
       if (remote) {
         regionOpts = REGION_OPTIONS.map(function (pair) {
           return { value: pair[0], label: pair[1], count: 0 };
         });
         industryOpts = [];
         stageOpts = [];
-        legalOpts = [
-          { value: 'unknown', label: 'No result available', count: 0 },
-          { value: 'has', label: 'Has records', count: 0 },
-          { value: 'none', label: 'None found', count: 0 }
-        ];
-        infoOpts = [
-          { value: 'deals', label: 'Deals in last 12 months', count: 0 },
-          { value: 'lead', label: 'Led deals in 12 months', count: 0 },
-          { value: 'legal', label: 'Legal / regulatory', count: 0 }
-        ];
-        statusOpts = [];
+        statusOpts = activityOptions({});
       } else {
         const regionCounts = countBy(firms, regionOf);
         regionOpts = REGION_OPTIONS.map(function (pair) {
@@ -254,31 +278,22 @@
         }).sort(function (a, b) { return (b.count - a.count) || a.label.localeCompare(b.label); });
         industryOpts = uniqueOptions(firms, function (f) { return f.industries || []; });
         stageOpts = uniqueOptions(firms, function (f) { return f.stages || []; });
-        const legalCounts = countBy(firms, function (f) { return f.legal_status || 'unknown'; });
-        legalOpts = [
-          { value: 'unknown', label: 'No result available', count: legalCounts.unknown || 0 },
-          { value: 'has', label: 'Has records', count: legalCounts.has || 0 },
-          { value: 'none', label: 'None found', count: legalCounts.none || 0 }
-        ].sort(function (a, b) { return (b.count - a.count) || a.label.localeCompare(b.label); });
-        infoOpts = [
-          { value: 'deals', label: 'Deals in last 12 months', count: firms.filter(function (f) { return f.deals_12m > 0; }).length },
-          { value: 'lead', label: 'Led deals in 12 months', count: firms.filter(function (f) { return f.led_12m > 0; }).length },
-          { value: 'legal', label: 'Legal / regulatory', count: firms.filter(function (f) { return f.legal_records > 0; }).length }
-        ];
-        const statusCounts = countBy(firms, function (f) { return f.firm_status || 'Active'; });
-        statusOpts = Object.keys(statusCounts).map(function (k) {
-          return { value: k, label: k, count: statusCounts[k] };
-        }).sort(function (a, b) { return (b.count - a.count) || a.label.localeCompare(b.label); });
+        const statusCounts = {};
+        firms.forEach(function (f) {
+          const v = activityValue(f);
+          if (!v) return;
+          statusCounts[v] = (statusCounts[v] || 0) + 1;
+        });
+        statusOpts = activityOptions(statusCounts);
       }
 
       const GROUPS = {
         region: { title: 'Region', singular: 'regions', options: regionOpts },
         industry: { title: 'Industries', singular: 'industries', options: industryOpts },
         stage: { title: 'Investment stages', singular: 'stages', options: stageOpts },
-        legal: { title: 'Legal records', singular: 'legal records', options: legalOpts },
-        info: { title: 'Recorded information', singular: 'recorded information', options: infoOpts },
         status: { title: pageCopy.filter_status || 'Investor status', singular: 'statuses', options: statusOpts }
       };
+      const INLINE_OPTIONS = 5;
 
       function selectedCount() {
         return Object.keys(active).reduce(function (n, k) { return n + active[k].length; }, 0);
@@ -295,10 +310,14 @@
         groupsEl.innerHTML = Object.keys(GROUPS).map(function (key) {
           const g = GROUPS[key];
           const open = panel && !panel.hidden && key === panelKey;
+          const shown = g.options.slice(0, INLINE_OPTIONS);
+          const more = g.options.length > shown.length;
           return '<section class="facet" id="facet-' + key + '"><h4>' + esc(g.title)
             + (active[key].length ? '<span class="facet-badge">' + active[key].length + '</span>' : '') + '</h4>'
-            + g.options.slice(0, 5).map(function (o) { return facetOption(o, key, false); }).join('')
-            + '<button type="button" class="show-all" data-open="' + esc(key) + '" aria-expanded="' + (open ? 'true' : 'false') + '">Show all (' + g.options.length + ')</button>'
+            + shown.map(function (o) { return facetOption(o, key, false); }).join('')
+            + (more
+              ? '<button type="button" class="show-all" data-open="' + esc(key) + '" aria-expanded="' + (open ? 'true' : 'false') + '">Show all (' + g.options.length + ')</button>'
+              : '')
             + '</section>';
         }).join('');
       }
@@ -313,13 +332,7 @@
         if (active.region.length && active.region.indexOf(regionOf(f)) === -1) return false;
         if (active.industry.length && !active.industry.some(function (x) { return optionMatch(f.industries, x); })) return false;
         if (active.stage.length && !active.stage.some(function (x) { return optionMatch(f.stages, x); })) return false;
-        if (active.legal.length && active.legal.indexOf(f.legal_status || 'unknown') === -1) return false;
-        if (active.status.length && active.status.indexOf(f.firm_status || 'Active') === -1) return false;
-        if (active.info.length && !active.info.every(function (x) {
-          if (x === 'deals') return f.deals_12m > 0;
-          if (x === 'lead') return f.led_12m > 0;
-          return f.legal_records > 0;
-        })) return false;
+        if (active.status.length && active.status.indexOf(activityValue(f)) === -1) return false;
         return true;
       }
       function cmpBlankLast(av, bv) {
@@ -620,21 +633,12 @@
         }
         GROUPS.industry.options = opts(facets.industry);
         GROUPS.stage.options = opts(facets.stage);
-        const legalCounts = {};
-        (facets.legal || []).forEach(function (o) { legalCounts[o.value] = Number(o.count) || 0; });
-        GROUPS.legal.options = [
-          { value: 'unknown', label: 'No result available', count: legalCounts.unknown || 0 },
-          { value: 'has', label: 'Has records', count: legalCounts.has || 0 },
-          { value: 'none', label: 'None found', count: legalCounts.none || 0 }
-        ].sort(byCount);
-        const infoCounts = {};
-        (facets.info || []).forEach(function (o) { infoCounts[o.value] = Number(o.count) || 0; });
-        GROUPS.info.options = [
-          { value: 'deals', label: 'Deals in last 12 months', count: infoCounts.deals || 0 },
-          { value: 'lead', label: 'Led deals in 12 months', count: infoCounts.lead || 0 },
-          { value: 'legal', label: 'Legal / regulatory', count: infoCounts.legal || 0 }
-        ];
-        GROUPS.status.options = opts(facets.status);
+        const statusCounts = {};
+        (facets.status || []).forEach(function (o) {
+          const v = String(o.value);
+          if (v === '0' || v === '1' || v === '2' || v === '3') statusCounts[v] = Number(o.count) || 0;
+        });
+        GROUPS.status.options = activityOptions(statusCounts);
         renderFacets();
         if (panel && !panel.hidden && panelKey) renderPanel();
       }
@@ -650,8 +654,8 @@
           p_region: active.region,
           p_industry: active.industry,
           p_stage: active.stage,
-          p_legal: active.legal,
-          p_info: active.info,
+          p_legal: [],
+          p_info: [],
           p_status: active.status
         };
         loading = true;
@@ -741,31 +745,46 @@
         updateBadge();
         draw();
       }
+      function boxRect(el) {
+        if (!el || typeof el.getBoundingClientRect !== 'function') return { top: 8, right: 8, bottom: 8, left: 8 };
+        return el.getBoundingClientRect();
+      }
       function positionPanel() {
         if (!panel || !panelKey) return;
-        const facet = document.getElementById('facet-' + panelKey);
-        const side = sidebar;
-        if (!facet || !side) return;
-        const f = facet.getBoundingClientRect();
-        const s = side.getBoundingClientRect();
-        let left = s.right + 16;
-        let top = f.top - 6;
-        const pw = Math.min(594, window.innerWidth - 24);
-        if (left + pw > window.innerWidth - 8) left = Math.max(8, window.innerWidth - pw - 8);
-        if (top + 200 > window.innerHeight) top = Math.max(8, window.innerHeight - 420);
-        if (window.innerWidth <= 900) {
+        const box = (panel.querySelector && panel.querySelector('.facet-panel-box')) || panel;
+        const margin = 8;
+        const vh = window.innerHeight || 800;
+        const vw = window.innerWidth || 1280;
+        if (vw <= 900) {
           panel.style.left = '8px';
           panel.style.right = '8px';
           panel.style.top = 'auto';
           panel.style.bottom = '8px';
           panel.style.width = 'auto';
+          panel.style.maxHeight = '';
+          if (box.style) box.style.maxHeight = 'calc(100dvh - 16px)';
           return;
         }
+        const facet = document.getElementById('facet-' + panelKey);
+        const side = sidebar;
+        if (!facet || !side) return;
+        const f = boxRect(facet);
+        const s = boxRect(side);
+        let left = s.right + 16;
+        const pw = Math.min(594, vw - 24);
+        if (left + pw > vw - margin) left = Math.max(margin, vw - pw - margin);
         panel.style.right = 'auto';
         panel.style.bottom = 'auto';
         panel.style.width = '';
+        panel.style.maxHeight = '';
         panel.style.left = left + 'px';
+        const space = Math.max(160, vh - margin * 2);
+        let top = f.top - 6;
+        if (top < margin) top = margin;
+        const useful = Math.min(space, 560);
+        if (vh - margin - top < useful) top = Math.max(margin, vh - margin - useful);
         panel.style.top = top + 'px';
+        if (box.style) box.style.maxHeight = Math.max(160, vh - margin - top) + 'px';
       }
       function renderPanel() {
         if (!panelKey) return;
@@ -795,9 +814,9 @@
         document.getElementById('panel-title').textContent = GROUPS[key].title;
         document.getElementById('panel-total').textContent = GROUPS[key].options.length + ' options';
         document.getElementById('facet-search').placeholder = 'Search ' + GROUPS[key].singular;
-        positionPanel();
         renderFacets();
         renderPanel();
+        positionPanel();
       }
       function closePanel() {
         if (panel) panel.hidden = true;
@@ -961,7 +980,7 @@
 })();
 
 /* Filters scroll with the page. When the sidebar is taller than the window, its sticky
-   top is negative so it stops once its bottom (Investor status) is in view, and the list
+   top is negative so it stops once its bottom (the last filter group) is in view, and the list
    keeps scrolling. Phones (900px or less) use the drawer instead. */
 (function () {
   function fit() {
