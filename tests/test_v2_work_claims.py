@@ -18,6 +18,8 @@ HOLD = (ROOT / "supabase/migrations/20261118220000_v2_next_firm_hold_10.sql").re
 HOLD_UNDO = (ROOT / "supabase/rollbacks/20261118220000_v2_next_firm_hold_10.sql").read_text()
 REOPEN = (ROOT / "supabase/migrations/20261118260000_v2_next_firm_reopen_na_europe.sql").read_text()
 REOPEN_UNDO = (ROOT / "supabase/rollbacks/20261118260000_v2_next_firm_reopen_na_europe.sql").read_text()
+ALL_HQ = (ROOT / "supabase/migrations/20261118290000_v2_next_firm_all_known_hq.sql").read_text()
+ALL_HQ_UNDO = (ROOT / "supabase/rollbacks/20261118290000_v2_next_firm_all_known_hq.sql").read_text()
 FN = (ROOT / "supabase/functions/research-ingest-v2/index.ts").read_text()
 NEXT = "public.v2_next_firm(uuid, text)"
 DONE = "public.v2_firm_done(uuid, text, bigint)"
@@ -100,6 +102,41 @@ def test_reopen_migration_only_replaces_next_firm_and_adds_country_helper():
     assert "w.bot_key_id is distinct from $2" not in REOPEN_UNDO
 
 
+def test_all_known_hq_migration_replaces_country_helper_and_keeps_reopen():
+    low = ALL_HQ.lower()
+    assert low.count("create or replace function") == 2
+    assert "create or replace function public.v2_work_hq_known(p_country text)" in low
+    assert "create or replace function public.v2_next_firm(p_key_id uuid, p_job text)" in low
+    assert "select btrim(coalesce(p_country, '')) <> ''" in ALL_HQ
+    assert "public.v2_work_hq_known(f.hq_country)" in ALL_HQ
+    assert ALL_HQ.count("public.v2_work_hq_known(f.hq_country)") == 2
+    assert "v2_work_hq_na_europe(f.hq_country)" not in ALL_HQ
+    assert "drop function if exists public.v2_work_hq_na_europe(text)" in low
+    assert "and w.done_at is not null" in ALL_HQ
+    assert "w.bot_key_id is distinct from $2" in ALL_HQ
+    assert "w.bot_key_id is distinct from bk.bot_key_id" in ALL_HQ
+    assert "done_at = null" in ALL_HQ
+    assert "g.sort_key - coalesce((g.info->>''dated_or_staged'')::bigint, 0)" in ALL_HQ
+    assert "n_held >= 10" in low
+    assert "interval '2 hours'" in ALL_HQ
+    assert "to_regclass('public.v2_work_claims') is null" in low
+    assert f"revoke all on function {NEXT} from public, anon, authenticated" in low
+    assert f"grant execute on function {NEXT} to service_role" in low
+    assert "revoke all on function public.v2_work_hq_known(text) from public, anon, authenticated" in low
+    assert "grant execute on function public.v2_work_hq_known" not in low
+    for role in ("to anon", "to authenticated", "to public"):
+        assert f"grant execute on function {NEXT} {role}" not in low
+    u = ALL_HQ_UNDO.lower()
+    assert u.count("create or replace function") == 2
+    assert "create or replace function public.v2_work_hq_na_europe(p_country text)" in u
+    assert "create or replace function public.v2_next_firm(p_key_id uuid, p_job text)" in u
+    assert "drop function if exists public.v2_work_hq_known(text)" in u
+    assert ALL_HQ_UNDO.count("public.v2_work_hq_na_europe(f.hq_country)") == 2
+    assert "v2_work_hq_known(f.hq_country)" not in ALL_HQ_UNDO
+    assert "w.bot_key_id is distinct from $2" in ALL_HQ_UNDO
+    assert "n_held >= 10" in u
+
+
 def test_edge_routes_next_firm_and_firm_done_from_the_key():
     assert 'body.action === "next_firm" || body.action === "firm_done"' in FN
     block = FN[FN.index('body.action === "next_firm"'):FN.index('body.action !== "submit"')]
@@ -163,7 +200,9 @@ def db():
         c.execute(SQL)
         c.execute(HOLD)
         c.execute(REOPEN)
+        c.execute(ALL_HQ)
         yield c
+        c.execute(ALL_HQ_UNDO)
         c.execute(REOPEN_UNDO)
         c.execute(UNDO)
         c.execute("drop schema bots cascade; drop table public.v2_deals, public.v2_startups, public.v2_bot_keys, public.v2_firms cascade")
@@ -262,6 +301,7 @@ def test_db_no_new_firm_left_returns_null_with_held_list(db):
 
 
 def test_db_rollback_puts_back_one_firm_per_key(db):
+    db.execute(ALL_HQ_UNDO)
     db.execute(REOPEN_UNDO)
     db.execute(HOLD_UNDO)
     a = nxt(db, K1)
@@ -377,32 +417,40 @@ def test_db_reopen_gives_another_bots_done_gappy_firm_not_your_own(db):
     assert c["firm"]["firm_id"] == 1 and c["held"] is False
 
 
-def test_db_fresh_and_reopen_passes_skip_non_na_europe_and_unknown(db):
-    # Fresh pass skips Asia and unknown country, even when those firms have more startups.
+def test_db_fresh_and_reopen_passes_include_any_known_country_and_skip_blank(db):
+    # Fresh pass hands out Asia (biggest firm) and skips a blank-country firm.
     db.execute("update public.v2_firms set hq_country = 'JP' where firm_id = 1")
     db.execute("update public.v2_firms set hq_country = null where firm_id = 2")
+    assert nxt(db, K1)["firm"]["firm_id"] == 1
     assert nxt(db, K1)["firm"]["firm_id"] == 3
     assert nxt(db, K1)["firm"] is None
-    assert done(db, K1, 3)["ok"]
+    assert done(db, K1, 1)["ok"] and done(db, K1, 3)["ok"]
 
-    # Reopen: a done unknown firm is skipped; a done Czech firm (Europe, and not
-    # on the site's short Europe list) is handed out ahead of the smaller US firm.
+    # Reopen: a done blank firm is skipped; a done Japanese firm is handed out.
     k1_id = db.execute("select bot_key_id from public.v2_bot_keys where bot_name = 'bot-a'").fetchone()[0]
-    db.execute("update public.v2_firms set hq_country = 'CZ' where firm_id = 1")
     db.execute(
         "insert into public.v2_work_claims(job, firm_id, bot_key_id, claimed_at, expires_at, done_at) "
-        "values ('deal_gaps', 1, %s, now(), now() + interval '2 hours', now()), "
-        "       ('deal_gaps', 2, %s, now(), now() + interval '2 hours', now())",
-        (k1_id, k1_id),
+        "values ('deal_gaps', 2, %s, now(), now() + interval '2 hours', now())",
+        (k1_id,),
     )
     b = nxt(db, K2)
     assert b["firm"]["firm_id"] == 1 and b["held"] is False
     assert db.execute("select done_at is not null from public.v2_work_claims where firm_id = 2").fetchone()[0] is True
 
 
+def test_db_all_known_rollback_restores_na_europe_filter(db):
+    db.execute("update public.v2_firms set hq_country = 'JP' where firm_id = 1")
+    db.execute(ALL_HQ_UNDO)
+    # Back to NA/Europe only: the Japanese firm is skipped, the US firms are not.
+    assert nxt(db, K1)["firm"]["firm_id"] == 2
+    assert nxt(db, K1)["firm"]["firm_id"] == 3
+    assert nxt(db, K1)["firm"] is None
+
+
 def test_db_reopen_rollback_stops_handing_out_done_firms(db):
     assert nxt(db, K1)["firm"]["firm_id"] == 1
     assert done(db, K1, 1)["ok"]
+    db.execute(ALL_HQ_UNDO)
     db.execute(REOPEN_UNDO)
     # Hold-10 next_firm does not reopen done firms, and has no country filter.
     b = nxt(db, K2)
