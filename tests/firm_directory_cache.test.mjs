@@ -403,7 +403,7 @@ test('show all is only offered when a group has more options than the five on sc
   const stage = html.slice(html.indexOf('id="facet-stage"'), html.indexOf('id="facet-status"'));
   assert.equal((stage.match(/show-all/g) || []).length, 0);
   const region = html.slice(html.indexOf('id="facet-region"'), html.indexOf('id="facet-industry"'));
-  assert.match(region, /Show all \(7\)/);
+  assert.match(region, /Show all \(8\)/);
 });
 
 test('an activity status filters with that rank and old filter urls are ignored', async () => {
@@ -600,7 +600,7 @@ test('the industry show-all popup lists options alphabetically and the sidebar s
 
   openShowAll('region');
   const regions = optionLabels(els['full-options'].innerHTML);
-  assert.deepEqual(regions, ['Asia', 'LatAm', 'Africa', 'Middle East', 'US / North America', 'Not disclosed', 'Europe']);
+  assert.deepEqual(regions, ['Asia', 'LatAm', 'Africa', 'Middle East', 'US / North America', 'Not disclosed', 'Europe', 'Australia &amp; Oceania']);
   assert.equal(els['pinned-options'].innerHTML, '');
 });
 
