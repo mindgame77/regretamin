@@ -139,6 +139,8 @@ def test_migration_recomputes_stored_region_and_leaves_research_filter():
     assert "when 'AU' then 'oceania'" in MIG
     assert "when 'TR' then 'middle_east'" in MIG
     assert "update public.firm_summary s" in MIG
+    assert "to_regclass('public.firm_summary')" in MIG
+    assert "to_regclass('public.firm_summary')" in UNDO
     assert "set region = public.firm_summary_region(s.hq_country)" in MIG
     assert "drop table" not in MIG.lower()
     assert "drop function" not in MIG.lower()

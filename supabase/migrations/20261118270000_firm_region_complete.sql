@@ -54,6 +54,14 @@ returns text language sql immutable as $$
     else 'unknown' end
 $$;
 
-update public.firm_summary s
-   set region = public.firm_summary_region(s.hq_country)
- where s.region is distinct from public.firm_summary_region(s.hq_country);
+do $mig$
+begin
+  if to_regclass('public.firm_summary') is null then
+    raise notice 'firm_summary missing, skipped recompute';
+    return;
+  end if;
+  update public.firm_summary s
+     set region = public.firm_summary_region(s.hq_country)
+   where s.region is distinct from public.firm_summary_region(s.hq_country);
+end
+$mig$;
