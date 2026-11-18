@@ -306,12 +306,18 @@ $sql$;
   execute 'revoke all on function public.firm_meta_seo(text) from public';
   execute 'revoke all on function public.firm_seo_sitemap(integer, integer) from public';
   execute 'revoke all on function public.firm_seo_directory(integer, integer) from public';
+  -- Supabase default privileges grant EXECUTE on new functions to anon/authenticated directly,
+  -- so revoking from public is not enough for the internal ones.
   if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function public.v2_firm_seo_compute(bigint[]) from anon';
+    execute 'revoke all on function public.v2_firm_seo_refresh(int) from anon';
     execute 'grant execute on function public.firm_meta_seo(text) to anon';
     execute 'grant execute on function public.firm_seo_sitemap(integer, integer) to anon';
     execute 'grant execute on function public.firm_seo_directory(integer, integer) to anon';
   end if;
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on function public.v2_firm_seo_compute(bigint[]) from authenticated';
+    execute 'revoke all on function public.v2_firm_seo_refresh(int) from authenticated';
     execute 'grant execute on function public.firm_meta_seo(text) to authenticated';
     execute 'grant execute on function public.firm_seo_sitemap(integer, integer) to authenticated';
     execute 'grant execute on function public.firm_seo_directory(integer, integer) to authenticated';

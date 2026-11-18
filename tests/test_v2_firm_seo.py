@@ -39,6 +39,11 @@ def test_nothing_is_added_to_the_bot_write_path():
     assert "statement_timeout = ''30s''" in low and "lock_timeout = ''1s''" in low
     assert "manual_edit" in low and "case when s.manual_edit then s.seo_title" in low
     assert "raise notice 'v2 tables missing, v2_firm_seo skipped'" in low
+    # Supabase default privileges grant EXECUTE on new functions to anon/authenticated directly,
+    # so the internal (security definer) job functions must be revoked from those roles by name.
+    for role in ("anon", "authenticated"):
+        for fn in ("v2_firm_seo_compute(bigint[])", "v2_firm_seo_refresh(int)"):
+            assert f"revoke all on function public.{fn} from {role}" in low, (fn, role)
 
 
 def test_rollback_drops_only_the_new_objects():
