@@ -6,6 +6,7 @@
 // claim/done with block legal|reviews|youtube uses the section hold. The same ingest key is used. Plain claim/done ignore block only when it is omitted.
 // Feedback inbox: a successful claim reply also has `notes` (this key's unread notes from the Regretamin team).
 // notes reads them without claiming; notes_ack marks them read for this key only. Neither touches submissions or freezes.
+// deals is read-only: one firm's current deals with deal_id (any bot's), for F12 corrections. only_gaps: no date and no round.
 import { createClient } from "npm:@supabase/supabase-js@2";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const MAX_BYTES = 2_000_000;
@@ -15,7 +16,7 @@ const json = (b: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(b), { status, headers: { ...CORS, "content-type": "application/json", ...extra } });
 const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
   .map((b) => b.toString(16).padStart(2, "0")).join("");
-const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
+const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
 // Domain only: lowercase, no scheme, no leading www, no port, no path.
 const firmDomain = (website: string) => {
   let s = website.trim().toLowerCase();
@@ -179,7 +180,24 @@ Deno.serve(async (req) => {
       const firms = Array.isArray(data.firms) ? data.firms : [];
       return json({ ok: true, bot_id: data.bot_id, days: data.days, counts: data.counts, items, firms }, 200);
     }
-    if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, list_queue or verdict", hint: HINT }, 400);
+    if (body.action === "deals") {
+      const firmId = body.firm_id;
+      if (typeof firmId !== "number" || !Number.isInteger(firmId) || firmId <= 0) {
+        return json({ error: "firm_id must be a positive integer" }, 400);
+      }
+      if (body.only_gaps !== undefined && typeof body.only_gaps !== "boolean") return json({ error: "only_gaps must be true or false" }, 400);
+      const limit = body.limit === undefined ? 500 : body.limit;
+      const offset = body.offset === undefined ? 0 : body.offset;
+      if (!Number.isInteger(limit) || limit < 1 || limit > 500) return json({ error: "limit must be 1-500" }, 400);
+      if (!Number.isInteger(offset) || offset < 0 || offset > 100000) return json({ error: "offset must be 0 or more" }, 400);
+      const { data, error } = await db.rpc("v2_research_firm_deals", {
+        p_key: auth.key_id, p_firm_id: firmId, p_only_gaps: body.only_gaps === true, p_limit: limit, p_offset: offset,
+      });
+      if (error || !data) return json({ error: "server error" }, 500);
+      if (!data.ok) return json({ error: data.error }, data.error === "firm not found" ? 404 : 403);
+      return json(data, 200);
+    }
+    if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, deals, list_queue or verdict", hint: HINT }, 400);
     if (!Array.isArray(body.items) || body.items.length === 0) return json({ error: "items must be a non-empty array", hint: HINT }, 400);
     if (body.dry_run !== undefined && typeof body.dry_run !== "boolean") return json({ error: "dry_run must be true or false" }, 400);
     const { data, error } = await db.rpc("v2_research_submit", { p_key_id: auth.key_id, p_items: body.items, p_dry_run: body.dry_run === true });
