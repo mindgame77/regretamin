@@ -3,6 +3,7 @@
 // v1 research-ingest is untouched. Doc: plans/newdb/21_v2_sender.md
 // add_firm refuses a website whose domain already belongs to a firm, then creates one v2_firms row (or returns the existing firm_id). It does not publish facts.
 // claim reserves one free v2_research_assignments row for 6 hours and returns that v2 firm. done finishes the bot's own row.
+// claim/done with block legal|reviews|youtube uses the section hold. The same ingest key is used. Plain claim/done ignore block only when it is omitted.
 import { createClient } from "npm:@supabase/supabase-js@2";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const MAX_BYTES = 2_000_000;
@@ -12,7 +13,7 @@ const json = (b: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(b), { status, headers: { ...CORS, "content-type": "application/json", ...extra } });
 const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
   .map((b) => b.toString(16).padStart(2, "0")).join("");
-const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N}; max 10 firms per batch";
+const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
 // Domain only: lowercase, no scheme, no leading www, no port, no path.
 const firmDomain = (website: string) => {
   let s = website.trim().toLowerCase();
@@ -69,8 +70,30 @@ Deno.serve(async (req) => {
       if (!data.ok) return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
       return json(data, 200);
     }
-    if (body.action === "claim") {
+    if (body.action === "claim" && body.block === undefined) {
       const { data, error } = await db.rpc("v2_research_claim", { p_key_id: auth.key_id });
+      if (error || !data) return json({ error: "server error" }, 500);
+      bot = data.bot_id ?? "";
+      if (!data.ok) return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
+      return json(data, 200);
+    }
+    if (body.action === "claim") {
+      const block = body.block;
+      if (block !== "legal" && block !== "reviews" && block !== "youtube") {
+        return json({ error: "block must be legal, reviews, or youtube" }, 400);
+      }
+      const { data, error } = await db.rpc("v2_section_claim", { p_key_id: auth.key_id, p_section: block });
+      if (error || !data) return json({ error: "server error" }, 500);
+      bot = data.bot_id ?? "";
+      if (!data.ok) return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
+      return json(data, 200);
+    }
+    if (body.action === "done" && body.block === undefined) {
+      const firmId = body.firm_id;
+      if (typeof firmId !== "number" || !Number.isInteger(firmId) || firmId <= 0) {
+        return json({ error: "firm_id must be the firm from claim" }, 400);
+      }
+      const { data, error } = await db.rpc("v2_research_done", { p_key_id: auth.key_id, p_firm_id: firmId });
       if (error || !data) return json({ error: "server error" }, 500);
       bot = data.bot_id ?? "";
       if (!data.ok) return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
@@ -81,7 +104,11 @@ Deno.serve(async (req) => {
       if (typeof firmId !== "number" || !Number.isInteger(firmId) || firmId <= 0) {
         return json({ error: "firm_id must be the firm from claim" }, 400);
       }
-      const { data, error } = await db.rpc("v2_research_done", { p_key_id: auth.key_id, p_firm_id: firmId });
+      const block = body.block;
+      if (block !== "legal" && block !== "reviews" && block !== "youtube") {
+        return json({ error: "block must be legal, reviews, or youtube" }, 400);
+      }
+      const { data, error } = await db.rpc("v2_section_done", { p_key_id: auth.key_id, p_section: block, p_firm_id: firmId });
       if (error || !data) return json({ error: "server error" }, 500);
       bot = data.bot_id ?? "";
       if (!data.ok) return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
