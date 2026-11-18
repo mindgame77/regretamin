@@ -7,7 +7,8 @@
 // Feedback inbox: a successful claim reply also has `notes` (this key's unread notes from the Regretamin team).
 // notes reads them without claiming; notes_ack marks them read for this key only. Neither touches submissions or freezes.
 // deals is read-only: one firm's current deals with deal_id (any bot's), for F12 corrections. only_gaps: no date and no round.
-// next_firm/firm_done with a job (deal_gaps): a key may hold up to 10 firms per job from v2_work_claims, 2-hour hold. Unknown jobs are rejected.
+// next_firm/firm_done: the database setting v2_work_setting.current_job picks the job (job in the body is optional and only used when no job is set).
+// A key may hold up to 10 firms per job from v2_work_claims, 2-hour hold. Replies and hints name the job actually used.
 import { createClient } from "npm:@supabase/supabase-js@2";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const MAX_BYTES = 2_000_000;
@@ -17,7 +18,7 @@ const json = (b: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(b), { status, headers: { ...CORS, "content-type": "application/json", ...extra } });
 const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
   .map((b) => b.toString(16).padStart(2, "0")).join("");
-const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\",\"job\":\"deal_gaps\"} or {\"action\":\"firm_done\",\"job\":\"deal_gaps\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
+const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
 // Domain only: lowercase, no scheme, no leading www, no port, no path.
 const firmDomain = (website: string) => {
   let s = website.trim().toLowerCase();
@@ -200,8 +201,8 @@ Deno.serve(async (req) => {
       return json(data, 200);
     }
     if (body.action === "next_firm" || body.action === "firm_done") {
-      const job = body.job;
-      if (typeof job !== "string" || !JOB.test(job)) return json({ error: "job must be a job name, for example deal_gaps" }, 400);
+      const job = body.job ?? null;
+      if (job !== null && (typeof job !== "string" || !JOB.test(job))) return json({ error: "job must be a job name, or leave it out" }, 400);
       const firmId = body.firm_id;
       if (body.action === "firm_done" && (typeof firmId !== "number" || !Number.isInteger(firmId) || firmId <= 0)) {
         return json({ error: "firm_id must be the firm from next_firm" }, 400);
@@ -212,11 +213,12 @@ Deno.serve(async (req) => {
       if (error || !data) return json({ error: "server error" }, 500);
       bot = data.bot_id ?? "";
       if (!data.ok) return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
+      const usedJob = typeof data.job === "string" ? data.job : job;
       if (body.action === "next_firm") {
-        const hint = data.firm ? "fix this firm, then send {\"action\":\"firm_done\",\"job\":\"" + job + "\",\"firm_id\":" + data.firm.firm_id + "}" : "no firm left for this job";
+        const hint = data.firm ? "fix this firm, then send {\"action\":\"firm_done\",\"job\":\"" + usedJob + "\",\"firm_id\":" + data.firm.firm_id + "}" : "no firm left for this job";
         return json(await withNotes({ ...data, hint }, auth.key_id), 200);
       }
-      return json({ ...data, hint: "send {\"action\":\"next_firm\",\"job\":\"" + job + "\"} for the next firm" }, 200);
+      return json({ ...data, hint: "send {\"action\":\"next_firm\",\"job\":\"" + usedJob + "\"} for the next firm" }, 200);
     }
     if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, deals, next_firm, firm_done, notes, notes_ack, list_queue or verdict", hint: HINT }, 400);
     if (!Array.isArray(body.items) || body.items.length === 0) return json({ error: "items must be a non-empty array", hint: HINT }, 400);
