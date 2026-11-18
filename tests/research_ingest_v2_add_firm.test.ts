@@ -158,7 +158,7 @@ Deno.test("claim returns one firm and does not read firms or submit", async () =
   eq(j.slug, "plug-and-play", "slug");
   eq(j.name, "Plug and Play", "name");
   eq(j.website, "https://www.plugandplaytechcenter.com", "website");
-  eq(calls.map((c) => c.name), ["ingest_auth", "v2_research_claim"], "rpcs");
+  eq(calls.map((c) => c.name), ["ingest_auth", "v2_research_claim", "v2_bot_notes_unread"], "rpcs");
   eq(calls[1].args.p_key_id, authReply.key_id, "key");
   eq(reads.length, 0, "no table read");
 });
