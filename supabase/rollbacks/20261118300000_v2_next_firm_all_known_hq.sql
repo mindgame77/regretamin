@@ -1,4 +1,4 @@
--- Undo 20261118290000_v2_next_firm_all_known_hq.sql.
+-- Undo 20261118300000_v2_next_firm_all_known_hq.sql.
 -- Restores v2_next_firm and v2_work_hq_na_europe to the NA/Europe definition
 -- (20261118260000). Drops v2_work_hq_known. Existing claims stay as they are.
 

@@ -3,7 +3,7 @@
 -- any region. Null/blank country stays excluded. The 10-hold cap, 2-hour
 -- hold, advisory locks, firm_done, reply shape, and reopen-to-a-different-bot
 -- rule are unchanged.
--- Rollback: supabase/rollbacks/20261118290000_v2_next_firm_all_known_hq.sql
+-- Rollback: supabase/rollbacks/20261118300000_v2_next_firm_all_known_hq.sql
 -- The v2 schema is not created by repo migrations. On a database without
 -- v2_work_claims (CI) this is a no-op.
 
