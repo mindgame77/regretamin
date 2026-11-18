@@ -124,7 +124,8 @@ def _firm(cur, name, city=None, sectors=(), stages=(), founded=None, checked=Non
     if researched:
         cur.execute("insert into v2_research_assignments (firm_id, claimed_by, done_at) values (%s, 'zz', now()) on conflict do nothing", (fid,))
     cur.execute("select refresh_firm_summary(array[%s]::bigint[])", (fid,))
-    cur.execute("update firm_summary set listed = true, researched = %s where firm_id = %s", (researched, fid))
+    # the checked date is firm_summary.added (20261118140000); last_checked_date above covers the older definition
+    cur.execute("update firm_summary set listed = true, researched = %s, added = %s::date::timestamptz where firm_id = %s", (researched, checked, fid))
     return fid
 
 

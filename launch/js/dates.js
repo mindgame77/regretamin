@@ -161,5 +161,13 @@
     if (r === 1) return { cls: 'act-off', text: 'Not active' };
     return { cls: 'act-new', text: 'Not checked yet' };
   }
-  root.RegretActivity = { activityYear: activityYear, countThisYear: countThisYear, rank: rank, label: label };
+  // The database decides the label (api_activity_label): firm list rows carry `activity`, the firm page
+  // carries `activity.label`. fromText only maps that text to its style and rank; label() is the fallback
+  // for data that has no stored label yet.
+  const TEXTS = { 'Active': [3, 'act-on'], 'Low activity': [2, 'act-low'], 'Not active': [1, 'act-off'], 'Not checked yet': [0, 'act-new'] };
+  function fromText(text) {
+    const t = TEXTS[String(text || '')];
+    return t ? { cls: t[1], text: String(text), rank: t[0] } : null;
+  }
+  root.RegretActivity = { activityYear: activityYear, countThisYear: countThisYear, rank: rank, label: label, fromText: fromText };
 })(typeof window !== 'undefined' ? window : globalThis);

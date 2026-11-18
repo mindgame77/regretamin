@@ -6,7 +6,7 @@ What it does
 - Description: `[Firm] is a [stage] VC firm in [City], founded [year]. [N] investments, latest [Mon YYYY]. Checked [Mon D, YYYY] against SEC, court and sanctions records.` Missing parts are left out; at most 160 characters (latest month goes first, then founded year, then the checked sentence).
 - Indexable: live, research done (`firm_summary.researched`) and at least 3 of: city, sector, stage, founded year, investments, a team member. Not indexable: `noindex, follow` and not in the sitemap.
 - Firm pages (`launch/edge/firm.mjs`, mirrored in `launch/build.py`): title/description from `firm_meta_seo`, JSON-LD WebPage + Organization + BreadcrumbList, the facts the page already shows in the first HTML (replaced by js/company.js on load, so the page looks the same), `<h1>` is the firm name only.
-- Sitemap: `firm_seo_sitemap`, indexable firms only, 1,000 per file, `lastmod` = last checked date.
+- Sitemap: `firm_seo_sitemap`, indexable firms only, 1,000 per file, `lastmod` = checked date. The checked date is `firm_summary.added` (the date the firm's data was added), since 20261118140000.
 - `/investors/`: `launch/functions/investors/index.js` adds 100 plain firm links per page (`?page=N`) to the first HTML; js/firms.js redraws the list on load.
 
 Why bot writes are not affected
