@@ -130,13 +130,16 @@
   }
   function activityOf(f) {
     const rule = window.RegretActivity;
-    return rule ? rule.label(f && f.deals_this_year, f && f.deals, f && f.investments, f && f.researched) : null;
+    if (!rule) return null;
+    const stored = f && rule.fromText(f.activity);
+    return stored || rule.label(f && f.deals_this_year, f && f.deals, f && f.investments, f && f.researched);
   }
   // Same rank the Activity column shows. Blank when that column is blank.
   function activityValue(f) {
     const rule = window.RegretActivity;
-    if (!rule || !activityOf(f)) return '';
-    return String(rule.rank(f && f.deals_this_year, f && f.deals, f && f.investments, f && f.researched));
+    const lab = rule ? activityOf(f) : null;
+    if (!lab) return '';
+    return String(lab.rank != null ? lab.rank : rule.rank(f && f.deals_this_year, f && f.deals, f && f.investments, f && f.researched));
   }
   // The four labels come from RegretActivity, in the same order as its ranks.
   function activityOptions(counts) {
@@ -382,7 +385,8 @@
               const year = Number.isFinite(yearN) && yearN > 0 ? Math.trunc(yearN) : 0;
               const deals = Number.isFinite(totalN) && totalN > 0 ? Math.trunc(totalN) : 0;
               const investments = Number.isFinite(invN) && invN > 0 ? Math.trunc(invN) : 0;
-              return { rank: rule.rank(year, deals, investments, row.researched), year: year, deals: deals };
+              const stored = rule.fromText(row.activity);
+              return { rank: stored ? stored.rank : rule.rank(year, deals, investments, row.researched), year: year, deals: deals };
             };
             const ap = pack(a);
             const bp = pack(b);

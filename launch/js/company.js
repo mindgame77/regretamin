@@ -2009,7 +2009,8 @@
     const allDeals = Array.isArray(A.deals) ? A.deals : null;
     const portOnly = uniquePortfolio(allDeals, Array.isArray(A.portfolio_only) ? A.portfolio_only : []);
     const rule = window.RegretActivity;
-    const actLab = allDeals && rule ? rule.label(rule.countThisYear(allDeals), allDeals.length) : null;
+    // The label comes from the database (activity.label, same function as the investors list). Fallback for old payloads.
+    const actLab = rule ? (rule.fromText(A.label) || (allDeals ? rule.label(rule.countThisYear(allDeals), allDeals.length) : null)) : null;
     if (actLab) {
       const u = d0 && safeUrl(d0.url);
       const inner = '<i></i><div><b>' + esc(actLab.text) + '</b></div>';
