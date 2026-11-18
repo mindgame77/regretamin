@@ -53,7 +53,7 @@ test('a 200 page is not CDN-cached, and a new template version is not the previo
   };
   const w = world(pages);
   const fetchImpl = async (url, init) => {
-    assert.equal(url, 'https://db.test/rest/v1/rpc/firm_meta');
+    assert.match(url, /^https:\/\/db\.test\/rest\/v1\/rpc\/firm_meta(_seo)?$/); // firm_meta_seo (SEO migration) or firm_meta
     assert.equal(JSON.parse(init.body).p_slug, 'a16z');
     return Response.json([{ slug: 'a16z', name: 'Andreessen Horowitz', hq: 'Menlo Park, CA', firm_type: 'VC' }]);
   };

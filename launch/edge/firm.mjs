@@ -4,7 +4,8 @@ import STATIC from './static-pages.mjs';
 export const SITE = 'https://regretamin.com/';
 export const SUFFIX = ' · Regretamin';
 export const BRAND = 'Regretamin';
-export const SITEMAP_SIZE = 10000; // firms per sitemap file (1 URL each; /full/ is noindex and not listed)
+export const SITEMAP_SIZE = 1000; // firms per sitemap file: the API returns at most 1,000 rows (1 URL each; /full/ is noindex and not listed)
+export const DIR_SIZE = 100; // /investors/ plain links per page
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,99}$/;
 
 // Same as Python html.escape(s, quote=True)
@@ -15,26 +16,112 @@ export function firmDesc(F) {
   return `Background check on ${esc(F.name)}` + (bits ? ` (${bits})` : '') + ': SEC filings, legal matters, team changes and 10 checks before you take the meeting or the money.';
 }
 
-// Python json.dumps(ensure_ascii=False, separators=(',', ':')) == JSON.stringify for these plain string objects
+// SEO title / description come from v2_firm_seo (firm_meta_seo). No stored row: today's text.
+export const firmTitle = (F) => (F.seo_title && String(F.seo_title).trim()) ? String(F.seo_title).trim() : F.name + SUFFIX;
+export const firmDescText = (F) => (F.seo_description && String(F.seo_description).trim()) ? esc(String(F.seo_description).trim()) : firmDesc(F);
+const facts = (F) => (F.seo_facts && typeof F.seo_facts === 'object' && !Array.isArray(F.seo_facts)) ? F.seo_facts : null;
+const str = (v) => (typeof v === 'string' && v.trim()) ? v.trim() : null;
+const https = (u) => (typeof u === 'string' && /^https?:\/\/[^\s"<>]+$/i.test(u)) ? u : null;
+const list = (v) => Array.isArray(v) ? v : [];
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// "2026-03-31" -> "Mar 31, 2026" (same as launch/js/dates.js for a plain date)
+export function fmtDay(d) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || ''));
+  return m ? `${MON[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}` : '';
+}
+const hostOf = (u) => { const m = /^https?:\/\/(?:www\.)?([^/:?#]+)/i.exec(u || ''); return m ? m[1].toLowerCase() : ''; };
+
+function orgLd(F, X) {
+  const org = { '@type': 'Organization', name: F.name };
+  const legal = (X && str(X.legal_name)) || F.legal_name;
+  if (legal) org.legalName = legal;
+  const site = (X && https(X.website)) || (F.primary_domain ? 'https://' + F.primary_domain : null);
+  if (site) org.url = site;
+  const a = X && X.address && typeof X.address === 'object' ? X.address : null;
+  if (a && (str(a.city) || str(a.region) || str(a.country))) {
+    const pa = { '@type': 'PostalAddress' };
+    if (str(a.street)) pa.streetAddress = str(a.street);
+    if (str(a.city)) pa.addressLocality = str(a.city);
+    if (str(a.region)) pa.addressRegion = str(a.region);
+    if (str(a.postal)) pa.postalCode = str(a.postal);
+    if (str(a.country)) pa.addressCountry = str(a.country);
+    org.address = pa;
+  } else if (F.hq) org.address = F.hq;
+  const fy = (X && X.founded) || F.founded_year;
+  if (fy) org.foundingDate = String(fy);
+  if (X) {
+    const same = [...list(X.social).map(https), ...list(X.registry).map((r) => r && https(r.url))].filter(Boolean);
+    if (same.length) org.sameAs = [...new Set(same)];
+    const ids = list(X.registry).filter((r) => r && str(r.type) && str(r.value)).map((r) => ({ '@type': 'PropertyValue', propertyID: str(r.type), value: str(r.value) }));
+    if (ids.length) org.identifier = ids;
+    const ppl = list(X.leaders).filter((p) => p && str(p.name));
+    const person = (p) => { const o = { '@type': 'Person', name: str(p.name) }; if (str(p.title)) o.jobTitle = str(p.title); return o; };
+    if (ppl.some((p) => p.founder)) org.founder = ppl.filter((p) => p.founder).map(person);
+    if (ppl.some((p) => !p.founder)) org.employee = ppl.filter((p) => !p.founder).map(person);
+  }
+  return org;
+}
+
+// Python json.dumps(ensure_ascii=False, separators=(',', ':')) == JSON.stringify for these plain objects
 export function firmHead(F, full = false) {
   const url = `${SITE}vc/${F.slug}/` + (full ? 'full/' : '');
-  const title = esc(F.name + SUFFIX);
-  const d = firmDesc(F);
-  const org = { '@type': 'Organization', name: F.name };
-  if (F.legal_name) org.legalName = F.legal_name;
-  if (F.primary_domain) org.url = 'https://' + F.primary_domain;
-  if (F.hq) org.address = F.hq;
-  if (F.founded_year) org.foundingDate = String(F.founded_year);
+  const X = facts(F);
+  const title = esc(firmTitle(F));
+  const d = firmDescText(F);
   // Paywalled-content markup: the check table (.gveil, blurred until 1 credit is spent) is not free.
-  const ld = { '@context': 'https://schema.org', '@type': 'WebPage', name: F.name + SUFFIX, url, about: org,
-    isAccessibleForFree: false, hasPart: { '@type': 'WebPageElement', isAccessibleForFree: false, cssSelector: '.gveil' } };
+  const page = { '@type': 'WebPage', '@id': url, name: firmTitle(F), url };
+  if (str(F.seo_description)) page.description = str(F.seo_description);
+  if (X && str(X.last_checked)) page.dateModified = str(X.last_checked);
+  page.mainEntity = orgLd(F, X);
+  page.breadcrumb = { '@id': url + '#breadcrumb' };
+  page.isAccessibleForFree = false;
+  page.hasPart = { '@type': 'WebPageElement', isAccessibleForFree: false, cssSelector: '.gveil' };
+  const crumbs = { '@type': 'BreadcrumbList', '@id': url + '#breadcrumb', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: BRAND, item: SITE },
+    { '@type': 'ListItem', position: 2, name: 'Investors', item: SITE + 'investors/' },
+    { '@type': 'ListItem', position: 3, name: F.name, item: `${SITE}vc/${F.slug}/` }] };
+  const ld = { '@context': 'https://schema.org', '@graph': [page, crumbs] };
   const ldj = JSON.stringify(ld).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
   // /full/ is noindex, follow (Alex, Oct 23) with a self canonical; it is also left out of the sitemaps.
-  // 'Not checked yet' pages (firm_meta.indexable false: no research yet) are noindex, follow too, and not in the sitemaps.
+  // Firms not ready for Google (v2_firm_seo.seo_indexable false: not researched or too few facts) are noindex, follow too, and not in the sitemaps.
   return (full || F.indexable === false ? '<meta name="robots" content="noindex, follow">' : '') + `<meta name="description" content="${d}"><link rel="canonical" href="${url}">` +
     `<meta property="og:type" content="website"><meta property="og:site_name" content="${BRAND}"><meta property="og:title" content="${title}">` +
     `<meta property="og:description" content="${d}"><meta property="og:url" content="${url}"><meta name="twitter:card" content="summary">` +
     `<script type="application/ld+json">${ldj}</script>`;
+}
+
+// Server-rendered facts in the first HTML (crawlers and AI tools that do not run JS). Only facts the page already
+// shows: HQ, founded, website, sectors, stages, latest deal, team. js/company.js replaces both blocks on load, so the
+// page looks exactly as before once it has loaded. No stored facts: today's grey loading shapes.
+export const SK_META = '<i class="sk" style="width:300px"></i>';
+export function firmMeta(F) {
+  const X = facts(F);
+  if (!X) return SK_META;
+  const site = https(X.website), host = hostOf(site);
+  const bits = [str(X.hq) ? esc(str(X.hq)) : '', X.founded ? esc(`Founded ${X.founded}`) : '',
+    host ? `<a href="${esc(site)}" target="_blank" rel="noopener">${esc(host)}</a>` : ''].filter(Boolean);
+  return bits.length ? bits.join(' · ') : SK_META;
+}
+export function firmMain(F, skeleton) {
+  const X = facts(F);
+  if (!X) return skeleton;
+  const n = esc(F.name);
+  const kv = (k, v) => `<div class="kv"><span class="k">${esc(k)}</span><span>${v}</span></div>`;
+  const rows = [];
+  if (str(X.hq)) rows.push(kv('HQ', esc(str(X.hq))));
+  if (X.founded) rows.push(kv('Founded', esc(String(X.founded))));
+  const site = https(X.website);
+  if (site) rows.push(kv('Website', `<a href="${esc(site)}" target="_blank" rel="noopener">${esc(hostOf(site))}</a>`));
+  const sec = list(X.sectors).map(str).filter(Boolean);
+  if (sec.length) rows.push(kv('Sectors', esc(sec.join(', '))));
+  const stg = list(X.stages).map(str).filter(Boolean);
+  if (stg.length) rows.push(kv('Stages', esc(stg.join(', '))));
+  if (str(X.latest_company) && str(X.latest_deal_date)) rows.push(kv('Last deal', esc(`${str(X.latest_company)} · ${fmtDay(X.latest_deal_date)}`)));
+  const team = list(X.leaders).filter((p) => p && str(p.name));
+  let out = '';
+  if (rows.length) out += `<section class="ps" id="seo-facts"><h2>${n} at a glance</h2><div class="kvs">${rows.join('')}</div></section>`;
+  if (team.length) out += `<section class="ps" id="seo-team"><h2>${n} team</h2><div class="kvs">${team.map((p) => kv(str(p.name), esc(str(p.title) || ''))).join('')}</div></section>`;
+  return out || skeleton;
 }
 
 // Official SEC names arrive in ALL CAPS; /full/ shows them in normal (title) case, display only. Keep identical to sec_title() in launch/build.py.
@@ -72,8 +159,11 @@ export function secTitle(s) {
 }
 
 // Header title and search use the common name on every view. legalName in the page head stays the SEC name.
-export const fillFirm = (tpl, F, full = false) =>
-  tpl.split('{{HEAD}}').join(firmHead(F, full)).split('{{NAME}}').join(esc(F.name)).split('{{SLUG}}').join(esc(F.slug));
+// {{TITLE}} sits in <title>; {{META}} and {{PMAIN}} are the server-rendered facts (filled last, so stored text is never re-read as a placeholder).
+export const SK_PMAIN_MARK = '{{PMAIN}}';
+export const fillFirm = (tpl, F, full = false, skeleton = '') =>
+  tpl.split('{{HEAD}}').join(firmHead(F, full)).split('{{TITLE}}').join(esc(firmTitle(F))).split('{{NAME}}').join(esc(F.name)).split('{{SLUG}}').join(esc(F.slug))
+    .split('{{META}}').join(firmMeta(F)).split('{{PMAIN}}').join(firmMain(F, skeleton));
 
 // /vc/<slug>/ and /vc/<slug>/full/ are Full report. /vc/<slug>/checks/ is Checks.
 // -> {slug, full, checks} | {redirect} | null
@@ -94,8 +184,13 @@ async function rpc(env, fetchImpl, fn, args) {
     headers: { apikey: env.SUPABASE_ANON_KEY, authorization: `Bearer ${env.SUPABASE_ANON_KEY}`, 'content-type': 'application/json' },
     body: JSON.stringify(args),
   });
-  if (!r.ok) throw new Error(`rpc ${fn} ${r.status}`);
+  if (!r.ok) { const e = new Error(`rpc ${fn} ${r.status}`); e.status = r.status; throw e; }
   return r.json();
+}
+// New RPC first; before its migration is applied PostgREST answers 404 and the old one is used.
+async function rpcOr(env, fetchImpl, fn, old, args) {
+  try { return await rpc(env, fetchImpl, fn, args); }
+  catch (e) { if (e.status === 404) return rpc(env, fetchImpl, old, args); throw e; }
 }
 
 const HTML = 'text/html; charset=utf-8';
@@ -109,7 +204,7 @@ export async function renderFirm({ request, env, assets, fetchImpl = fetch }) {
   if (!p) return notFound();
   if (p.redirect) return Response.redirect(new URL(p.redirect + url.search, url.origin).toString(), 301);
   let rows;
-  try { rows = await rpc(env, fetchImpl, 'firm_meta', { p_slug: p.slug }); }
+  try { rows = await rpcOr(env, fetchImpl, 'firm_meta_seo', 'firm_meta', { p_slug: p.slug }); }
   catch (e) { return new Response('Temporary error, please retry.', { status: 503, headers: { 'cache-control': 'no-store', 'retry-after': '30' } }); }
   const F = Array.isArray(rows) ? rows[0] : null;
   if (!F) {
@@ -122,9 +217,11 @@ export async function renderFirm({ request, env, assets, fetchImpl = fetch }) {
     return notFound();
   }
   const tpl = await asset(p.checks ? '/_tpl/checks' : p.full ? '/_tpl/full' : '/_tpl/summary');
+  const skr = await assets.fetch(new URL('/_tpl/pmain', url.origin)); // loading shapes for a firm with no stored facts
+  const skeleton = skr.ok ? await skr.text() : '';
   const headers = { 'content-type': HTML, 'cache-control': cacheHdr(3600) };
   if (env.NOINDEX === '1') headers['x-robots-tag'] = 'noindex';
-  return new Response(fillFirm(tpl, F, p.full), { status: 200, headers });
+  return new Response(fillFirm(tpl, F, p.full, skeleton), { status: 200, headers });
 }
 
 // Generated from the same registry as navigation and page heads.
@@ -132,8 +229,18 @@ export async function renderFirm({ request, env, assets, fetchImpl = fetch }) {
 const XML = 'application/xml; charset=utf-8';
 const xmlEsc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+// Firm sitemap rows: firm_seo_sitemap (indexable firms only, lastmod = last checked date).
+// Before that migration: firm_sitemap (every live firm, lastmod = date the page went live).
+async function sitemapRows(env, fetchImpl, page, size) {
+  try { return (await rpc(env, fetchImpl, 'firm_seo_sitemap', { p_page: page, p_size: size })).map((r) => ({ slug: r.slug, lastmod: r.lastmod, total: r.total })); }
+  catch (e) {
+    if (e.status !== 404) throw e;
+    return (await rpc(env, fetchImpl, 'firm_sitemap', { p_page: page, p_size: size })).map((r) => ({ slug: r.slug, lastmod: r.updated_at, total: r.total }));
+  }
+}
+
 export async function sitemapIndex({ env, fetchImpl = fetch }) {
-  const rows = await rpc(env, fetchImpl, 'firm_sitemap', { p_page: 1, p_size: 1 });
+  const rows = await sitemapRows(env, fetchImpl, 1, 1);
   const total = rows.length ? Number(rows[0].total) : 0;
   const n = Math.max(1, Math.ceil(total / SITEMAP_SIZE));
   const locs = ['sitemaps/static.xml', ...Array.from({ length: n }, (_, i) => `sitemaps/firms-${i + 1}.xml`)];
@@ -148,14 +255,44 @@ export async function sitemapPart({ name, env, fetchImpl = fetch }) {
   else {
     const m = /^firms-([1-9][0-9]{0,4})\.xml$/.exec(name);
     if (!m) return new Response('Not found', { status: 404 });
-    const rows = await rpc(env, fetchImpl, 'firm_sitemap', { p_page: Number(m[1]), p_size: SITEMAP_SIZE });
+    const rows = await sitemapRows(env, fetchImpl, Number(m[1]), SITEMAP_SIZE);
     if (!rows.length) return new Response('Not found', { status: 404 });
-    urls = rows.flatMap((r) => {
-      const lm = r.updated_at ? String(r.updated_at).slice(0, 10) : null;
-      return [{ loc: `${SITE}vc/${r.slug}/`, lastmod: lm }]; // /full/ is noindex: not listed
-    });
+    urls = rows.map((r) => ({ loc: `${SITE}vc/${r.slug}/`, lastmod: r.lastmod ? String(r.lastmod).slice(0, 10) : null })); // /full/ is noindex: not listed
   }
+  // No priority / changefreq: search engines ignore them.
   const body = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
     urls.map((u) => `<url><loc>${xmlEsc(u.loc)}</loc>${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : ''}</url>\n`).join('') + '</urlset>\n';
   return new Response(body, { headers: { 'content-type': XML, 'cache-control': cacheHdr(3600) } });
+}
+
+// /investors/: the list is drawn by js/firms.js after load. The first HTML gets the same firms as plain
+// <a href> links (100 per page, ?page=N, prev/next links) inside #firms-list, which firms.js clears on load,
+// so the page looks the same once it has loaded. Any DB error: the static page as it is today.
+export function investorsLinks(rows, page, total) {
+  const pages = Math.max(1, Math.ceil(total / DIR_SIZE));
+  const a = rows.map((r) => `<a class="frow" href="/vc/${esc(r.slug)}/"><span class="fnm"><b>${esc(r.name)}</b></span><span class="fcity">${esc(r.city || '')}</span></a>`).join('');
+  const nav = [page > 1 ? `<a href="/investors/${page > 2 ? '?page=' + (page - 1) : ''}" rel="prev">Previous page</a>` : '',
+    page < pages ? `<a href="/investors/?page=${page + 1}" rel="next">Next page</a>` : ''].filter(Boolean).join(' ');
+  return a + (nav ? `<p class="hint">${nav}</p>` : '');
+}
+export async function renderInvestors({ request, env, assets, fetchImpl = fetch }) {
+  const url = new URL(request.url);
+  const res = await assets.fetch(new URL('/investors/', url.origin));
+  if (!res.ok) return res;
+  const html = await res.text();
+  const raw = url.searchParams.get('page');
+  const page = raw === null ? 1 : (/^[1-9][0-9]{0,3}$/.test(raw) ? Number(raw) : 0);
+  const plain = () => new Response(html, { status: 200, headers: { 'content-type': HTML, 'cache-control': cacheHdr(300) } });
+  if (!page) return plain();
+  let rows;
+  try { rows = await rpc(env, fetchImpl, 'firm_seo_directory', { p_page: page, p_size: DIR_SIZE }); } catch (e) { return plain(); }
+  if (!Array.isArray(rows) || !rows.length) return page === 1 ? plain() : new Response(await (await assets.fetch(new URL('/_tpl/404', url.origin))).text(), { status: 404, headers: { 'content-type': HTML, 'cache-control': cacheHdr(300) } });
+  const total = Number(rows[0].total) || rows.length;
+  const mark = '<div class="flist" id="firms-list"></div>';
+  if (!html.includes(mark)) return plain();
+  let out = html.replace(mark, `<div class="flist" id="firms-list">${investorsLinks(rows, page, total)}</div>`);
+  if (page > 1) out = out.replace(`<link rel="canonical" href="${SITE}investors/">`, `<link rel="canonical" href="${SITE}investors/?page=${page}">`);
+  const headers = { 'content-type': HTML, 'cache-control': cacheHdr(3600) };
+  if (env.NOINDEX === '1') headers['x-robots-tag'] = 'noindex';
+  return new Response(out, { status: 200, headers });
 }

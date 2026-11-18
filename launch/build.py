@@ -84,29 +84,124 @@ AUTH_HINT = ('(function(){var d=document.documentElement,c="au-out";try{for(var 
 SITE = 'https://regretamin.com/'
 # Firm pages: ONE template per view (summary, full) with {{...}} placeholders. Static pages (GitHub Pages) and the
 # Cloudflare Pages Function (launch/functions/_firm.js) fill the same template the same way: keep fill() and fillFirm() identical.
-T_NAME, T_SLUG, T_HEAD = '{{NAME}}', '{{SLUG}}', '{{HEAD}}'
+T_NAME, T_SLUG, T_HEAD, T_TITLE, T_META, T_PMAIN = '{{NAME}}', '{{SLUG}}', '{{HEAD}}', '{{TITLE}}', '{{META}}', '{{PMAIN}}'
 
 def firm_desc(F):
     bits = ', '.join(E(x) for x in (F.get('firm_type'), F.get('hq')) if x)
     return f'Background check on {E(F["name"])}' + (f' ({bits})' if bits else '') + ': SEC filings, legal matters, team changes and 10 checks before you take the meeting or the money.'
 
+# SEO title / description come from v2_firm_seo (firm_meta_seo). No stored row: today's text. Keep identical to launch/edge/firm.mjs.
+def _str(v):
+    return v.strip() if isinstance(v, str) and v.strip() else None
+
+def _https(u):
+    return u if isinstance(u, str) and re.fullmatch(r'https?://[^\s"<>]+', u, re.I) else None
+
+def _list(v):
+    return v if isinstance(v, list) else []
+
+def _facts(F):
+    X = F.get('seo_facts')
+    return X if isinstance(X, dict) else None
+
+def firm_title(F):
+    return _str(F.get('seo_title')) or F['name'] + S['title_suffix']
+
+def firm_desc_text(F):
+    return E(_str(F.get('seo_description'))) if _str(F.get('seo_description')) else firm_desc(F)
+
+MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+def fmt_day(d):
+    m = re.match(r'(\d{4})-(\d{2})-(\d{2})', str(d or ''))
+    return f'{MON[int(m.group(2)) - 1]} {int(m.group(3))}, {m.group(1)}' if m else ''
+
+def _host(u):
+    m = re.match(r'https?://(?:www\.)?([^/:?#]+)', u or '', re.I)
+    return m.group(1).lower() if m else ''
+
+def _org_ld(F, X):
+    org = {'@type': 'Organization', 'name': F['name']}
+    legal = (X and _str(X.get('legal_name'))) or F.get('legal_name')
+    if legal: org['legalName'] = legal
+    site = (X and _https(X.get('website'))) or ('https://' + F['primary_domain'] if F.get('primary_domain') else None)
+    if site: org['url'] = site
+    a = X.get('address') if X and isinstance(X.get('address'), dict) else None
+    if a and (_str(a.get('city')) or _str(a.get('region')) or _str(a.get('country'))):
+        pa = {'@type': 'PostalAddress'}
+        for k, n in (('street', 'streetAddress'), ('city', 'addressLocality'), ('region', 'addressRegion'), ('postal', 'postalCode'), ('country', 'addressCountry')):
+            if _str(a.get(k)): pa[n] = _str(a.get(k))
+        org['address'] = pa
+    elif F.get('hq'): org['address'] = F['hq']
+    fy = (X and X.get('founded')) or F.get('founded_year')
+    if fy: org['foundingDate'] = str(fy)
+    if X:
+        same = [u for u in [_https(u) for u in _list(X.get('social'))] + [isinstance(r, dict) and _https(r.get('url')) or None for r in _list(X.get('registry'))] if u]
+        if same: org['sameAs'] = list(dict.fromkeys(same))
+        ids = [{'@type': 'PropertyValue', 'propertyID': _str(r.get('type')), 'value': _str(r.get('value'))} for r in _list(X.get('registry')) if isinstance(r, dict) and _str(r.get('type')) and _str(r.get('value'))]
+        if ids: org['identifier'] = ids
+        ppl = [p for p in _list(X.get('leaders')) if isinstance(p, dict) and _str(p.get('name'))]
+        def person(p):
+            o = {'@type': 'Person', 'name': _str(p.get('name'))}
+            if _str(p.get('title')): o['jobTitle'] = _str(p.get('title'))
+            return o
+        if any(p.get('founder') for p in ppl): org['founder'] = [person(p) for p in ppl if p.get('founder')]
+        if any(not p.get('founder') for p in ppl): org['employee'] = [person(p) for p in ppl if not p.get('founder')]
+    return org
+
 def firm_head(F, full=False):
     url = f'{SITE}vc/{F["slug"]}/' + ('full/' if full else '')
-    title = E(F['name'] + S['title_suffix'])
-    d = firm_desc(F)
-    org = {'@type': 'Organization', 'name': F['name']}
-    if F.get('legal_name'): org['legalName'] = F['legal_name']
-    if F.get('primary_domain'): org['url'] = 'https://' + F['primary_domain']
-    if F.get('hq'): org['address'] = F['hq']
-    if F.get('founded_year'): org['foundingDate'] = str(F['founded_year'])
-    ld = {'@context': 'https://schema.org', '@type': 'WebPage', 'name': F['name'] + S['title_suffix'], 'url': url, 'about': org,
-          'isAccessibleForFree': False, 'hasPart': {'@type': 'WebPageElement', 'isAccessibleForFree': False, 'cssSelector': '.gveil'}}
+    X = _facts(F)
+    title = E(firm_title(F))
+    d = firm_desc_text(F)
+    page_ld = {'@type': 'WebPage', '@id': url, 'name': firm_title(F), 'url': url}
+    if _str(F.get('seo_description')): page_ld['description'] = _str(F.get('seo_description'))
+    if X and _str(X.get('last_checked')): page_ld['dateModified'] = _str(X.get('last_checked'))
+    page_ld['mainEntity'] = _org_ld(F, X)
+    page_ld['breadcrumb'] = {'@id': url + '#breadcrumb'}
+    page_ld['isAccessibleForFree'] = False
+    page_ld['hasPart'] = {'@type': 'WebPageElement', 'isAccessibleForFree': False, 'cssSelector': '.gveil'}
+    crumbs = {'@type': 'BreadcrumbList', '@id': url + '#breadcrumb', 'itemListElement': [
+        {'@type': 'ListItem', 'position': 1, 'name': S['brand'], 'item': SITE},
+        {'@type': 'ListItem', 'position': 2, 'name': 'Investors', 'item': SITE + 'investors/'},
+        {'@type': 'ListItem', 'position': 3, 'name': F['name'], 'item': f'{SITE}vc/{F["slug"]}/'}]}
+    ld = {'@context': 'https://schema.org', '@graph': [page_ld, crumbs]}
     ldj = json.dumps(ld, ensure_ascii=False, separators=(',', ':')).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
-    # /full/ and 'Not checked yet' pages (indexable false: no research yet) are noindex, follow
+    # /full/ and firms not ready for Google (indexable false) are noindex, follow
     return (('<meta name="robots" content="noindex, follow">' if full or F.get('indexable') is False else '') + f'<meta name="description" content="{d}"><link rel="canonical" href="{url}">'
             f'<meta property="og:type" content="website"><meta property="og:site_name" content="{S["brand"]}"><meta property="og:title" content="{title}">'
             f'<meta property="og:description" content="{d}"><meta property="og:url" content="{url}"><meta name="twitter:card" content="summary">'
             f'<script type="application/ld+json">{ldj}</script>')
+
+# Server-rendered facts in the first HTML: only facts the page already shows. js/company.js replaces both blocks on load.
+SK_META = '<i class="sk" style="width:300px"></i>'
+def firm_meta_html(F):
+    X = _facts(F)
+    if not X: return SK_META
+    site = _https(X.get('website')); host = _host(site)
+    bits = [b for b in (E(_str(X.get('hq'))) if _str(X.get('hq')) else '', E(f'Founded {X["founded"]}') if X.get('founded') else '',
+                        f'<a href="{E(site)}" target="_blank" rel="noopener">{E(host)}</a>' if host else '') if b]
+    return ' · '.join(bits) if bits else SK_META
+
+def firm_main_html(F, skeleton):
+    X = _facts(F)
+    if not X: return skeleton
+    n = E(F['name'])
+    kv = lambda k, v: f'<div class="kv"><span class="k">{E(k)}</span><span>{v}</span></div>'
+    rows = []
+    if _str(X.get('hq')): rows.append(kv('HQ', E(_str(X.get('hq')))))
+    if X.get('founded'): rows.append(kv('Founded', E(str(X['founded']))))
+    site = _https(X.get('website'))
+    if site: rows.append(kv('Website', f'<a href="{E(site)}" target="_blank" rel="noopener">{E(_host(site))}</a>'))
+    sec = [x for x in map(_str, _list(X.get('sectors'))) if x]
+    if sec: rows.append(kv('Sectors', E(', '.join(sec))))
+    stg = [x for x in map(_str, _list(X.get('stages'))) if x]
+    if stg: rows.append(kv('Stages', E(', '.join(stg))))
+    if _str(X.get('latest_company')) and _str(X.get('latest_deal_date')): rows.append(kv('Last deal', E(f'{_str(X.get("latest_company"))} · {fmt_day(X.get("latest_deal_date"))}')))
+    team = [p for p in _list(X.get('leaders')) if isinstance(p, dict) and _str(p.get('name'))]
+    out = ''
+    if rows: out += f'<section class="ps" id="seo-facts"><h2>{n} at a glance</h2><div class="kvs">{"".join(rows)}</div></section>'
+    if team: out += f'<section class="ps" id="seo-team"><h2>{n} team</h2><div class="kvs">{"".join(kv(_str(p.get("name")), E(_str(p.get("title")) or "")) for p in team)}</div></section>'
+    return out or skeleton
 
 # Official SEC names arrive in ALL CAPS ("IVP MANAGEMENT, L.L.C."). /full/ shows them in normal (title) case, display only
 # (the stored name and the JSON-LD legalName stay as filed). Keep identical to secTitle() in launch/edge/firm.mjs.
@@ -143,8 +238,9 @@ def sec_title(s):
         out.append(re.sub("[^\\s\\-/'’&]+", lambda m: _sec_part(m.group(0)), w))
     return ' '.join(out)
 
-def fill(tpl, F, full=False):  # header and search use the common name; legalName in the page head stays the SEC name
-    return tpl.replace(T_HEAD, firm_head(F, full)).replace(T_NAME, E(F['name'])).replace(T_SLUG, E(F['slug']))
+def fill(tpl, F, full=False):  # header and search use the common name; legalName in the page head stays the SEC name. Same order as fillFirm().
+    return (tpl.replace(T_HEAD, firm_head(F, full)).replace(T_TITLE, E(firm_title(F))).replace(T_NAME, E(F['name'])).replace(T_SLUG, E(F['slug']))
+            .replace(T_META, firm_meta_html(F)).replace(T_PMAIN, firm_main_html(F, SK_PMAIN)))
 
 FOOT = lambda root: '<footer class="ft"><span>' + E(S["footer"]["copyright"]) + '</span>' + footer_links(S, root) + '</footer>'
 
@@ -172,7 +268,7 @@ SK_KF = ''.join(f'<span class="skp">{SK(w)}</span>' for w in ('290px', '310px', 
 SK_HFS = ''.join(f'<div class="hf skc">{SK("62%", "s")}{SK("80%", "b")}{SK("46%", "c")}</div>' for _ in range(4))
 SK_CSUM = '<div class="csh">' + SK('120px') + SK('110px', 's') + '</div><div class="cks">' + ''.join(f'<span class="ck skc">{SK("16px", "s")}{SK(w, "s")}{SK("58px", "c")}</span>' for w in ('70%', '60%', '75%', '55%', '68%') * 2) + '</div>'
 SK_SPL = ''.join(f'<span class="spp skc">{SK(w, "s")}</span>' for w in ('70px', '90px', '110px', '96px', '108px', '120px', '82px', '64px'))
-SK_PMAIN = ''.join(f'<div class="ps skc"><h2>{SK("62%")}</h2>' + ''.join(f'<div class="kv"><span class="k">{SK("80%", "s")}</span><span>{SK(w, "s")}</span></div>' for w in ('70%', '55%', '64%')) + '</div>' for _ in range(2))
+SK_PMAIN = ''.join(f'<div class="ps skc"><p class="skh">{SK("62%")}</p>' + ''.join(f'<div class="kv"><span class="k">{SK("80%", "s")}</span><span>{SK(w, "s")}</span></div>' for w in ('70%', '55%', '64%')) + '</div>' for _ in range(2))
 SK_TOC = SK('60%') + ''.join(SK(w, 's') for w in ('40%', '55%', '48%', '62%', '44%', '58%'))
 def skel():  # loading placeholder for the checks table (same table markup, grey shapes), replaced by js/company.js once firm_page() answers
     T = COPY['company']['table']
@@ -189,7 +285,7 @@ def ftabs(on):  # Checks and Full report are both in the page. js/app.js shows o
 def pay_case(root=''):  # simpler unlock popup (approved mockup). Summary and /full/ both include it.
     p = S['pay']
     return (f'<div class="ov pp-ov" id="paycase" hidden><div class="pp s" role="dialog" aria-modal="true" aria-labelledby="pph">'
-            f'<button class="pp-x" data-close aria-label="{p["close"]}">×</button><header class="pp-hero"><h1 id="pph"></h1></header>'
+            f'<button class="pp-x" data-close aria-label="{p["close"]}">×</button><header class="pp-hero"><p id="pph"></p></header>'
             f'<label class="pready" id="pready" hidden><span>{p["ready_label"]}</span>'
             f'<input type="email" name="email" placeholder="{p["email_placeholder"]}" aria-label="{p["ready_label"]}" autocomplete="email"></label>'
             f'<button class="pb v big" id="usecheck" type="button" disabled>{p["check"]}</button>'
@@ -202,13 +298,13 @@ def firm_shell(F, root, tab):  # both tabs in one shell. tab is the one shown be
     checks_hidden = '' if tab == 'checks' else ' hidden'
     full_hidden = '' if tab == 'full' else ' hidden'
     return f'''<main class="wrap sumpg prof ld" data-firm="{E(F["slug"])}" data-tab="{tab}"><div class="rh">{bigsearch(F, "ps0")}</div>
-<div class="ph"><h1>{E(F["name"])}{SAVE}</h1><p class="m"><i class="sk" style="width:300px"></i></p><div class="actw"><div class="hfs">{SK_HFS}</div></div></div>
+<div class="ph"><div class="ph1"><h1>{E(F["name"])}</h1>{SAVE}</div><p class="m">{T_META}</p><div class="actw"><div class="hfs">{SK_HFS}</div></div></div>
 {checking_box()}{ftabs(tab)}<div class="cban" hidden></div>
 <div id="panel-checks"{checks_hidden}><div class="list">{skel()}</div>
 <div class="rgt-see"><button type="button" data-tab="full">{Q["see_full"]}</button></div></div>
 <div id="panel-full"{full_hidden}><div class="spl">{SK_SPL}</div>
 <div class="unlock" id="lockcard" hidden><div><b></b><p></p></div><button class="btn" id="unlock">{r["lock_button"]}</button></div>
-<div class="pgrid"><div class="pmain">{SK_PMAIN}</div><nav class="toc" aria-label="{r["toc_aria"]}">{SK_TOC}</nav></div></div>
+<div class="pgrid"><div class="pmain">{T_PMAIN}</div><nav class="toc" aria-label="{r["toc_aria"]}">{SK_TOC}</nav></div></div>
 <p class="fine">{r["fine"]}</p></main>
 {pay_case(root)}'''
 
@@ -244,6 +340,19 @@ def _rpc(fn, args):
                 raise
             time.sleep(2 * (attempt + 1))
 
+_SEO_RPC = [True]
+def load_firm(slug):
+    """firm_meta_seo (firm_meta + stored SEO title, description, facts). Before that migration: firm_meta."""
+    if _SEO_RPC[0]:
+        try:
+            rows = _rpc('firm_meta_seo', {'p_slug': slug})
+            return rows[0] if rows else None
+        except urllib.error.HTTPError as e:
+            if e.code != 404: raise
+            _SEO_RPC[0] = False
+    rows = _rpc('firm_meta', {'p_slug': slug})
+    return rows[0] if rows else None
+
 def launch_firms():
     """Firms that get a page. With SUPABASE_URL/ANON_KEY, walk firm_sitemap and load firm_meta
     for each slug. Those RPCs read v2_firm_live joined to v2_firms, so a firm that goes live
@@ -263,9 +372,8 @@ def launch_firms():
         page_n += 1
     firms = []
     for slug, added in slugs:
-        rows = _rpc('firm_meta', {'p_slug': slug})
-        if rows:
-            row = rows[0]
+        row = load_firm(slug)
+        if row:
             # firm_sitemap.updated_at is v2_firm_live.live_since, the date the public page appeared.
             # firm_meta.updated_at is greatest(live_since, last_checked_date) and is not the added date.
             row['added'] = added
@@ -285,9 +393,10 @@ def main():
     shutil.copy(os.path.join(HERE, 'CNAME'), OUT)  # GitHub Pages custom domain (regretamin.com)
     firms = []
     T = {'name': T_NAME, 'slug': T_SLUG}
-    page(os.path.join(OUT, '_tpl', 'summary.html'), summary(T, '../../'), '../../', T_NAME + S['title_suffix'], company=True, head=T_HEAD)
-    page(os.path.join(OUT, '_tpl', 'full.html'), result(T, '../../../'), '../../../', T_NAME + S['title_suffix'], company=True, head=T_HEAD)
-    page(os.path.join(OUT, '_tpl', 'checks.html'), checks(T, '../../../'), '../../../', T_NAME + S['title_suffix'], company=True, head=T_HEAD)
+    page(os.path.join(OUT, '_tpl', 'summary.html'), summary(T, '../../'), '../../', T_TITLE, company=True, head=T_HEAD)
+    page(os.path.join(OUT, '_tpl', 'full.html'), result(T, '../../../'), '../../../', T_TITLE, company=True, head=T_HEAD)
+    page(os.path.join(OUT, '_tpl', 'checks.html'), checks(T, '../../../'), '../../../', T_TITLE, company=True, head=T_HEAD)
+    open(os.path.join(OUT, '_tpl', 'pmain.html'), 'w').write(SK_PMAIN)  # loading shapes for a firm with no stored facts (edge fill)
     nf = COPY.get('not_found', {'h1': 'We could not find that firm', 'p': 'It may not be checked yet. Search for it and we will start a check.'})
     page(os.path.join(OUT, '_tpl', '404.html'), f'<main class="wrap"><div class="hero"><h1>{E(nf["h1"])}</h1><p>{E(nf["p"])}</p>{SB()}</div></main>', '/', 'Not found' + S['title_suffix'], head='<meta name="robots" content="noindex">')
     # Site-wide 404: Cloudflare Pages serves /404.html with status 404 for unknown paths (no soft-404 SPA fallback).
