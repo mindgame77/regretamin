@@ -42,7 +42,7 @@ Deno.test("plain claim and done stay on the research queue", async () => {
   const claimed = await h(req({ action: "claim" }));
   eq(claimed.status, 200, "claim status");
   eq((await claimed.json()).firm_id, 7, "plain firm");
-  eq(calls.map((c) => c.name), ["ingest_auth", "v2_research_claim"], "plain claim rpcs");
+  eq(calls.map((c) => c.name), ["ingest_auth", "v2_research_claim", "v2_bot_notes_unread"], "plain claim rpcs");
   eq(calls[1].args, { p_key_id: keyId }, "plain claim args");
   calls.length = 0;
   const finished = await h(req({ action: "done", firm_id: 7 }));
@@ -58,7 +58,7 @@ Deno.test("section claim and done use the same key and do not call the research 
   eq(claimed.status, 200, "status");
   eq(body.firm_id, 20, "firm");
   eq(body.section, "legal", "section");
-  eq(calls.map((c) => c.name), ["ingest_auth", "v2_section_claim"], "rpcs");
+  eq(calls.map((c) => c.name), ["ingest_auth", "v2_section_claim", "v2_bot_notes_unread"], "rpcs");
   eq(calls[1].args, { p_key_id: keyId, p_section: "legal" }, "args");
   calls.length = 0;
   const finished = await h(req({ action: "done", block: "reviews", firm_id: 20 }));

@@ -4,6 +4,8 @@
 // add_firm refuses a website whose domain already belongs to a firm, then creates one v2_firms row (or returns the existing firm_id). It does not publish facts.
 // claim reserves one free v2_research_assignments row for 6 hours and returns that v2 firm. done finishes the bot's own row.
 // claim/done with block legal|reviews|youtube uses the section hold. The same ingest key is used. Plain claim/done ignore block only when it is omitted.
+// Feedback inbox: a successful claim reply also has `notes` (this key's unread notes from the Regretamin team).
+// notes reads them without claiming; notes_ack marks them read for this key only. Neither touches submissions or freezes.
 import { createClient } from "npm:@supabase/supabase-js@2";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const MAX_BYTES = 2_000_000;
@@ -35,6 +37,19 @@ async function existingFirm(domain: string): Promise<{ error?: true; slug?: stri
   if (row) return { slug: String(row.slug), id: row.firm_id };
   return {};
 }
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Unread notes for this key. A notes error never breaks a claim: the reply is sent without notes.
+async function unreadNotes(keyId: string): Promise<unknown[] | null> {
+  try {
+    const { data, error } = await db.rpc("v2_bot_notes_unread", { p_key_id: keyId });
+    if (error || !Array.isArray(data)) return null;
+    return data;
+  } catch { return null; }
+}
+const withNotes = async (data: any, keyId: string) => {
+  const notes = await unreadNotes(keyId);
+  return notes === null ? data : { ...data, notes };
+};
 Deno.serve(async (req) => {
   let status = 0; let bot = "";
   const res = await (async () => {
@@ -75,7 +90,7 @@ Deno.serve(async (req) => {
       if (error || !data) return json({ error: "server error" }, 500);
       bot = data.bot_id ?? "";
       if (!data.ok) return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
-      return json(data, 200);
+      return json(await withNotes(data, auth.key_id), 200);
     }
     if (body.action === "claim") {
       const block = body.block;
@@ -86,7 +101,25 @@ Deno.serve(async (req) => {
       if (error || !data) return json({ error: "server error" }, 500);
       bot = data.bot_id ?? "";
       if (!data.ok) return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
-      return json(data, 200);
+      return json(await withNotes(data, auth.key_id), 200);
+    }
+    if (body.action === "notes") {
+      const notes = await unreadNotes(auth.key_id);
+      if (notes === null) return json({ error: "server error" }, 500);
+      return json({ ok: true, notes }, 200);
+    }
+    if (body.action === "notes_ack") {
+      const ids = body.note_ids;
+      if (!Array.isArray(ids) || ids.length === 0 || ids.length > 50 || !ids.every((x: unknown) => typeof x === "string" && UUID.test(x))) {
+        return json({ error: "note_ids must be a list of 1-50 note_id values from the notes" }, 400);
+      }
+      if (body.ack_text !== undefined && (typeof body.ack_text !== "string" || body.ack_text.length > 500)) {
+        return json({ error: "ack_text must be text up to 500 characters" }, 400);
+      }
+      const { data, error } = await db.rpc("v2_bot_notes_ack", { p_key_id: auth.key_id, p_note_ids: ids, p_ack_text: body.ack_text ?? "read" });
+      if (error || !data) return json({ error: "server error" }, 500);
+      if (!data.ok) return json({ error: data.error }, 400);
+      return json({ ok: true, acked: data.acked ?? [], not_found: data.not_found ?? [] }, 200);
     }
     if (body.action === "done" && body.block === undefined) {
       const firmId = body.firm_id;
