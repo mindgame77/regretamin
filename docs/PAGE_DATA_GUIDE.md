@@ -348,7 +348,7 @@ Items .1 to .5 in each block follow the 2026-10-27 snapshot layout: 1 what is dr
 
 - **B3.1** The large name, then a meta line: HQ, short name, and the website.
 - **B3.2** `firm_page` builds `firm.name` from `coalesce(display_name, name)`, `firm.sec_name` from `coalesce(legal_name, name)`, `firm.short_name`, `firm.hq` from `firm_hq_format`, `firm.website` from the primary domain, `firm.assets` from `_firm_assets`. The meta line in `company.js` `metaLine` prints HQ, short name, and the website. It does not print the legal name.
-- **B3.3** HQ and the website start on the queue row (list builder or request). Display name is cleaned by `firm_display_name` when the page is created.
+- **B3.3** HQ and the website start on the queue row (list builder or request). `add_firm` (`v2_research_add_firm`) copies blank `hq_country`, `hq_city`, `hq_state`, and an SEC CRD from that queue row onto the v2 firm, and never overwrites a value that is already set. Display name is cleaned by `firm_display_name` when the page is created.
 - **B3.4** No written rule that HQ must be a city from IAPD. The queue stores `hq_city`, `state`, and `country`.
 - **B3.5** The header shows whenever the page loads. Hero cards (staff, founded, AUM as cards) were removed and are not drawn.
 - **B3.7** Sources for HQ, website and founded year: [A2.13–A2.15](#a2) (Alex, 2026-10-28).
