@@ -106,7 +106,7 @@ def test_portfolio_investments_keeps_activity_dated_only():
     assert "drop table" not in undo.lower()
     assert "row.investments" in js
     assert "f.investments" in js
-    assert "rule.label(f && f.deals_this_year, f && f.deals)" in js
-    assert "Do not use `investments`" in js
+    assert "rule.label(f && f.deals_this_year, f && f.deals, f && f.investments, f && f.researched)" in js
+    assert "rule.rank(year, deals, investments, row.researched)" in js
 
 

@@ -40,6 +40,6 @@ def test_menu_drops_removed_groups_and_reads_activity_ranks():
     assert "p_legal: []" in JS
     assert "p_info: []" in JS
     assert "activityValue(f)" in JS
-    assert "rule.rank(f && f.deals_this_year, f && f.deals)" in JS
+    assert "rule.rank(f && f.deals_this_year, f && f.deals, f && f.investments, f && f.researched)" in JS
     assert "INLINE_OPTIONS = 5" in JS
     assert "g.options.length > shown.length" in JS
