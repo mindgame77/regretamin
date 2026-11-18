@@ -375,7 +375,6 @@ def launch_firms():
         row = load_firm(slug)
         if row:
             # firm_sitemap.updated_at is v2_firm_live.live_since, the date the public page appeared.
-            # firm_meta.updated_at is greatest(live_since, last_checked_date) and is not the added date.
             row['added'] = added
             firms.append(row)
     if not firms: raise SystemExit('launch build: firm_sitemap returned no firms firm_meta can open')
