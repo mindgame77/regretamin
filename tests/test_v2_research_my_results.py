@@ -41,6 +41,6 @@ def test_edge_routes_results_from_the_key_without_changing_other_actions():
     assert 'db.rpc("v2_research_submit"' in FN
     assert 'db.rpc("v2_research_add_firm"' in FN
     assert 'db.rpc("v2_checker_action"' in FN
-    assert "action must be submit, add_firm, claim, done, results, deals, next_firm, firm_done, list_queue or verdict" in FN
+    assert "action must be submit, add_firm, claim, done, results, deals, next_firm, firm_done, notes, notes_ack, list_queue or verdict" in FN
     assert "action" in FN and 'results' in FN[FN.index("const HINT"):FN.index(";", FN.index("const HINT"))]
     assert "v2_research_my_results" not in OLD_DOOR
