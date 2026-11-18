@@ -670,17 +670,17 @@ begin
     s.agreed_iso, s.agreed_city, s.agreed_state, s.agreed_crd,
     s.website_url, s.website,
     (s.old_country is null and s.agreed_iso is not null and s.agreed_city is not null
-      and (s.agreed_iso is distinct from 'US' or s.agreed_state ~ '^[A-Z]{2}$')) as fill_country,
+      and (s.agreed_iso is distinct from 'US' or coalesce(s.agreed_state, '') ~ '^[A-Z]{2}$')) as fill_country,
     (s.old_city is null and s.agreed_iso is not null and s.agreed_city is not null
-      and (s.agreed_iso is distinct from 'US' or s.agreed_state ~ '^[A-Z]{2}$')
+      and (s.agreed_iso is distinct from 'US' or coalesce(s.agreed_state, '') ~ '^[A-Z]{2}$')
       and s.old_country is null) as fill_city,
     (s.old_state is null and s.agreed_state is not null
       and coalesce(s.old_country, s.agreed_iso) is not null
       and coalesce(nullif(btrim(s.old_city), ''), s.agreed_city) is not null
-      and (coalesce(s.old_country, s.agreed_iso) is distinct from 'US' or s.agreed_state ~ '^[A-Z]{2}$')
+      and (coalesce(s.old_country, s.agreed_iso) is distinct from 'US' or coalesce(s.agreed_state, '') ~ '^[A-Z]{2}$')
       and (s.old_country is not null or (
         s.agreed_iso is not null and s.agreed_city is not null
-        and (s.agreed_iso is distinct from 'US' or s.agreed_state ~ '^[A-Z]{2}$')
+        and (s.agreed_iso is distinct from 'US' or coalesce(s.agreed_state, '') ~ '^[A-Z]{2}$')
       ))) as fill_state,
     (s.agreed_crd is not null
       and not exists (
