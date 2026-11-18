@@ -43,6 +43,14 @@ as $body$
   ) c
 $body$;
 $fn$;
+  -- same access as the 2-argument version: called only from the security definer page functions
+  execute 'revoke all on function public.api_activity_label(integer, date[], integer, boolean) from public';
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke all on function public.api_activity_label(integer, date[], integer, boolean) from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke all on function public.api_activity_label(integer, date[], integer, boolean) from authenticated';
+  end if;
 
   -- /investors/ rows
   if to_regprocedure('public.firm_directory_page_v2(integer, integer, text, boolean, text[], text[], text[], text[], text[], text[], text[])') is not null then
