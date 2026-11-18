@@ -63,7 +63,7 @@ def test_edge_keeps_plain_claim_and_routes_a_block_with_the_same_key():
     assert 'db.rpc("v2_section_claim"' in FN
     assert 'db.rpc("v2_section_done"' in FN
     assert 'db.rpc("v2_research_submit"' in FN
-    assert "action must be submit, add_firm, claim, done, results, list_queue or verdict" in FN
+    assert "action must be submit, add_firm, claim, done, results, deals, list_queue or verdict" in FN
     plain = FN.index('body.action === "claim" && body.block === undefined')
     section = FN.index('db.rpc("v2_section_claim"')
     done = FN.index('body.action === "done" && body.block === undefined')
