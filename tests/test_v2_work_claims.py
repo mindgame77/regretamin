@@ -1,4 +1,4 @@
-"""v2 door next_firm / firm_done: universal per-job firm claims (v2_work_claims), job deal_gaps.
+"""v2 door next_firm / firm_done: universal per-job firm claims (v2_work_claims), job deal_gaps, up to 10 per key.
 
 Static checks always run. Database checks run only when V2_SCRATCH_DATABASE_URL points at a
 local scratch Postgres (host localhost, 127.0.0.1 or a socket). They build a small stand-in v2
@@ -14,6 +14,8 @@ import pytest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SQL = (ROOT / "supabase/migrations/20261118200000_v2_work_claims.sql").read_text()
 UNDO = (ROOT / "supabase/rollbacks/20261118200000_v2_work_claims.sql").read_text()
+HOLD = (ROOT / "supabase/migrations/20261118220000_v2_next_firm_hold_10.sql").read_text()
+HOLD_UNDO = (ROOT / "supabase/rollbacks/20261118220000_v2_next_firm_hold_10.sql").read_text()
 FN = (ROOT / "supabase/functions/research-ingest-v2/index.ts").read_text()
 NEXT = "public.v2_next_firm(uuid, text)"
 DONE = "public.v2_firm_done(uuid, text, bigint)"
@@ -46,6 +48,25 @@ def test_migration_is_server_only_and_has_one_function_per_job():
         assert f"drop function if exists {sig};" in UNDO
     assert "drop table if exists public.v2_work_claims;" in UNDO
     assert "to_regclass('public.v2_deals') is null" in low
+
+
+def test_hold_10_migration_only_replaces_next_firm_and_rollback_restores_one_claim():
+    low = HOLD.lower()
+    assert low.count("create or replace function") == 1
+    assert "create or replace function public.v2_next_firm(p_key_id uuid, p_job text)" in low
+    assert "n_held >= 10" in low
+    assert "'held_firm_ids', v_held, 'held_count', jsonb_array_length(v_held)" in HOLD
+    assert "to_regclass('public.v2_work_claims') is null" in low
+    assert f"revoke all on function {NEXT} from public, anon, authenticated" in low
+    assert f"grant execute on function {NEXT} to service_role" in low
+    for role in ("to anon", "to authenticated", "to public"):
+        assert f"grant execute on function {NEXT} {role}" not in low
+    # The rollback is the production definition from before: one live claim per key, no held list.
+    u = HOLD_UNDO.lower()
+    assert u.count("create or replace function") == 1
+    assert "create or replace function public.v2_next_firm(p_key_id uuid, p_job text)" in u
+    assert "held_firm_ids" not in u and "n_held" not in u
+    assert "drop " not in u
 
 
 def test_edge_routes_next_firm_and_firm_done_from_the_key():
@@ -109,6 +130,7 @@ def db():
                 c.execute("insert into public.v2_deals(firm_id, startup_id, round, deal_date) values (%s, %s, %s, null)",
                           (fid, sid, "Seed" if i < dated else None))
         c.execute(SQL)
+        c.execute(HOLD)
         yield c
         c.execute(UNDO)
         c.execute("drop schema bots cascade; drop table public.v2_deals, public.v2_startups, public.v2_bot_keys, public.v2_firms cascade")
@@ -122,14 +144,96 @@ def done(c, key, fid, job="deal_gaps"):
     return c.execute("select public.v2_firm_done(%s, %s, %s)", (key, job, fid)).fetchone()[0]
 
 
-def test_db_biggest_first_shape_and_repeat_claim_is_held(db):
+def add_gap_firms(c, first, count):
+    """Extra gap firms first..first+count-1 with 21-29 undated startups each (all smaller than firms 1-3)."""
+    sid = c.execute("select coalesce(max(startup_id), 0) from public.v2_deals").fetchone()[0]
+    for fid in range(first, first + count):
+        c.execute("insert into public.v2_firms values (%s, %s, %s, %s, false)", (fid, f"f{fid}", f"Firm {fid}", None))
+        for _ in range(21 + fid % 9):
+            sid += 1
+            c.execute("insert into public.v2_deals(firm_id, startup_id) values (%s, %s)", (fid, sid))
+
+
+def test_db_biggest_first_shape_and_repeat_call_gets_a_new_firm(db):
     a = nxt(db, K1)
     assert a["ok"] and a["held"] is False and a["job"] == "deal_gaps"
+    assert a["held_firm_ids"] == [1] and a["held_count"] == 1
     f = a["firm"]
     assert (f["firm_id"], f["name"], f["startups"], f["dated_or_staged"]) == (1, "Firm 1", 60, 0)
     assert f["next"] == {"action": "deals", "firm_id": 1, "only_gaps": True}
     again = nxt(db, K1)
-    assert again["firm"]["firm_id"] == 1 and again["held"] is True
+    assert again["firm"]["firm_id"] == 2 and again["held"] is False
+    assert sorted(again["held_firm_ids"]) == [1, 2] and again["held_count"] == 2
+
+
+def test_db_ten_calls_ten_firms_then_the_eleventh_is_held(db):
+    add_gap_firms(db, 101, 12)
+    got = [nxt(db, K1) for _ in range(10)]
+    ids = [g["firm"]["firm_id"] for g in got]
+    assert len(set(ids)) == 10 and all(g["held"] is False for g in got)
+    assert [g["held_count"] for g in got] == list(range(1, 11))
+    assert sorted(got[-1]["held_firm_ids"]) == sorted(ids)
+    eleventh = nxt(db, K1)
+    assert eleventh["held"] is True and eleventh["firm"]["firm_id"] in ids
+    assert eleventh["firm"]["firm_id"] == ids[0]  # the oldest one
+    assert eleventh["held_count"] == 10 and sorted(eleventh["held_firm_ids"]) == sorted(ids)
+    assert db.execute("select count(*) from public.v2_work_claims where done_at is null").fetchone()[0] == 10
+
+
+def test_db_firm_done_frees_a_slot_for_a_new_firm(db):
+    add_gap_firms(db, 101, 12)
+    ids = [nxt(db, K1)["firm"]["firm_id"] for _ in range(10)]
+    assert done(db, K1, ids[3])["ok"] is True
+    n = nxt(db, K1)
+    assert n["held"] is False and n["firm"]["firm_id"] not in ids
+    assert n["held_count"] == 10 and ids[3] not in n["held_firm_ids"]
+    assert nxt(db, K1)["held"] is True
+
+
+def test_db_two_keys_never_share_a_firm(db):
+    add_gap_firms(db, 101, 30)
+    a = [nxt(db, K1)["firm"]["firm_id"] for _ in range(10)]
+    b = [nxt(db, K2)["firm"]["firm_id"] for _ in range(10)]
+    assert len(set(a)) == 10 and len(set(b)) == 10 and not set(a) & set(b)
+    rows = db.execute("select bot_key_id, count(*) from public.v2_work_claims group by 1 order by 1").fetchall()
+    assert [r[1] for r in rows] == [10, 10]
+
+
+def test_db_parallel_helpers_of_one_key_stop_at_ten_distinct_firms(db):
+    import psycopg
+    add_gap_firms(db, 101, 30)
+    out, barrier = [], threading.Barrier(12)
+
+    def run():
+        with psycopg.connect(URL, autocommit=True) as c:
+            barrier.wait()
+            out.append(nxt(c, K1))
+
+    ts = [threading.Thread(target=run) for _ in range(12)]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join()
+    new = [o["firm"]["firm_id"] for o in out if o["held"] is False]
+    assert len(new) == 10 and len(set(new)) == 10
+    assert all(o["held"] is True and o["firm"]["firm_id"] in new for o in out if o["held"] is True)
+    assert db.execute("select count(*) from public.v2_work_claims where done_at is null").fetchone()[0] == 10
+
+
+def test_db_no_new_firm_left_returns_null_with_held_list(db):
+    assert nxt(db, K1)["firm"]["firm_id"] == 1
+    assert nxt(db, K2)["firm"]["firm_id"] == 2
+    assert nxt(db, K2)["firm"]["firm_id"] == 3
+    r = nxt(db, K1)
+    assert r["firm"] is None and r["held_firm_ids"] == [1] and r["held_count"] == 1
+
+
+def test_db_rollback_puts_back_one_firm_per_key(db):
+    db.execute(HOLD_UNDO)
+    a = nxt(db, K1)
+    again = nxt(db, K1)
+    assert again["firm"]["firm_id"] == a["firm"]["firm_id"] and again["held"] is True
+    assert "held_firm_ids" not in again
 
 
 def test_db_two_bots_at_the_same_time_get_different_firms(db):
