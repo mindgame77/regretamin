@@ -182,7 +182,7 @@
     if (!main || !P || !P.firm) return;
     const h1 = main.querySelector('.ph h1') || main.querySelector('h1');
     if (h1) {
-      let apply = h1.querySelector('[data-apply-firm]');
+      let apply = ((h1.closest && h1.closest('.ph1')) || h1).querySelector('[data-apply-firm]');
       const link = safeUrl(P.firm.apply_link || P.firm.apply_url || '');
       if (link) {
         if (!apply) {
@@ -194,9 +194,11 @@
         }
         apply.href = link;
         apply.textContent = (COPY.activity && COPY.activity.apply) || 'Apply';
-        const save = h1.querySelector('[data-save]');
+        // Save and Apply sit next to the <h1> (in .ph1), not inside it, so the heading is the firm name only.
+        const row = (h1.closest && h1.closest('.ph1')) || h1;
+        const save = row.querySelector('[data-save]');
         if (save && save.insertAdjacentElement) save.insertAdjacentElement('afterend', apply);
-        else h1.appendChild(apply);
+        else row.appendChild(apply);
       } else if (apply && apply.remove) apply.remove();
     }
     const old = main.querySelector('.hpills');
@@ -271,7 +273,7 @@
     if (!name) return;
     const h1 = main.querySelector('.ph h1');
     if (h1) {
-      const save = h1.querySelector('[data-save]');
+      const save = h1.querySelector('[data-save]'); // older pages: Save inside the <h1>
       h1.textContent = name;
       if (save) h1.appendChild(save);
     }
