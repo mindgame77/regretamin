@@ -1,4 +1,7 @@
-// Times firm_page for every live firm (firm_sitemap) as anon via firm_page_speed (rolled back, records nothing).
+// Times firm_page as anon via firm_page_speed (rolled back, records nothing). firm_page_speed accepts
+// lab firms only, and timing all ~4,500 sitemap firms overran the 3-minute step, so it times the
+// lab firms in SAMPLE that firm_sitemap still lists.
+const SAMPLE = ['a16z', 'sequoia', 'accel', 'lightspeed', 'generalcatalyst', 'khosla-ventures'];
 // REGRET_FIRMS overrides that list for a manual run. Fails if any firm exceeds LIMIT_MS (default 2000). Never prints the key.
 const URL_ = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const KEY = process.env.SUPABASE_ANON_KEY || '';
@@ -21,7 +24,9 @@ async function firmSlugs() {
     if (rows.length < 1000) break;
   }
   if (!slugs.length) { console.error('page speed: firm_sitemap returned no firms'); process.exit(1); }
-  return slugs;
+  const picked = SAMPLE.filter((s) => slugs.includes(s));
+  if (!picked.length) { console.error('page speed: no sample firm is in firm_sitemap'); process.exit(1); }
+  return picked;
 }
 const FIRMS = await firmSlugs();
 let bad = 0;

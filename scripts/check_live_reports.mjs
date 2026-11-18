@@ -13,10 +13,21 @@ async function retry(fn, tries = 4) { // Pages can take a minute to serve the ne
   for (let i = 1; ; i++) { try { return await fn(); } catch (e) { if (i >= tries) throw e; await new Promise(r => setTimeout(r, 15000)); } }
 }
 
-// Live firms are whoever the public sitemap lists (firm_sitemap / v2_firm_live). REGRET_FIRMS overrides that for a manual run.
+// The sitemap lists ~4,500 live firms (firm_sitemap / v2_firm_live). Opening every one takes far
+// longer than the 5-minute step limit, so the check opens a fixed sample of well-known firms that the
+// sitemap still lists. REGRET_FIRMS overrides the sample for a manual run.
+const SAMPLE = ['a16z', 'founders-fund', 'sequoia', 'accel', 'benchmark', 'index-ventures', 'greylock', 'venrock', 'aperture', 'apple-tree-partners'];
 async function firmSlugs(request) {
   const fromEnv = (process.env.REGRET_FIRMS || '').split(',').map((s) => s.trim()).filter(Boolean);
   if (fromEnv.length) return fromEnv;
+  const listed = new Set(await sitemapSlugs(request));
+  const picked = SAMPLE.filter((s) => listed.has(s));
+  const gone = SAMPLE.filter((s) => !listed.has(s));
+  if (gone.length) console.log('warn sample firms not in the sitemap, skipped: ' + gone.join(','));
+  if (!picked.length) throw new Error('no sample firm is listed in the sitemap');
+  return picked;
+}
+async function sitemapSlugs(request) {
   const sm = await request.get(BASE + 'sitemap.xml');
   if (!sm.ok()) throw new Error('sitemap status ' + sm.status());
   let xml = await sm.text();
@@ -51,6 +62,7 @@ try {
 
   // firm_page.open follows app_settings.lock_enabled. Assert the matching view.
   const REAL = ['state', 'count', 'searched_at', 'items', 'itemized'];
+  let lockOn = null; // from firm_page.open; decides whether the paywall JSON-LD is expected
   async function checkFirm(slug, url, view) {
     let body = null;
     const on = async (res) => { if (/\/rpc\/firm_page/.test(res.url())) { try { body = await res.json(); } catch (_) {} } };
@@ -85,13 +97,14 @@ try {
         };
       });
       if (!g.full) return fail(slug + ' ' + view + ': no tab switch');
+      lockOn = !body.open;
       if (body.open) {
         const errs = [];
         if (!g.unlocked || !g.lockHidden) errs.push('lock panel still showing');
         if (/blur\(10px\)/.test(g.blur) || g.rows) errs.push('page is blurred');
         if (body.details == null) errs.push('details missing');
-        if (!(body.checks || []).length || (body.checks || []).some(c => c.state == null)) errs.push('checks missing their results');
-        if (view === 'full' && !(body.sections || []).length) errs.push('no sections');
+        // v2 firm pages carry their content in sections; the old per-check list is always empty.
+        if (!(body.sections || []).length) errs.push('no sections');
         return errs.length ? fail(slug + ' ' + view + ': lock is off but ' + errs.join('; ')) : ok(slug + ' ' + view + ': lock off, unlocked, no blur, no lock panel');
       }
       const errs = [];
@@ -146,7 +159,8 @@ try {
   }
   if (/\/full\/<\/loc>/.test(xml)) fail('sitemap lists /full/ pages (they are noindex)'); else ok('sitemap: no /full/ pages');
 
-  // SEO head: summary indexable + self canonical; /full/ noindex, follow + self canonical; paywall JSON-LD on both
+  // SEO head: summary indexable + self canonical; /full/ noindex, follow + self canonical;
+  // paywall JSON-LD on both only while the lock is on (an open page is not paywalled).
   for (const slug of FIRMS) for (const full of [false, true]) {
     const path = 'vc/' + slug + '/' + (full ? 'full/' : ''), r = await page.request.get(BASE + path), h = r.ok() ? await r.text() : '';
     const robots = (h.match(/<meta name="robots" content="([^"]*)"/) || [])[1] || '';
@@ -155,8 +169,8 @@ try {
     const errs = [];
     if (full ? robots !== 'noindex, follow' : /noindex/.test(robots)) errs.push('robots=' + (robots || 'none'));
     if (canon !== 'https://regretamin.com/' + path) errs.push('canonical=' + canon);
-    if (ld.isAccessibleForFree !== false || !ld.hasPart || ld.hasPart.isAccessibleForFree !== false || ld.hasPart.cssSelector !== '.gveil') errs.push('JSON-LD paywall markup missing');
-    errs.length ? fail(path + ': ' + errs.join('; ')) : ok(path + ': ' + (full ? 'noindex, follow' : 'indexable') + ', self canonical, paywall JSON-LD');
+    if (lockOn !== false && (ld.isAccessibleForFree !== false || !ld.hasPart || ld.hasPart.isAccessibleForFree !== false || ld.hasPart.cssSelector !== '.gveil')) errs.push('JSON-LD paywall markup missing');
+    errs.length ? fail(path + ': ' + errs.join('; ')) : ok(path + ': ' + (full ? 'noindex, follow' : 'indexable') + ', self canonical' + (lockOn !== false ? ', paywall JSON-LD' : ''));
   }
 
   // Signed-out account prompt
