@@ -1,6 +1,6 @@
 -- v2 work handout: one setting picks the job next_firm hands out.
 -- Applied after 20261118300000 (v2_work_hq_known). Preview only; do not merge.
--- 1) v2_work_setting (name, value). Row current_job = 'missing_details'.
+-- 1) v2_work_setting (name, value). Row current_job = 'deal_gaps' (switch later to missing_details).
 --    v2_work_current_job() returns it when it names a real job function.
 -- 2) v2_job_firms_missing_details(bigint): live firms (not archived, not merged)
 --    missing any of: hq_country, hq_city, a contact (v2_firm_contacts), a
@@ -148,7 +148,7 @@ $fn$
 $ddl$;
   execute 'revoke all on function public.v2_work_current_job() from public, anon, authenticated';
 
-  insert into public.v2_work_setting (name, value) values ('current_job', 'missing_details')
+  insert into public.v2_work_setting (name, value) values ('current_job', 'deal_gaps')
     on conflict (name) do update set value = excluded.value, updated_at = now();
 
   execute $ddl$

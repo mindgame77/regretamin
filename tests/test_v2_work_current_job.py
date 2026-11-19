@@ -34,7 +34,7 @@ def test_migration_is_one_setting_and_server_only():
     assert "20261118310000" in str((MIG / "20261118310000_v2_work_current_job_missing_details.sql").name)
     assert not (MIG / "20261118290000_v2_work_current_job_missing_details.sql").exists()
     assert "create table if not exists public.v2_work_setting" in low
-    assert "insert into public.v2_work_setting (name, value) values ('current_job', 'missing_details')" in low
+    assert "insert into public.v2_work_setting (name, value) values ('current_job', 'deal_gaps')" in low
     assert "v_job text := coalesce(public.v2_work_current_job(), p_job)" in CUR
     assert "if c.firm_id is null and v_job = 'deal_gaps' then" in CUR
     assert "interval '2 hours'" in low and "n_held >= 10" in low
@@ -228,6 +228,16 @@ def done(c, key, fid, job="deal_gaps"):
     return c.execute("select public.v2_firm_done(%s, %s, %s)", (key, job, fid)).fetchone()[0]
 
 
+def use_missing(c):
+    c.execute("update public.v2_work_setting set value = 'missing_details' where name = 'current_job'")
+
+
+def test_db_default_job_is_deal_gaps(db):
+    assert db.execute("select value from public.v2_work_setting where name = 'current_job'").fetchone()[0] == "deal_gaps"
+    a = nxt(db, K1)
+    assert a["job"] == "deal_gaps" and a["firm"]["firm_id"] == 8
+
+
 def test_db_list_and_order(db):
     rows = {r[0]: (r[1], r[2]) for r in db.execute("select firm_id, sort_key, info from public.v2_job_firms_missing_details(null)")}
     # LinkedIn-only firm 9 and nothing_found-reviews firm 11 are complete for this job.
@@ -253,6 +263,7 @@ def test_db_list_and_order(db):
 
 
 def test_db_same_call_hands_out_missing_details_not_deal_gaps(db):
+    use_missing(db)
     a = nxt(db, K1)  # bot still sends job deal_gaps
     assert a["job"] == "missing_details" and a["asked_job"] == "deal_gaps"
     assert a["firm"]["firm_id"] == 3 and a["firm"]["missing_count"] == 7
@@ -262,6 +273,7 @@ def test_db_same_call_hands_out_missing_details_not_deal_gaps(db):
 
 
 def test_db_done_is_final_and_old_job_name_works(db):
+    use_missing(db)
     assert nxt(db, K1)["firm"]["firm_id"] == 3
     d = done(db, K1, 3)  # bot sends the old job name
     assert d["ok"] and d["job"] == "missing_details"
