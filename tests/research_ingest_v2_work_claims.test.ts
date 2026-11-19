@@ -60,9 +60,22 @@ Deno.test("firm_done: key from header and firm_id", async () => {
   eq((await r.json()).hint.includes('"action":"next_firm","job":"deal_gaps"'), true, "hint");
 });
 
+Deno.test("job left out: rpc gets null; hints name the job the database used", async () => {
+  calls.length = 0;
+  nextReply = { ok: true, bot_id: "bot-a", job: "missing_details", held: false, firm: { firm_id: 379, missing: ["hq_country"] } };
+  const r = await h(req({ action: "next_firm" }));
+  eq(r.status, 200, "status");
+  eq(calls.find((x) => x.name === "v2_next_firm")!.args, { p_key_id: KEY, p_job: null }, "rpc args");
+  eq((await r.json()).hint.includes('"action":"firm_done","job":"missing_details","firm_id":379'), true, "hint");
+  const old = await h(req({ action: "next_firm", job: "deal_gaps" }));
+  eq((await old.json()).hint.includes('"job":"missing_details"'), true, "hint uses the job used, not the job sent");
+  doneReply = { ok: true, bot_id: "bot-a", job: "missing_details", firm_id: 379 };
+  const d = await h(req({ action: "firm_done", job: "deal_gaps", firm_id: 379 }));
+  eq((await d.json()).hint.includes('"action":"next_firm","job":"missing_details"'), true, "done hint");
+});
+
 Deno.test("bad input, unknown job, other bot's firm", async () => {
   calls.length = 0;
-  eq((await h(req({ action: "next_firm" }))).status, 400, "no job");
   eq((await h(req({ action: "next_firm", job: "Deal Gaps" }))).status, 400, "bad job name");
   eq((await h(req({ action: "firm_done", job: "deal_gaps" }))).status, 400, "no firm_id");
   eq((await h(req({ action: "firm_done", job: "deal_gaps", firm_id: "186" }))).status, 400, "string firm_id");
