@@ -18,7 +18,7 @@ const json = (b: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(b), { status, headers: { ...CORS, "content-type": "application/json", ...extra } });
 const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
   .map((b) => b.toString(16).padStart(2, "0")).join("");
-const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
+const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"missing\",\"firm_id\":N} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
 // Domain only: lowercase, no scheme, no leading www, no port, no path.
 const firmDomain = (website: string) => {
   let s = website.trim().toLowerCase();
@@ -200,6 +200,16 @@ Deno.serve(async (req) => {
       if (!data.ok) return json({ error: data.error }, data.error === "firm not found" ? 404 : 403);
       return json(data, 200);
     }
+    if (body.action === "missing") {  // the one-firm missing list and saved people, for any firm (redo old firms)
+      const firmId = body.firm_id;
+      if (typeof firmId !== "number" || !Number.isInteger(firmId) || firmId <= 0) {
+        return json({ error: "firm_id must be a positive integer" }, 400);
+      }
+      const { data, error } = await db.rpc("v2_research_firm_missing", { p_key: auth.key_id, p_firm_id: firmId });
+      if (error || !data) return json({ error: "server error" }, 500);
+      if (!data.ok) return json({ error: data.error }, data.error === "unauthorized" ? 403 : 404);
+      return json(data, 200);
+    }
     if (body.action === "next_firm" || body.action === "firm_done") {
       const job = body.job ?? null;
       if (job !== null && (typeof job !== "string" || !JOB.test(job))) return json({ error: "job must be a job name, or leave it out" }, 400);
@@ -220,7 +230,7 @@ Deno.serve(async (req) => {
       }
       return json({ ...data, hint: "send {\"action\":\"next_firm\",\"job\":\"" + usedJob + "\"} for the next firm" }, 200);
     }
-    if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, deals, next_firm, firm_done, notes, notes_ack, list_queue or verdict", hint: HINT }, 400);
+    if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, deals, missing, next_firm, firm_done, notes, notes_ack, list_queue or verdict", hint: HINT }, 400);
     if (!Array.isArray(body.items) || body.items.length === 0) return json({ error: "items must be a non-empty array", hint: HINT }, 400);
     if (body.dry_run !== undefined && typeof body.dry_run !== "boolean") return json({ error: "dry_run must be true or false" }, 400);
     const { data, error } = await db.rpc("v2_research_submit", { p_key_id: auth.key_id, p_items: body.items, p_dry_run: body.dry_run === true });
