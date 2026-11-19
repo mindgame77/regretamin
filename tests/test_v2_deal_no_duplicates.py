@@ -93,9 +93,11 @@ def test_same_round_merges_and_fills_empty_fields(db):
     r = db.submit(db.firm, {"startup_id": s, "round": "Seed round", "deal_date": "2026-11-18", "deal_date_precision": "full date",
                             "round_amount": 5300000, "amount_currency": "USD", "lead": "yes"})
     assert r["status"] == "Accepted", r
-    assert r["merged_into_deal_id"] == old and r["replaces_deal_id"] == old
+    assert r["deal_id"] == old and r["filled_deal_id"] == old and "replaces_deal_id" not in r
+    assert r["filled_fields"] == ["amount_currency", "lead", "round_amount"]
     rows = db.live(db.firm, s)
-    assert len(rows) == 1
+    assert len(rows) == 1 and rows[0][0] == old  # one deal number: filled in place
+    assert db.cur.execute("select count(*) from public.v2_deals where startup_id = %s", (s,)).fetchone()[0] == 1
     assert rows[0][1] == "Seed" and float(rows[0][2]) == 5300000 and rows[0][4] == "yes"
 
 
@@ -123,8 +125,8 @@ def test_different_round_or_far_apart_stays_separate(db):
     db.deal(db.firm, s, round="Seed", deal_date="2020-05-01", deal_date_precision="full date")
     a = db.submit(db.firm, {"startup_id": s, "round": "Series A", "deal_date": "2026-05-01", "deal_date_precision": "full date"})
     b = db.submit(db.firm, {"startup_id": s, "round": "Seed", "deal_date": "2023-05-01", "deal_date_precision": "full date"})
-    assert a["status"] == "Accepted" and "merged_into_deal_id" not in a, a
-    assert b["status"] == "Accepted" and "merged_into_deal_id" not in b, b
+    assert a["status"] == "Accepted" and "filled_deal_id" not in a, a
+    assert b["status"] == "Accepted" and "filled_deal_id" not in b, b
     assert len(db.live(db.firm, s)) == 3
 
 
@@ -132,9 +134,9 @@ def test_missing_date_counts_as_same_round(db):
     s = db.startup("NoDate")
     old = db.deal(db.firm, s, round="Seed", round_amount=1000000, amount_currency="USD")
     r = db.submit(db.firm, {"startup_id": s, "round": "Seed", "deal_date": "2026-01-10", "deal_date_precision": "full date"})
-    assert r["status"] == "Accepted" and r["merged_into_deal_id"] == old, r
+    assert r["status"] == "Accepted" and r["filled_deal_id"] == old, r
     rows = db.live(db.firm, s)
-    assert len(rows) == 1 and str(rows[0][3]) == "2026-01-10"
+    assert len(rows) == 1 and rows[0][0] == old and str(rows[0][3]) == "2026-01-10"
 
 
 def test_empty_deal_is_filled(db):
@@ -142,13 +144,15 @@ def test_empty_deal_is_filled(db):
     old = db.deal(db.firm, s)
     r = db.submit(db.firm, {"startup_id": s, "round": "Series A", "deal_date": "2026-02-01", "deal_date_precision": "full date",
                             "round_amount": 12000000, "amount_currency": "USD"})
-    assert r["status"] == "Accepted" and r["merged_into_deal_id"] == old, r
+    assert r["status"] == "Accepted" and r["filled_deal_id"] == old, r
     rows = db.live(db.firm, s)
-    assert len(rows) == 1 and rows[0][1] == "Series A"
+    assert len(rows) == 1 and rows[0][0] == old and rows[0][1] == "Series A"
+    shown = db.cur.execute("select shown from public.v2_deals where deal_id = %s", (old,)).fetchone()[0]
+    assert shown  # a hidden empty deal shows once it has a date or amount
     src = db.cur.execute("select source_url from public.v2_deals where deal_id = %s", (rows[0][0],)).fetchone()[0]
     assert src == "https://news.example/old"  # existing evidence is never overwritten
-    evidence = db.cur.execute("select fields, source from public.v2_deal_fill_sources where deal_id = %s", (rows[0][0],)).fetchone()
-    assert "round" in evidence[0] and "round_amount" in evidence[0]
+    evidence = db.cur.execute("select fields, source from public.v2_deal_fill_sources where deal_id = %s", (old,)).fetchone()
+    assert evidence[0] == ["amount_currency", "deal_date", "deal_date_precision", "round", "round_amount"]
     assert evidence[1]["source_url"] == SRC["source_url"]
 
 
@@ -157,7 +161,7 @@ def test_two_empty_deals_fill_one_and_flag_the_rest(db):
     e1 = db.deal(db.firm, s)
     e2 = db.deal(db.firm, s)
     r = db.submit(db.firm, {"startup_id": s, "round": "Seed", "deal_date": "2026-02-01", "deal_date_precision": "full date"})
-    assert r["status"] == "Accepted" and r["merged_into_deal_id"] == e1, r
+    assert r["status"] == "Accepted" and r["filled_deal_id"] == e1, r
     flags = db.cur.execute("select deal_id, related_deal_id, reason from public.v2_deal_review_flags where deal_id = %s", (e2,)).fetchall()
     assert flags == [(e2, e1, "leftover empty deal")]
     assert db.cur.execute("select count(*) from public.v2_deal_review where deal_id = %s", (e2,)).fetchone()[0] == 1
@@ -168,7 +172,7 @@ def test_empty_deal_not_filled_when_another_stage_is_known(db):
     db.deal(db.firm, s)
     db.deal(db.firm, s, round="Seed", deal_date="2024-01-01", deal_date_precision="full date")
     r = db.submit(db.firm, {"startup_id": s, "round": "Series A", "deal_date": "2026-02-01", "deal_date_precision": "full date"})
-    assert r["status"] == "Accepted" and "merged_into_deal_id" not in r, r
+    assert r["status"] == "Accepted" and "filled_deal_id" not in r, r
     assert len(db.live(db.firm, s)) == 3
 
 
@@ -211,7 +215,7 @@ def test_dry_run_saves_nothing(db):
     item = {"firm_id": db.firm, "table": "v2_deals", "box": "F12",
             "fact": {**SRC, "startup_id": s, "round": "Seed", "round_amount": 5, "amount_currency": "USD"}}
     r = _j(db.cur.execute("select public.v2_research_submit(%s, %s::jsonb, true)", (key, json.dumps([item]))).fetchone()[0])
-    assert r["results"][0]["status"] == "Accepted" and r["results"][0]["merged_into_deal_id"]
+    assert r["results"][0]["status"] == "Accepted" and r["results"][0]["filled_deal_id"]
     assert len(db.live(db.firm, s)) == 1 and db.live(db.firm, s)[0][2] is None
 
 
@@ -219,5 +223,18 @@ def test_no_stage_new_deal_with_known_stage_deal_saves_as_before(db):
     s = db.startup("Plain")
     db.deal(db.firm, s, round="Seed", deal_date="2024-01-01", deal_date_precision="full date")
     r = db.submit(db.firm, {"startup_id": s, "deal_date": "2026-02-01", "deal_date_precision": "full date"})
-    assert r["status"] == "Accepted" and "merged_into_deal_id" not in r, r
+    assert r["status"] == "Accepted" and "filled_deal_id" not in r, r
     assert len(db.live(db.firm, s)) == 2
+
+
+def test_single_field_fill_keeps_deal_id_and_never_overwrites(db):
+    s = db.startup("Lead")
+    old = db.deal(db.firm, s, round="Series B", deal_date="2026-06-01", deal_date_precision="full date",
+                  round_amount=40000000, amount_currency="USD")
+    r = db.submit(db.firm, {"startup_id": s, "round": "Series B", "deal_date": "2026-06-03", "deal_date_precision": "full date",
+                            "round_amount": 45000000, "amount_currency": "USD", "lead": "yes"})
+    assert r["status"] == "Accepted" and r["deal_id"] == old and r["filled_fields"] == ["lead"], r
+    row = db.cur.execute("select deal_id, round_amount, deal_date, lead, source_url from public.v2_deals "
+                         "where startup_id = %s", (s,)).fetchall()
+    assert len(row) == 1 and row[0][0] == old and float(row[0][1]) == 40000000 and str(row[0][2]) == "2026-06-01"
+    assert row[0][3] == "yes" and row[0][4] == "https://news.example/old"

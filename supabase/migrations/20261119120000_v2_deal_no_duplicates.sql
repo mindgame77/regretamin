@@ -6,12 +6,12 @@
 -- What changes (v2_research_submit, new deals only; sends with deal_id work as before):
 --   a) Same firm (merged_into_firm_id followed) + same startup + same stage (stage names normalized:
 --      'Seed round' = 'Seed', 'A' = 'Series A'), dates within about a year or one date missing:
---      the item is merged into the existing deal as a correction, filling empty fields only
+--      the existing deal is filled in place (same deal_id, no new row), empty fields only
 --      (stage, extension, date or a more precise date in the same year/month, amount, firm amount, lead).
 --      Values already on the deal are never overwritten. The original source stays; the source for each
 --      newly filled field is recorded with the submission in v2_deal_fill_sources.
 --   b) No same-stage deal and the firm + startup has no deal with a known stage, but has empty deals
---      (no stage, no amount): the new deal fills the oldest one; the other empty ones are flagged in
+--      (no stage, no amount): the new deal fills the oldest one in place (same deal_id); the other empty ones are flagged in
 --      v2_deal_review_flags ('leftover empty deal'). A firm + startup that has a deal with another known
 --      stage keeps the new stage as a separate deal.
 --   Nothing new to fill: status 'Skipped: already saved as deal N; nothing new to fill'.
@@ -70,7 +70,6 @@ $ddl$;
 -- Each field filled by a duplicate submission keeps its evidence without overwriting the old source.
 create table if not exists public.v2_deal_fill_sources (
   deal_id bigint not null references public.v2_deals(deal_id),
-  replaced_deal_id bigint not null references public.v2_deals(deal_id),
   submission_id bigint not null references public.v2_research_submissions(submission_id),
   fields jsonb not null,
   source jsonb not null,
@@ -1035,8 +1034,32 @@ BEGIN
               'table',tbl,'existing_deal_id',v_dup_id,'note',v_dup_note);
             CONTINUE;
           END IF;
-          o := to_jsonb(v_t);
-          p := v_fill || jsonb_build_object('deal_id', v_dup_id, 'action', 'correct');
+          -- One deal number: fill the existing deal in place and keep its deal_id.
+          BEGIN
+            SELECT string_agg(format('%I', key), ',') INTO cols FROM jsonb_object_keys(v_fill) key;
+            EXECUTE format('UPDATE public.v2_deals d SET (%s) = (SELECT %s FROM jsonb_populate_record(NULL::public.v2_deals, $1)) WHERE d.deal_id = $2',
+                           cols, cols) USING v_fill, v_dup_id;
+            UPDATE public.v2_deals SET shown = (deal_date IS NOT NULL OR round_amount IS NOT NULL)
+             WHERE deal_id = v_dup_id AND is_current AND NOT archived
+             RETURNING to_jsonb(v2_deals) INTO res;
+            INSERT INTO public.v2_deal_fill_sources (deal_id, submission_id, fields, source)
+              VALUES (v_dup_id, sid,
+                      to_jsonb(ARRAY(SELECT key FROM jsonb_object_keys(v_fill) key WHERE NOT key = ANY(src_keys) ORDER BY key)),
+                      (SELECT coalesce(jsonb_object_agg(key, value), '{}') FROM jsonb_each(fact) WHERE key = ANY(src_keys)));
+            UPDATE public.v2_research_submissions SET status = 'Accepted' WHERE submission_id = sid;
+            INSERT INTO public.v2_change_log (actor, firm_id, box, table_name, row_id, submission_id, old_value, new_value, result)
+              VALUES (bot, fid, box, tbl, v_dup_id, sid,
+                      (SELECT coalesce(jsonb_object_agg(key, to_jsonb(v_t)->key), '{}') FROM jsonb_object_keys(v_fill) key),
+                      v_fill, 'Accepted');
+            IF it->>'ref' IS NOT NULL THEN refs := refs || jsonb_build_object(it->>'ref', v_dup_id); END IF;
+            acc := acc + 1;
+            results := results || jsonb_build_object('index',idx,'submission_id',sid,'status','Accepted','table',tbl,
+              'deal_id',v_dup_id,'filled_deal_id',v_dup_id,
+              'filled_fields',to_jsonb(ARRAY(SELECT key FROM jsonb_object_keys(v_fill) key WHERE NOT key = ANY(src_keys) ORDER BY key)),
+              'live',coalesce((res->>'shown')::boolean,false),'note',v_dup_note);
+            CONTINUE;
+          EXCEPTION WHEN others THEN reason := left(SQLERRM, 300);
+          END;
         END IF;
       END IF;
     END IF;
@@ -1060,14 +1083,7 @@ BEGIN
         PERFORM public.v2_auto_publish_apply_submission(sid);
         SELECT new_value->'_deal_receipt' INTO res FROM public.v2_checker_queue WHERE submission_id=sid;
         acc:=acc+1;
-        results:=results||jsonb_build_object('index',idx,'submission_id',sid,'status','Accepted','table',tbl,'deal_id',coalesce((res->>'deal_id')::bigint,(p->>'deal_id')::bigint),'replaces_deal_id',CASE WHEN coalesce(p->>'action','correct')='correct' THEN (p->>'deal_id')::bigint END,'checker_queued','changed-key-fact','live',coalesce((res->>'active')::boolean,false),'merged_into_deal_id',v_dup_id,'note',v_dup_note);
-        IF v_dup_id IS NOT NULL THEN
-          INSERT INTO public.v2_deal_fill_sources (deal_id, replaced_deal_id, submission_id, fields, source)
-            VALUES (coalesce((res->>'deal_id')::bigint, v_dup_id), v_dup_id, sid,
-                    to_jsonb(ARRAY(SELECT key FROM jsonb_object_keys(v_fill) key WHERE NOT key = ANY(src_keys))),
-                    (SELECT coalesce(jsonb_object_agg(key, value), '{}') FROM jsonb_each(fact) WHERE key = ANY(src_keys)));
-        END IF;
-        IF v_dup_id IS NOT NULL AND it->>'ref' IS NOT NULL THEN refs := refs || jsonb_build_object(it->>'ref', coalesce((res->>'deal_id')::bigint, v_dup_id)); END IF;
+        results:=results||jsonb_build_object('index',idx,'submission_id',sid,'status','Accepted','table',tbl,'deal_id',coalesce((res->>'deal_id')::bigint,(p->>'deal_id')::bigint),'replaces_deal_id',CASE WHEN coalesce(p->>'action','correct')='correct' THEN (p->>'deal_id')::bigint END,'checker_queued','changed-key-fact','live',coalesce((res->>'active')::boolean,false));
         CONTINUE;
       EXCEPTION WHEN others THEN reason:=left(SQLERRM,300);
       END;
