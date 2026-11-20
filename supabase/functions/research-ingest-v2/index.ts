@@ -11,6 +11,7 @@
 // A key may hold up to 10 firms per job from v2_work_claims, 2-hour hold. Replies and hints name the job actually used.
 // add_round / claim_next_round / finish_round: the separate round list (schema roundlist, migration 20261119170000_roundlist).
 // Up to 10 held rounds per key (count 1-10 per call), each with a 2-hour hold; a copy of a round is refused (409); done needs an accepted deal since the claim.
+// lookup is read-only: finds an existing firm or startup by website domain, name, or partial name (migration 20261120060000_v2_research_lookup).
 import { createClient } from "npm:@supabase/supabase-js@2";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const MAX_BYTES = 2_000_000;
@@ -20,7 +21,8 @@ const json = (b: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(b), { status, headers: { ...CORS, "content-type": "application/json", ...extra } });
 const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
   .map((b) => b.toString(16).padStart(2, "0")).join("");
-const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"missing\",\"firm_id\":N} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
+const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"missing\",\"firm_id\":N} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]} or {\"action\":\"lookup\",\"firm\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"startup\":{\"name\",\"website\"}}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
+const LOOKUP_HINT = "{\"action\":\"lookup\",\"firm\":{\"name\":\"All Aboard Fund\",\"website\":\"allaboard.vc\"}} or {\"action\":\"lookup\",\"startup\":{\"name\":\"Rivercell\",\"website\":\"rivercell.ai\"}}; send a name, a website, or both";
 const ROUND_HINT = "Round list: {\"action\":\"add_round\",\"round\":{\"startup_name\",\"startup_website\",\"country\",\"round\",\"round_date\":\"YYYY-MM-DD\",\"source_url\"}} or {\"action\":\"claim_next_round\",\"count\":1} or {\"action\":\"finish_round\",\"round_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
 // Domain only: lowercase, no scheme, no leading www, no port, no path.
 const firmDomain = (website: string) => {
@@ -213,6 +215,26 @@ Deno.serve(async (req) => {
       if (!data.ok) return json({ error: data.error }, data.error === "unauthorized" ? 403 : 404);
       return json(data, 200);
     }
+    // Read-only lookup of an existing firm or startup (one search for every bot before "not in system" or a new startup).
+    if (body.action === "lookup") {
+      const isObj = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
+      const hasFirm = body.firm !== undefined; const hasStartup = body.startup !== undefined;
+      if (hasFirm === hasStartup) return json({ error: "send exactly one of firm or startup", hint: LOOKUP_HINT }, 400);
+      const kind = hasFirm ? "firm" : "startup";
+      const q = hasFirm ? body.firm : body.startup;
+      if (!isObj(q)) return json({ error: kind + " must be an object with name and/or website", hint: LOOKUP_HINT }, 400);
+      const name = q.name ?? null; const website = q.website ?? null;
+      if (name !== null && (typeof name !== "string" || name.length > 200)) return json({ error: "name must be text up to 200 characters", hint: LOOKUP_HINT }, 400);
+      if (website !== null && (typeof website !== "string" || website.length > 500)) return json({ error: "website must be text up to 500 characters", hint: LOOKUP_HINT }, 400);
+      if (!(name ?? "").trim() && !(website ?? "").trim()) return json({ error: "send a name or a website", hint: LOOKUP_HINT }, 400);
+      const { data, error } = await db.rpc("v2_research_lookup", { p_key: auth.key_id, p_kind: kind, p_name: name, p_website: website });
+      if (error || !data) return json({ error: "server error" }, 500);
+      if (!data.ok) return json({ error: data.error, hint: LOOKUP_HINT }, data.error === "unauthorized" ? 401 : 400);
+      const hint = data.found
+        ? "use the id of the right match; check the website before you pick a name or partial name match"
+        : "no " + kind + " matched this name or website: it is not in the system";
+      return json({ ...data, hint }, 200);
+    }
     // Round list (schema roundlist, separate from the firm/deal tables): add_round, claim_next_round, finish_round.
     if (body.action === "add_round" || body.action === "claim_next_round" || body.action === "finish_round") {
       let rpc: string; let args: Record<string, unknown>;
@@ -273,7 +295,7 @@ Deno.serve(async (req) => {
       }
       return json({ ...data, hint: "send {\"action\":\"next_firm\",\"job\":\"" + usedJob + "\"} for the next firm" }, 200);
     }
-    if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, deals, missing, next_firm, firm_done, notes, notes_ack, list_queue or verdict", hint: HINT }, 400);
+    if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, deals, missing, next_firm, firm_done, notes, notes_ack, lookup, list_queue or verdict", hint: HINT }, 400);
     if (!Array.isArray(body.items) || body.items.length === 0) return json({ error: "items must be a non-empty array", hint: HINT }, 400);
     if (body.dry_run !== undefined && typeof body.dry_run !== "boolean") return json({ error: "dry_run must be true or false" }, 400);
     const { data, error } = await db.rpc("v2_research_submit", { p_key_id: auth.key_id, p_items: body.items, p_dry_run: body.dry_run === true });
