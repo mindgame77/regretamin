@@ -12,6 +12,9 @@
 // add_round / claim_next_round / finish_round: the separate round list (schema roundlist, migration 20261119170000_roundlist).
 // Up to 10 held rounds per key (count 1-10 per call), each with a 2-hour hold; a copy of a round is refused (409); done needs an accepted deal since the claim.
 // lookup is read-only: finds an existing firm or startup by website domain, name, or partial name (migration 20261120060000_v2_research_lookup).
+// Required lookup (migration 20261120090000_v2_required_lookup): add_firm is refused (409, same_as ids) when lookup finds the same website or the
+// same name / short / legal name; a new startup in submit is refused when one older startup has the same name and website base.
+// Override: "not_same_as":[ids] + "not_same_reason". Switch: v2_work_setting lookup_block on/off.
 import { createClient } from "npm:@supabase/supabase-js@2";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const MAX_BYTES = 2_000_000;
@@ -88,11 +91,39 @@ Deno.serve(async (req) => {
         if (existing.error) return json({ error: "server error" }, 500);
         if (existing.slug) return json({ error: "a firm with this website already exists", slug: existing.slug, id: existing.id }, 409);
       }
+      // Required lookup: same website or same name / short / legal name -> refused with the ids, unless overridden.
+      const fName = body.firm && typeof body.firm === "object" && typeof body.firm.name === "string" ? body.firm.name.slice(0, 200) : null;
+      const fSite = typeof website === "string" ? website.slice(0, 500) : null;
+      const ns = body.not_same_as; const nsReason = typeof body.not_same_reason === "string" ? body.not_same_reason.trim().slice(0, 500) : "";
+      if (ns !== undefined && (!Array.isArray(ns) || ns.length > 20 || !ns.every((x: unknown) => Number.isInteger(x) && (x as number) > 0))) {
+        return json({ error: "not_same_as must be a list of up to 20 firm ids" }, 400);
+      }
+      const { data: guard, error: gerr } = await db.rpc("v2_firm_guard", { p_key: auth.key_id, p_name: fName, p_website: fSite });
+      if (gerr || !guard) return json({ error: "server error" }, 500);
+      const strong: any[] = guard.ok && Array.isArray(guard.strong) ? guard.strong : [];
+      const weak: any[] = guard.ok && Array.isArray(guard.weak) ? guard.weak : [];
+      let override = false;
+      if (guard.ok && guard.block_on === true && strong.length > 0) {
+        const ids = strong.map((m) => Number(m.id));
+        const covered = Array.isArray(ns) && ids.every((id) => (ns as number[]).includes(id));
+        if (!covered || !nsReason) {
+          return json({ error: "a firm with this name or website already exists", same_as: ids, matches: strong,
+            hint: "use the existing firm_id; only if it is a different firm, resend add_firm with \"not_same_as\":" + JSON.stringify(ids) + " and \"not_same_reason\"" }, 409);
+        }
+        override = true;
+      }
       const { data, error } = await db.rpc("v2_research_add_firm", { p_key_id: auth.key_id, p_firm: body.firm ?? null });
       if (error || !data) return json({ error: "server error" }, 500);
       bot = data.bot_id ?? "";
       if (!data.ok) return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
-      return json(data, 200);
+      if (override) {
+        await db.rpc("v2_lookup_override_log", { p_key: auth.key_id, p_kind: "firm", p_name: fName, p_website: fSite,
+          p_ids: ns, p_reason: nsReason, p_result_id: data.firm_id ?? null });
+      }
+      const extra: Record<string, unknown> = {};
+      if (weak.length > 0 || (!override && strong.length > 0)) extra.similar_firms = [...strong, ...weak];
+      if (override) extra.lookup_override = strong;
+      return json({ ...data, ...extra }, 200);
     }
     if (body.action === "claim" && body.block === undefined) {
       const { data, error } = await db.rpc("v2_research_claim", { p_key_id: auth.key_id });
@@ -302,7 +333,8 @@ Deno.serve(async (req) => {
     if (error || !data) return json({ error: "server error" }, 500);
     bot = data.bot_id ?? "";
     if (!data.ok) return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
-    return json(data, data.accepted + data.held > 0 || data.dry_run ? 200 : 422);
+    const sameAs = Array.isArray(data.results) && data.results.some((r: any) => r && Array.isArray(r.same_as));
+    return json(data, data.accepted + data.held > 0 || data.dry_run ? 200 : sameAs ? 409 : 422);
   })();
   status = res.status;
   console.log(JSON.stringify({ evt: "ingest_v2_request", method: req.method, bot_id: bot || null, status }));

@@ -16,6 +16,7 @@ let claimReply: any = { ok: true, bot_id: "bot-a", firm_id: 7, slug: "plug-and-p
 let doneReply: any = { ok: true, bot_id: "bot-a", firm_id: 7, done: true };
 let submitReply: any = { ok: true, bot_id: "bot-a", accepted: 1, rejected: 0, held: 0, results: [{ index: 0, status: "Accepted" }] };
 let verdictReply: any = { ok: true, bot_id: "checker" };
+let guardReply: any = { ok: true, block_on: true, strong: [], weak: [] };
 globalThis.fetch = async (input: any, init?: any) => {
   const u = new URL(typeof input === "string" ? input : input.url);
   const body = init?.body ? JSON.parse(String(init.body)) : null;
@@ -29,6 +30,7 @@ globalThis.fetch = async (input: any, init?: any) => {
     if (m[1] === "v2_research_done") return ok(doneReply);
     if (m[1] === "v2_research_submit") return ok(submitReply);
     if (m[1] === "v2_checker_action") return ok(verdictReply);
+    if (m[1] === "v2_firm_guard") return ok(guardReply);
     return ok(null);
   }
   const table = u.pathname.match(/\/rest\/v1\/([a-z0-9_]+)$/);
@@ -53,9 +55,9 @@ Deno.test("add_firm returns firm_id and does not call submit", async () => {
   eq(r.status, 200, "status");
   eq(j.firm_id, 41, "firm_id");
   eq(j.created, true, "created");
-  eq(calls.map((c) => c.name), ["ingest_auth", "v2_research_add_firm"], "rpcs");
-  eq(calls[1].args.p_key_id, authReply.key_id, "key");
-  eq(calls[1].args.p_firm, firm, "firm");
+  eq(calls.map((c) => c.name), ["ingest_auth", "v2_firm_guard", "v2_research_add_firm"], "rpcs");
+  eq(calls[2].args.p_key_id, authReply.key_id, "key");
+  eq(calls[2].args.p_firm, firm, "firm");
 });
 
 Deno.test("add_firm again is the same call shape", async () => {
@@ -126,8 +128,8 @@ Deno.test("duplicate domain is refused and a new domain is still accepted", asyn
   eq(firmsRes.status, 200, "firms-only status");
   eq(firmsBody.firm_id, 42, "firms-only id");
   eq(firmsBody.created, true, "firms-only created");
-  eq(calls.map((c) => c.name), ["ingest_auth", "v2_research_add_firm"], "firms-only rpcs");
-  eq(calls[1].args.p_firm, firmsOnly, "firms-only firm");
+  eq(calls.map((c) => c.name), ["ingest_auth", "v2_firm_guard", "v2_research_add_firm"], "firms-only rpcs");
+  eq(calls[2].args.p_firm, firmsOnly, "firms-only firm");
   noFirms();
 
   calls.length = 0;
@@ -141,8 +143,8 @@ Deno.test("duplicate domain is refused and a new domain is still accepted", asyn
   eq(created.status, 200, "new status");
   eq(createdBody.firm_id, 43, "new firm_id");
   eq(createdBody.created, true, "created");
-  eq(calls.map((c) => c.name), ["ingest_auth", "v2_research_add_firm"], "new rpcs");
-  eq(calls[1].args.p_firm, firm, "firm unchanged");
+  eq(calls.map((c) => c.name), ["ingest_auth", "v2_firm_guard", "v2_research_add_firm"], "new rpcs");
+  eq(calls[2].args.p_firm, firm, "firm unchanged");
   noFirms();
   firmRows = [];
   v2Rows = [];
@@ -191,4 +193,57 @@ Deno.test("frozen key -> 403", async () => {
   eq(r.status, 403, "status");
   const j = await r.json();
   eq(j.error.startsWith("Key frozen"), true, "error");
+});
+
+// Required lookup (migration 20261120090000_v2_required_lookup)
+const resetAdd = () => { addReply = { ok: true, bot_id: "bot-a", firm_id: 41, created: true, slug: "example-ventures" }; };
+Deno.test("add_firm: same name found by lookup -> 409 with the ids, add_firm not called", async () => {
+  v2Rows = []; calls.length = 0;
+  guardReply = { ok: true, block_on: true, strong: [{ id: 343, name: "RTP Global Management", website: "https://rtp.vc", match_reason: "legal name" }], weak: [] };
+  const r = await h(req({ action: "add_firm", firm: { name: "RTP Global", website: "https://rtp.global", registry_id: "x" } }));
+  eq(r.status, 409, "status");
+  const b = await r.json();
+  eq(b.same_as, [343], "same_as");
+  eq(calls.map((c) => c.name), ["ingest_auth", "v2_firm_guard"], "rpcs");
+  eq(calls[1].args, { p_key: "11111111-1111-1111-1111-111111111111", p_name: "RTP Global", p_website: "https://rtp.global" }, "guard args");
+});
+
+Deno.test("add_firm: override with not_same_as + reason goes through and is logged", async () => {
+  v2Rows = []; calls.length = 0; resetAdd();
+  guardReply = { ok: true, block_on: true, strong: [{ id: 343, name: "RTP Global Management", match_reason: "name" }], weak: [] };
+  let r = await h(req({ action: "add_firm", firm: { name: "RTP Global", website: "https://rtp.global", registry_id: "x" }, not_same_as: [343] }));
+  eq(r.status, 409, "no reason -> still refused");
+  calls.length = 0;
+  r = await h(req({ action: "add_firm", firm: { name: "RTP Global", website: "https://rtp.global", registry_id: "x" }, not_same_as: [343], not_same_reason: "different firm, Berlin" }));
+  eq(r.status, 200, "status");
+  const b = await r.json();
+  eq(b.firm_id, 41, "firm id");
+  eq(calls.map((c) => c.name), ["ingest_auth", "v2_firm_guard", "v2_research_add_firm", "v2_lookup_override_log"], "rpcs");
+  eq(calls[3].args.p_ids, [343], "logged ids");
+  eq(calls[3].args.p_reason, "different firm, Berlin", "logged reason");
+  r = await h(req({ action: "add_firm", firm: { name: "X", website: "x.example", registry_id: "x" }, not_same_as: ["343"] }));
+  eq(r.status, 400, "bad not_same_as");
+});
+
+Deno.test("add_firm: partial match only -> allowed with similar_firms; switch off -> allowed", async () => {
+  v2Rows = []; calls.length = 0; resetAdd();
+  guardReply = { ok: true, block_on: true, strong: [], weak: [{ id: 11, name: "Founders Fund", match_reason: "partial name" }] };
+  let r = await h(req({ action: "add_firm", firm: { name: "Founders Fund Growth", website: "ffg.example", registry_id: "x" } }));
+  eq(r.status, 200, "status");
+  eq((await r.json()).similar_firms.map((m: any) => m.id), [11], "similar");
+  guardReply = { ok: true, block_on: false, strong: [{ id: 343, name: "RTP Global Management", match_reason: "name" }], weak: [] };
+  r = await h(req({ action: "add_firm", firm: { name: "RTP Global", website: "rtp.global", registry_id: "x" } }));
+  eq(r.status, 200, "switch off");
+  eq((await r.json()).similar_firms.map((m: any) => m.id), [343], "listed");
+  guardReply = { ok: true, block_on: true, strong: [], weak: [] };
+});
+
+Deno.test("submit: every item refused as an existing startup -> 409", async () => {
+  submitReply = { ok: true, bot_id: "bot-a", accepted: 0, rejected: 1, held: 0, results: [{ index: 0, status: "Rejected: same startup already exists: startup_id 5614", same_as: [5614] }] };
+  let r = await h(req({ action: "submit", items: [{ firm_id: 2, box: "F12", table: "v2_startups", fact: {} }] }));
+  eq(r.status, 409, "409");
+  submitReply = { ok: true, bot_id: "bot-a", accepted: 0, rejected: 1, held: 0, results: [{ index: 0, status: "Rejected: other" }] };
+  r = await h(req({ action: "submit", items: [{ firm_id: 2, box: "F12", table: "v2_startups", fact: {} }] }));
+  eq(r.status, 422, "422");
+  submitReply = { ok: true, bot_id: "bot-a", accepted: 1, rejected: 0, held: 0, results: [{ index: 0, status: "Accepted" }] };
 });
