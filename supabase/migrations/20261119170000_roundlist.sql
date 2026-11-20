@@ -11,10 +11,11 @@
 --   * Teardown in one command: supabase/rollbacks/20261119170000_roundlist.sql
 -- Bot flow (through the v2 door, same x-ingest-key as submit/next_firm):
 --   add_round        list bots add a round; a copy (same startup + round + date) is refused.
---   claim_next_round deal bots get the oldest open round (FIFO by added_at), one held round per bot.
+--   claim_next_round deal bots get the oldest open round(s) (FIFO by added_at); count 1-10, default 1.
+--                    A bot holds at most 10 taken rounds; at 10 the call is refused with its held round_ids.
 --   finish_round     the holder marks it done or rejected with a note. done needs at least one
 --                    Accepted v2_deals submission by that bot since it took the round.
--- A taken round goes back to open 2 hours after taken_at (same hold as v2_work_claims).
+-- Each taken round goes back to open 2 hours after its own taken_at (same hold as v2_work_claims).
 -- Release is done on every bot call, and by roundlist.release_expired().
 -- Bots cannot delete or edit rows: the schema and tables have no grants for public/anon/authenticated
 -- (and the schema is not exposed to the REST API). Only the security definer functions change rows,
@@ -260,7 +261,7 @@ $function$
 $ddl$;
 
   execute $ddl$
-create or replace function public.roundlist_claim_next_round(p_key_id uuid)
+create or replace function public.roundlist_claim_next_round(p_key_id uuid, p_count integer default 1)
  returns jsonb
  language plpgsql
  security definer
@@ -271,6 +272,10 @@ create or replace function public.roundlist_claim_next_round(p_key_id uuid)
 declare
   bk public.v2_bot_keys;
   r roundlist.rounds;
+  v_cap constant integer := 10;
+  v_held bigint[];
+  v_new jsonb := '[]'::jsonb;
+  v_want integer;
 begin
   bk := public.v2_work_bot(p_key_id);
   if bk.bot_key_id is null then
@@ -280,31 +285,42 @@ begin
     return jsonb_build_object('ok', false, 'bot_id', bk.bot_name, 'error', format('Key frozen: %s, %s',
       coalesce(bk.freeze_reason, 'no reason'), to_char(bk.freeze_date at time zone 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI "PT"')));
   end if;
-  -- One call at a time per bot, so two parallel calls from the same bot cannot take two rounds.
+  if p_count is null or p_count < 1 or p_count > v_cap then
+    return jsonb_build_object('ok', false, 'bot_id', bk.bot_name, 'error', 'count must be 1-10');
+  end if;
+  -- One call at a time per bot, so parallel calls from the same bot can never go over 10 held rounds.
   perform pg_advisory_xact_lock(hashtext('roundlist:bot'), bk.bot_key_id::int);
   perform roundlist.release_expired();
 
-  -- A bot that already holds a round gets the same round back until it finishes it.
-  select * into r from roundlist.rounds x
-   where x.status = 'taken' and x.taken_by = bk.bot_name
-   order by x.taken_at, x.round_id limit 1;
-  if found then
-    return jsonb_build_object('ok', true, 'bot_id', bk.bot_name, 'held', true, 'round', roundlist.round_json(r));
+  select coalesce(array_agg(x.round_id order by x.taken_at, x.round_id), '{}') into v_held
+    from roundlist.rounds x where x.status = 'taken' and x.taken_by = bk.bot_name;
+  if cardinality(v_held) >= v_cap then
+    return jsonb_build_object('ok', false, 'bot_id', bk.bot_name, 'held_count', cardinality(v_held),
+      'held_round_ids', to_jsonb(v_held),
+      'error', format('you already hold %s rounds (the most is %s): %s. Finish one with finish_round before you ask for more.',
+                      cardinality(v_held), v_cap, array_to_string(v_held, ', ')));
   end if;
+  v_want := least(p_count, v_cap - cardinality(v_held));
 
-  select * into r from roundlist.rounds x
-   where x.status = 'open'
-   order by x.added_at, x.round_id
-   limit 1
-   for update skip locked;
-  if not found then
-    return jsonb_build_object('ok', true, 'bot_id', bk.bot_name, 'held', false, 'round', null);
-  end if;
-  update roundlist.rounds x set status = 'taken', taken_by = bk.bot_name, taken_at = now()
-   where x.round_id = r.round_id
-  returning * into r;
-  insert into roundlist.events (round_id, bot, action) values (r.round_id, bk.bot_name, 'taken');
-  return jsonb_build_object('ok', true, 'bot_id', bk.bot_name, 'held', false, 'round', roundlist.round_json(r));
+  for r in
+    select * from roundlist.rounds x
+     where x.status = 'open'
+     order by x.added_at, x.round_id
+     limit v_want
+     for update skip locked
+  loop
+    update roundlist.rounds x set status = 'taken', taken_by = bk.bot_name, taken_at = now()
+     where x.round_id = r.round_id
+    returning * into r;
+    insert into roundlist.events (round_id, bot, action) values (r.round_id, bk.bot_name, 'taken');
+    v_new := v_new || jsonb_build_array(roundlist.round_json(r));
+    v_held := v_held || r.round_id;
+  end loop;
+
+  -- round: the first new round (null when none is open). rounds: every round given in this call.
+  return jsonb_build_object('ok', true, 'bot_id', bk.bot_name,
+    'round', v_new->0, 'rounds', v_new, 'claimed_count', jsonb_array_length(v_new),
+    'held_count', cardinality(v_held), 'held_round_ids', to_jsonb(v_held), 'max_held', v_cap);
 end
 $function$
 $ddl$;
@@ -374,16 +390,16 @@ $ddl$;
 
   -- Server only: the door calls the three entry points with the service role. Helpers have no grants.
   execute 'revoke all on function roundlist.norm_site(text), roundlist.norm_text(text), roundlist.startup_key(text, text), roundlist.release_expired(), roundlist.round_json(roundlist.rounds) from public';
-  execute 'revoke all on function public.roundlist_add_round(uuid, jsonb), public.roundlist_claim_next_round(uuid), public.roundlist_finish_round(uuid, bigint, text, text) from public';
+  execute 'revoke all on function public.roundlist_add_round(uuid, jsonb), public.roundlist_claim_next_round(uuid, integer), public.roundlist_finish_round(uuid, bigint, text, text) from public';
   if exists (select 1 from pg_roles where rolname = 'anon') then
-    execute 'revoke all on function public.roundlist_add_round(uuid, jsonb), public.roundlist_claim_next_round(uuid), public.roundlist_finish_round(uuid, bigint, text, text) from anon';
+    execute 'revoke all on function public.roundlist_add_round(uuid, jsonb), public.roundlist_claim_next_round(uuid, integer), public.roundlist_finish_round(uuid, bigint, text, text) from anon';
   end if;
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
-    execute 'revoke all on function public.roundlist_add_round(uuid, jsonb), public.roundlist_claim_next_round(uuid), public.roundlist_finish_round(uuid, bigint, text, text) from authenticated';
+    execute 'revoke all on function public.roundlist_add_round(uuid, jsonb), public.roundlist_claim_next_round(uuid, integer), public.roundlist_finish_round(uuid, bigint, text, text) from authenticated';
   end if;
   if exists (select 1 from pg_roles where rolname = 'service_role') then
     execute 'grant execute on function public.roundlist_add_round(uuid, jsonb) to service_role';
-    execute 'grant execute on function public.roundlist_claim_next_round(uuid) to service_role';
+    execute 'grant execute on function public.roundlist_claim_next_round(uuid, integer) to service_role';
     execute 'grant execute on function public.roundlist_finish_round(uuid, bigint, text, text) to service_role';
   end if;
 end

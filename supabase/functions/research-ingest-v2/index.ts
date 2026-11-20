@@ -10,7 +10,7 @@
 // next_firm/firm_done: the database setting v2_work_setting.current_job picks the job (job in the body is optional and only used when no job is set).
 // A key may hold up to 10 firms per job from v2_work_claims, 2-hour hold. Replies and hints name the job actually used.
 // add_round / claim_next_round / finish_round: the separate round list (schema roundlist, migration 20261119170000_roundlist).
-// One held round per key, 2-hour hold; a copy of a round is refused (409); done needs an accepted deal since the claim.
+// Up to 10 held rounds per key (count 1-10 per call), each with a 2-hour hold; a copy of a round is refused (409); done needs an accepted deal since the claim.
 import { createClient } from "npm:@supabase/supabase-js@2";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const MAX_BYTES = 2_000_000;
@@ -21,7 +21,7 @@ const json = (b: unknown, status = 200, extra: Record<string, string> = {}) =>
 const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
   .map((b) => b.toString(16).padStart(2, "0")).join("");
 const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"missing\",\"firm_id\":N} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
-const ROUND_HINT = "Round list: {\"action\":\"add_round\",\"round\":{\"startup_name\",\"startup_website\",\"country\",\"round\",\"round_date\":\"YYYY-MM-DD\",\"source_url\"}} or {\"action\":\"claim_next_round\"} or {\"action\":\"finish_round\",\"round_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
+const ROUND_HINT = "Round list: {\"action\":\"add_round\",\"round\":{\"startup_name\",\"startup_website\",\"country\",\"round\",\"round_date\":\"YYYY-MM-DD\",\"source_url\"}} or {\"action\":\"claim_next_round\",\"count\":1} or {\"action\":\"finish_round\",\"round_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
 // Domain only: lowercase, no scheme, no leading www, no port, no path.
 const firmDomain = (website: string) => {
   let s = website.trim().toLowerCase();
@@ -222,7 +222,11 @@ Deno.serve(async (req) => {
         }
         rpc = "roundlist_add_round"; args = { p_key_id: auth.key_id, p_round: body.round };
       } else if (body.action === "claim_next_round") {
-        rpc = "roundlist_claim_next_round"; args = { p_key_id: auth.key_id };
+        const count = body.count === undefined ? 1 : body.count;
+        if (typeof count !== "number" || !Number.isInteger(count) || count < 1 || count > 10) {
+          return json({ error: "count must be 1-10 (a bot holds at most 10 rounds)", hint: ROUND_HINT }, 400);
+        }
+        rpc = "roundlist_claim_next_round"; args = { p_key_id: auth.key_id, p_count: count };
       } else {
         const roundId = body.round_id;
         if (typeof roundId !== "number" || !Number.isInteger(roundId) || roundId <= 0) {
@@ -237,10 +241,13 @@ Deno.serve(async (req) => {
       const { data, error } = await db.rpc(rpc, args);
       if (error || !data) return json({ error: "server error" }, 500);
       bot = data.bot_id ?? "";
-      if (!data.ok) return json(data.duplicate ? data : { error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : data.duplicate ? 409 : 400);
+      if (!data.ok) {
+        if (Array.isArray(data.held_round_ids)) return json({ error: data.error, held_count: data.held_count, held_round_ids: data.held_round_ids }, 409);
+        return json(data.duplicate ? data : { error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : data.duplicate ? 409 : 400);
+      }
       if (body.action === "claim_next_round") {
         const hint = data.round
-          ? "save this round's deals with submit, then send {\"action\":\"finish_round\",\"round_id\":" + data.round.round_id + ",\"result\":\"done\",\"note\":\"...\"}"
+          ? "save each round's deals with submit, then send {\"action\":\"finish_round\",\"round_id\":" + data.round.round_id + ",\"result\":\"done\",\"note\":\"...\"} for each round (up to 10 held at once)"
           : "no open round left";
         return json({ ...data, hint }, 200);
       }

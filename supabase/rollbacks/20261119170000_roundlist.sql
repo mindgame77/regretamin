@@ -6,7 +6,7 @@
 do $undo$
 begin
   drop function if exists public.roundlist_add_round(uuid, jsonb);
-  drop function if exists public.roundlist_claim_next_round(uuid);
+  drop function if exists public.roundlist_claim_next_round(uuid, integer);
   drop function if exists public.roundlist_finish_round(uuid, bigint, text, text);
   drop schema if exists roundlist cascade;
 end

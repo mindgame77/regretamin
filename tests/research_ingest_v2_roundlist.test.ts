@@ -47,12 +47,34 @@ Deno.test("add_round: a copy is 409 with the existing round", async () => {
   eq((await h(req({ action: "add_round", round: [] }))).status, 400, "round must be an object");
 });
 
-Deno.test("claim_next_round: key only, finish hint", async () => {
+Deno.test("claim_next_round: key from header, count defaults to 1, finish hint", async () => {
   calls.length = 0;
   const r = await h(req({ action: "claim_next_round" }));
   eq(r.status, 200, "status");
-  eq(calls.find((x) => x.name === "roundlist_claim_next_round")!.args, { p_key_id: KEY }, "rpc args");
+  eq(calls.find((x) => x.name === "roundlist_claim_next_round")!.args, { p_key_id: KEY, p_count: 1 }, "rpc args");
   eq((await r.json()).hint.includes('"action":"finish_round","round_id":7'), true, "hint");
+});
+
+Deno.test("claim_next_round: count 1-10 passed through, bad count refused before the database", async () => {
+  calls.length = 0;
+  eq((await h(req({ action: "claim_next_round", count: 10 }))).status, 200, "count 10");
+  eq(calls.find((x) => x.name === "roundlist_claim_next_round")!.args, { p_key_id: KEY, p_count: 10 }, "rpc args");
+  calls.length = 0;
+  for (const bad of [0, 11, 2.5, "3"]) {
+    eq((await h(req({ action: "claim_next_round", count: bad }))).status, 400, `count ${bad}`);
+  }
+  eq(calls.some((x) => x.name === "roundlist_claim_next_round"), false, "no rpc on bad count");
+});
+
+Deno.test("claim_next_round: at 10 held rounds the bot gets 409 with its round_ids", async () => {
+  const keep = replies.roundlist_claim_next_round;
+  replies.roundlist_claim_next_round = { ok: false, bot_id: "bot-a", held_count: 10, held_round_ids: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    error: "you already hold 10 rounds (the most is 10): 1, 2, 3, 4, 5, 6, 7, 8, 9, 10. Finish one with finish_round before you ask for more." };
+  const r = await h(req({ action: "claim_next_round" }));
+  eq(r.status, 409, "status");
+  const j = await r.json();
+  eq([j.held_count, j.held_round_ids.length, j.error.startsWith("you already hold 10 rounds")], [10, 10, true], "body");
+  replies.roundlist_claim_next_round = keep;
 });
 
 Deno.test("finish_round: checks round_id, result and note before the database", async () => {

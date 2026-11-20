@@ -21,7 +21,7 @@ NAME = "20261119170000_roundlist.sql"
 MIG = (ROOT / "supabase/migrations" / NAME).read_text()
 UNDO = (ROOT / "supabase/rollbacks" / NAME).read_text()
 FN = (ROOT / "supabase/functions/research-ingest-v2/index.ts").read_text()
-ENTRY = ("public.roundlist_add_round(uuid, jsonb)", "public.roundlist_claim_next_round(uuid)",
+ENTRY = ("public.roundlist_add_round(uuid, jsonb)", "public.roundlist_claim_next_round(uuid, integer)",
          "public.roundlist_finish_round(uuid, bigint, text, text)")
 REFUSE_DONE = ("finish_round done refused: you have no accepted deal saved since you took this round. "
                "Save the deals first, or finish it as rejected with the reason.")
@@ -110,8 +110,13 @@ def add(c, key, **kw):
     return c.execute("select public.roundlist_add_round(%s, %s)", (key, Jsonb(r))).fetchone()[0]
 
 
-def claim(c, key):
-    return c.execute("select public.roundlist_claim_next_round(%s)", (key,)).fetchone()[0]
+def claim(c, key, count=1):
+    return c.execute("select public.roundlist_claim_next_round(%s, %s)", (key, count)).fetchone()[0]
+
+
+def add_many(c, n, prefix="S"):
+    return [add(c, K3, startup_name=f"{prefix}{i}", startup_website=f"{prefix.lower()}{i}.io")["round"]["round_id"]
+            for i in range(n)]
 
 
 def finish(c, key, rid, result="done", note="saved 2 deals"):
@@ -149,16 +154,41 @@ def test_db_add_and_duplicates_refused(db):
     assert db.execute("select count(*) from roundlist.events where action = 'add_refused'").fetchone()[0] == 3
 
 
-def test_db_claim_oldest_first_and_one_held_round_per_bot(db):
-    r1 = add(db, K3, startup_name="One", startup_website="one.io")["round"]["round_id"]
-    r2 = add(db, K3, startup_name="Two", startup_website="two.io")["round"]["round_id"]
+def test_db_claim_oldest_first_up_to_10_per_bot(db):
+    ids = add_many(db, 14)
     a = claim(db, K1)
-    assert a["round"]["round_id"] == r1 and a["round"]["status"] == "taken" and not a["held"]
-    again = claim(db, K1)
-    assert again["held"] and again["round"]["round_id"] == r1
-    b = claim(db, K2)
-    assert b["round"]["round_id"] == r2
-    assert claim(db, K3)["round"] is None
+    assert a["round"]["round_id"] == ids[0] and a["round"]["status"] == "taken"
+    assert a["held_count"] == 1 and a["held_round_ids"] == [ids[0]] and a["max_held"] == 10
+    b = claim(db, K1)  # a second call gives the next round, not the same one
+    assert b["round"]["round_id"] == ids[1] and b["held_round_ids"] == ids[:2]
+    for i in range(2, 10):
+        assert claim(db, K1)["round"]["round_id"] == ids[i]
+    full = claim(db, K1)
+    assert not full["ok"] and full["held_count"] == 10 and full["held_round_ids"] == ids[:10]
+    assert full["error"] == ("you already hold 10 rounds (the most is 10): " + ", ".join(map(str, ids[:10]))
+                             + ". Finish one with finish_round before you ask for more.")
+    assert claim(db, K2)["round"]["round_id"] == ids[10]  # other bots are not affected
+    # Finishing one frees one slot.
+    assert finish(db, K1, ids[0], "rejected", "not a 2026 round")["ok"]
+    nxt = claim(db, K1, 5)
+    assert nxt["claimed_count"] == 1 and nxt["round"]["round_id"] == ids[11] and nxt["held_count"] == 10
+
+
+def test_db_count_param(db):
+    ids = add_many(db, 12)
+    three = claim(db, K1, 3)
+    assert [r["round_id"] for r in three["rounds"]] == ids[:3] and three["claimed_count"] == 3
+    assert three["round"]["round_id"] == ids[0]
+    big = claim(db, K1, 10)  # only 7 slots left
+    assert big["claimed_count"] == 7 and [r["round_id"] for r in big["rounds"]] == ids[3:10]
+    assert big["held_count"] == 10
+    assert not claim(db, K1, 1)["ok"]
+    for bad in (0, 11, -1):
+        assert claim(db, K2, bad)["error"] == "count must be 1-10"
+    rest = claim(db, K2, 10)  # fewer open rounds than asked: gets what is left
+    assert rest["claimed_count"] == 2 and [r["round_id"] for r in rest["rounds"]] == ids[10:]
+    none = claim(db, K3)
+    assert none["ok"] and none["round"] is None and none["rounds"] == [] and none["claimed_count"] == 0
 
 
 def test_db_claim_race_two_bots_never_share_a_round(db):
@@ -193,20 +223,48 @@ def test_db_claim_race_two_bots_never_share_a_round(db):
     assert all(n == 1 for _, n in rows)
 
 
-def test_db_same_bot_twice_at_once_gets_one_round(db):
+def test_db_same_bot_parallel_calls_never_exceed_10(db):
     import psycopg
-    for i in range(3):
-        add(db, K3, startup_name=f"S{i}", startup_website=f"s{i}.io")
+    add_many(db, 30)
+    # The per-bot lock: a second call waits for the first, then gets the next round.
     out = []
     with psycopg.connect(URL) as ca:
-        a = claim(ca, K1)  # holds the per-bot lock until commit
+        a = claim(ca, K1)
         t = threading.Thread(target=lambda: out.append(claim(psycopg.connect(URL, autocommit=True), K1)))
         t.start(); time.sleep(0.5)
-        assert t.is_alive()  # waits for the first call
+        assert t.is_alive()
         ca.commit()
         t.join()
-    assert out[0]["held"] and out[0]["round"]["round_id"] == a["round"]["round_id"]
-    assert db.execute("select count(*) from roundlist.rounds where status = 'taken'").fetchone()[0] == 1
+    assert out[0]["round"]["round_id"] != a["round"]["round_id"] and out[0]["held_count"] == 2
+    # 15 parallel calls from one bot (count 1): exactly 8 more succeed, the rest are refused at 10.
+    res, gate = [], threading.Barrier(15)
+
+    def run(count):
+        with psycopg.connect(URL, autocommit=True) as c:
+            gate.wait()
+            res.append(claim(c, K1, count))
+    ts = [threading.Thread(target=run, args=(1,)) for _ in range(15)]
+    [t.start() for t in ts]; [t.join() for t in ts]
+    assert sum(1 for r in res if r["ok"] and r["claimed_count"] == 1) == 8
+    assert sum(1 for r in res if not r["ok"] and r["held_count"] == 10) == 7
+    held = lambda key: db.execute("select count(*) from roundlist.rounds r join public.v2_bot_keys b on b.bot_name = r.taken_by "
+                                  "where r.status = 'taken' and b.bot_name = (select bot_name from public.v2_work_bot(%s))",
+                                  (key,)).fetchone()[0]
+    assert held(K1) == 10
+    # 6 parallel calls from another bot asking 3 each: never more than 10 in total.
+    res.clear(); gate = threading.Barrier(6)
+    ts = [threading.Thread(target=run_k2, args=(gate, res)) for _ in range(6)]
+    [t.start() for t in ts]; [t.join() for t in ts]
+    assert sum(r.get("claimed_count", 0) for r in res) == 10 and held(K2) == 10
+    ids = db.execute("select round_id from roundlist.rounds where status = 'taken'").fetchall()
+    assert len(ids) == 20 and len(set(ids)) == 20
+
+
+def run_k2(gate, res):
+    import psycopg
+    with psycopg.connect(URL, autocommit=True) as c:
+        gate.wait()
+        res.append(claim(c, K2, 3))
 
 
 def test_db_done_needs_an_accepted_deal_since_the_claim(db):
@@ -245,6 +303,14 @@ def test_db_expired_hold_goes_back_to_open(db):
     assert "not held by you" in finish(db, K1, rid)["error"]
     ev = db.execute("select detail->>'was_taken_by' from roundlist.events where action = 'released'").fetchall()
     assert ev == [("bot-a",)]
+    # Each round expires from its own taken_at: of two held rounds only the old one goes back.
+    r2, r3 = add_many(db, 2, "E")
+    assert claim(db, K1, 2)["claimed_count"] == 2
+    db.execute("update roundlist.rounds set taken_at = now() - interval '2 hours 5 minutes' where round_id = %s", (r2,))
+    db.execute("update roundlist.rounds set taken_at = now() - interval '1 hour 55 minutes' where round_id = %s", (r3,))
+    held = claim(db, K1)
+    assert held["claimed_count"] == 1 and held["round"]["round_id"] == r2 and r3 in held["held_round_ids"]
+    db.execute("update roundlist.rounds set status = 'done' where round_id in (%s, %s)", (r2, r3))
     # release_expired on its own
     db.execute("update roundlist.rounds set taken_at = now() - interval '3 hours' where round_id = %s", (rid,))
     assert db.execute("select roundlist.release_expired()").fetchone()[0] == 1
@@ -291,9 +357,10 @@ def test_db_loader_keeps_sheet_state_and_refuses_copies(db, tmp_path):
     assert rows["Perry AI"] == ("done", "bot-b", "Not in system: Antler", "external-research-bot-27")
     assert rows["Zya"][:2] == ("taken", "bot-a")      # taken_at missing -> load time, released after 2 hours
     assert rows["Alecto"][0] == "open"
-    # bot-a still holds Zya from the sheet and gets it back; bot-b gets Alecto (Perry is done).
-    assert claim(db, K1)["round"]["startup_name"] == "Zya"
-    assert claim(db, K2)["round"]["startup_name"] == "Alecto"
+    # bot-a still holds Zya from the sheet (1 of its 10) and gets Alecto next; Perry is done.
+    a = claim(db, K1)
+    assert a["round"]["startup_name"] == "Alecto" and a["held_count"] == 2
+    assert claim(db, K2)["round"] is None
     again = load_roundlist.main([str(f), "--database-url", URL, "--apply"])
     assert again["inserted"] == 0 and len(again["refused_copies"]) == 4
 
