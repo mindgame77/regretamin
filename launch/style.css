@@ -1191,6 +1191,8 @@ main.wrap.firms-pg{max-width:1320px}
 #vm-labs .vm-lab{animation:vm-fade .35s both}
 #vm-labs.vm-late .vm-lab{animation-delay:.55s}
 @keyframes vm-fade{from{opacity:0}to{opacity:1}}
+.vm-lab.vm-code{font-size:11px;line-height:13px;text-align:center;letter-spacing:.02em}
+.vm-lab.vm-code-in{font-size:9px;text-shadow:none}
 .vm-lab em{font-style:normal;font-weight:400;color:var(--mm)}
 .vm-lab.vm-sm{font-size:10px;line-height:14px;font-weight:400;color:var(--mm)}
 .vm-tip{position:absolute;z-index:5;width:236px;background:#fff;border:1.5px solid var(--mi);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:12px}

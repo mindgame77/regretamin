@@ -226,9 +226,20 @@
       const w = Math.max(p.n.length * (small ? 5.6 : 6.6), small ? 0 : sub.length * 5.9) + 8, h = small ? 14 : 30;
       const tries = small ? [[p.x + p.r + 6, p.y - 7, 'l'], [p.x - p.r - 6 - w, p.y - 7, 'r']] : [[p.x - w / 2, p.y + p.r + 2, 'c'], [p.x - w / 2, p.y - p.r - h - 2, 'c'], [p.x + p.r + 4, p.y - h / 2, 'l'], [p.x - p.r - 4 - w, p.y - h / 2, 'r'],
         [p.x + p.r * 0.7 + 2, p.y + p.r * 0.7, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y + p.r * 0.7, 'r'], [p.x + p.r * 0.7 + 2, p.y - p.r * 0.7 - h, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y - p.r * 0.7 - h, 'r']];
+      let placed = false;
       for (const [x, y, al] of tries) {
         const bx = { x0: x, y0: y, x1: x + w, y1: y + h };
-        if (!hit(bx)) { boxes.push(bx); labs += `<span class="vm-lab ${small ? 'vm-sm' : ''}" style="left:${x}px;top:${y}px;width:${w}px;text-align:${al === 'c' ? 'center' : al === 'l' ? 'left' : 'right'}">${esc(p.n)}${small ? ' ' + num(p.d) : `<br><em>${esc(sub)}</em>`}</span>`; break; }
+        if (!hit(bx)) { boxes.push(bx); placed = true; labs += `<span class="vm-lab ${small ? 'vm-sm' : ''}" style="left:${x}px;top:${y}px;width:${w}px;text-align:${al === 'c' ? 'center' : al === 'l' ? 'left' : 'right'}">${esc(p.n)}${small ? ' ' + num(p.d) : `<br><em>${esc(sub)}</em>`}</span>`; break; }
+      }
+      // No room for the full name (crowded Europe): fall back to the two-letter country code, beside the ring if it fits, else in its centre.
+      if (!placed && S.level === 'eu' && !small) {
+        const cw = 20, ch = 13, spots = [[p.x - cw / 2, p.y + p.r + 1], [p.x - cw / 2, p.y - p.r - ch - 1], [p.x + p.r + 2, p.y - ch / 2], [p.x - p.r - 2 - cw, p.y - ch / 2]];
+        let done = false;
+        for (const [x, y] of spots) {
+          const bx = { x0: x, y0: y, x1: x + cw, y1: y + ch };
+          if (!hit(bx)) { boxes.push(bx); done = true; labs += `<span class="vm-lab vm-code" title="${esc(p.n)}" style="left:${x}px;top:${y}px;width:${cw}px">${esc(p.p)}</span>`; break; }
+        }
+        if (!done) labs += `<span class="vm-lab vm-code vm-code-in" title="${esc(p.n)}" style="left:${p.x - cw / 2}px;top:${p.y - ch / 2}px;width:${cw}px">${esc(p.p)}</span>`;
       }
     });
     els.forEach((b, key) => { if (!seen.has(key)) { els.delete(key); b.classList.add('vm-out'); setTimeout(() => b.remove(), 850); } });
