@@ -12,6 +12,11 @@
 // add_round / claim_next_round / finish_round: the separate round list (schema roundlist, migration 20261119170000_roundlist).
 // Up to 10 held rounds per key (count 1-10 per call), each with a 2-hour hold; a copy of a round is refused (409); done needs an accepted deal since the claim.
 // lookup is read-only: finds an existing firm or startup by website domain, name, or partial name (migration 20261120060000_v2_research_lookup).
+// lookup also accepts {"founder":{"name","linkedin_url"}} and returns up to 5 people with their startups and past jobs (migration 20261121010000_v2_founders).
+// Reuse a founder_id only when the LinkedIn is the same, or the name is the same and a startup or a past job matches.
+// add_founder saves one person, their role at a startup, and optional facts, in one call. Nothing is written if any part is refused.
+// claim_next_founder_startups / finish_founder_startup: separate hand-out (schema founderlist, migration 20261121020000_founderlist).
+// Up to 10 held startups, each with a 2-hour hold. done needs a founder role for that startup saved by this bot since the claim.
 // Required lookup (migration 20261120090000_v2_required_lookup): add_firm is refused (409, same_as ids) when lookup finds the same website or the
 // same name / short / legal name; a new startup in submit is refused when one older startup has the same name and website base.
 // Override: "not_same_as":[ids] + "not_same_reason". Switch: v2_work_setting lookup_block on/off.
@@ -24,9 +29,69 @@ const json = (b: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(b), { status, headers: { ...CORS, "content-type": "application/json", ...extra } });
 const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
   .map((b) => b.toString(16).padStart(2, "0")).join("");
-const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"missing\",\"firm_id\":N} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]} or {\"action\":\"lookup\",\"firm\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"startup\":{\"name\",\"website\"}}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
-const LOOKUP_HINT = "{\"action\":\"lookup\",\"firm\":{\"name\":\"All Aboard Fund\",\"website\":\"allaboard.vc\"}} or {\"action\":\"lookup\",\"startup\":{\"name\":\"Rivercell\",\"website\":\"rivercell.ai\"}}; send a name, a website, or both";
+const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"missing\",\"firm_id\":N} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]} or {\"action\":\"lookup\",\"firm\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"startup\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"founder\":{\"name\",\"linkedin_url\"}} or {\"action\":\"add_founder\",\"startup_id\":N,\"founder\":{\"name\",\"linkedin_url\"},\"role\":{\"source_url\"},\"facts\":[]} or {\"action\":\"claim_next_founder_startups\",\"count\":1} or {\"action\":\"finish_founder_startup\",\"startup_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
+const LOOKUP_HINT = "{\"action\":\"lookup\",\"firm\":{\"name\":\"All Aboard Fund\",\"website\":\"allaboard.vc\"}} or {\"action\":\"lookup\",\"startup\":{\"name\":\"Rivercell\",\"website\":\"rivercell.ai\"}} or {\"action\":\"lookup\",\"founder\":{\"name\":\"Ada Lovelace\",\"linkedin_url\":\"https://www.linkedin.com/in/ada\"}}; firm and startup take a name, a website, or both; a founder takes a name, a LinkedIn link, or both";
 const ROUND_HINT = "Round list: {\"action\":\"add_round\",\"round\":{\"startup_name\",\"startup_website\",\"country\",\"round\",\"round_date\":\"YYYY-MM-DD\",\"source_url\"}} or {\"action\":\"claim_next_round\",\"count\":1} or {\"action\":\"finish_round\",\"round_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
+const FOUNDER_HINT = "{\"action\":\"add_founder\",\"startup_id\":10,\"founder\":{\"name\":\"Ada Lovelace\",\"linkedin_url\":\"https://www.linkedin.com/in/ada\",\"founder_id\":7},\"role\":{\"value\":\"CEO\",\"source_url\":\"https://example.com/about\"},\"facts\":[{\"fact\":\"current_country\",\"value\":\"GB\",\"source_url\":\"https://example.com/about\"},{\"fact\":\"past_job\",\"value\":\"Babbage Co\",\"company_website\":\"https://babbage.example\",\"source_url\":\"https://news.example/ada\"},{\"fact\":\"founded_before\",\"value\":\"yes: Analytical Kids\",\"source_url\":\"https://news.example/ada\"}]}";
+const FOUNDERLIST_HINT = "Founder list: {\"action\":\"claim_next_founder_startups\",\"count\":1} or {\"action\":\"finish_founder_startup\",\"startup_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
+const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === "object" && !Array.isArray(v);
+const HTTP_URL = /^https?:\/\/\S+$/i;
+const FOUNDER_FACTS = new Set(["current_city", "current_country", "previous_city", "previous_country", "university", "founded_before", "past_job"]);
+const FOUNDER_FACT_LIST = "current_city, current_country, previous_city, previous_country, university, founded_before, past_job";
+function linkedinProfile(raw: string): boolean {
+  const cut = raw.trim().split(/[?#]/)[0].toLowerCase();
+  const m = cut.match(/^(?:https?:\/\/)?(?:[a-z0-9-]+\.)*linkedin\.com\/in\/([^/]+)\/?$/);
+  return !!m && /^[a-z0-9_-]{2,100}$/.test(m[1]);
+}
+// Shape checks for add_founder. The database repeats them. Messages match v2_founder_add.
+function founderInputError(body: any): string | null {
+  if (typeof body.startup_id !== "number" || !Number.isInteger(body.startup_id) || body.startup_id <= 0) return "startup_id is required";
+  if (!isObj(body.founder)) return "founder must be an object with name, and linkedin_url or founder_id when reusing a person";
+  if (!isObj(body.role)) return "role must be an object with source_url";
+  const reuse = body.founder.founder_id;
+  if (reuse !== undefined && reuse !== null && (typeof reuse !== "number" || !Number.isInteger(reuse) || reuse <= 0)) return "founder_id must be a positive integer";
+  const name = body.founder.name;
+  if (name !== undefined && name !== null && (typeof name !== "string" || name.length > 200)) return "name must be text up to 200 characters";
+  if ((reuse === undefined || reuse === null) && (typeof name !== "string" || name.trim() === "")) return "founder name is required (up to 200 characters)";
+  const li = body.founder.linkedin_url;
+  if (li !== undefined && li !== null && li !== "" && (typeof li !== "string" || li.length > 500 || !linkedinProfile(li))) {
+    return "linkedin_url must be a LinkedIn profile link like https://www.linkedin.com/in/name, or leave it out";
+  }
+  const src = body.role.source_url;
+  if (typeof src !== "string" || !HTTP_URL.test(src.trim()) || src.trim().length > 2000) return "role source_url is required (an http(s) link)";
+  if (body.role.value !== undefined && body.role.value !== null && (typeof body.role.value !== "string" || body.role.value.length > 300)) return "role value must be text up to 300 characters";
+  if (body.facts === undefined || body.facts === null) return null;
+  if (!Array.isArray(body.facts)) return "facts must be a list";
+  if (body.facts.length > 30) return "facts can list at most 30";
+  for (let i = 0; i < body.facts.length; i++) {
+    const f = body.facts[i];
+    const at = "facts[" + (i + 1) + "]";
+    if (!isObj(f)) return at + " must be an object with fact, value and source_url";
+    if (typeof f.fact !== "string") return "unknown fact type ''; allowed: " + FOUNDER_FACT_LIST;
+    const kind = f.fact.trim().toLowerCase();
+    if (kind === "role") return "send the startup role in role, not in facts";
+    if (!FOUNDER_FACTS.has(kind)) return "unknown fact type '" + f.fact.slice(0, 40) + "'; allowed: " + FOUNDER_FACT_LIST;
+    if (typeof f.source_url !== "string" || !HTTP_URL.test(f.source_url.trim()) || f.source_url.trim().length > 2000) return at + " needs a source_url (an http(s) link)";
+    const hasSite = f.company_website !== undefined && f.company_website !== null && String(f.company_website).trim() !== "";
+    if (kind === "past_job") {
+      if (typeof f.value !== "string" || f.value.trim() === "" || f.value.length > 300) return "past_job needs a company name in value";
+      if (hasSite && (typeof f.company_website !== "string" || !HTTP_URL.test(f.company_website.trim()) || f.company_website.trim().length > 500)) {
+        return "past_job company_website must be an http(s) link, or leave it out";
+      }
+    } else if (hasSite) {
+      return "company_website is only for past_job";
+    } else if (kind === "current_country" || kind === "previous_country") {
+      if (typeof f.value !== "string" || !/^[A-Za-z]{2}$/.test(f.value.trim())) return kind + " must be a 2-letter country code (for example US)";
+    } else if (kind === "founded_before") {
+      if (typeof f.value !== "string" || f.value.length > 300 || !/^(yes|no)(:\s*\S.*)?$/i.test(f.value.trim())) {
+        return "founded_before value must be yes or no, optionally followed by the earlier company (yes: Earlier Company)";
+      }
+    } else if (typeof f.value !== "string" || f.value.trim() === "" || f.value.length > 300) {
+      return kind + " needs a value";
+    }
+  }
+  return null;
+}
 // Domain only: lowercase, no scheme, no leading www, no port, no path.
 const firmDomain = (website: string) => {
   let s = website.trim().toLowerCase();
@@ -246,11 +311,24 @@ Deno.serve(async (req) => {
       if (!data.ok) return json({ error: data.error }, data.error === "unauthorized" ? 403 : 404);
       return json(data, 200);
     }
-    // Read-only lookup of an existing firm or startup (one search for every bot before "not in system" or a new startup).
+    // Read-only lookup of an existing firm, startup, or founder.
     if (body.action === "lookup") {
-      const isObj = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
-      const hasFirm = body.firm !== undefined; const hasStartup = body.startup !== undefined;
-      if (hasFirm === hasStartup) return json({ error: "send exactly one of firm or startup", hint: LOOKUP_HINT }, 400);
+      const hasFirm = body.firm !== undefined; const hasStartup = body.startup !== undefined; const hasFounder = body.founder !== undefined;
+      if ([hasFirm, hasStartup, hasFounder].filter(Boolean).length !== 1) return json({ error: "send exactly one of firm, startup or founder", hint: LOOKUP_HINT }, 400);
+      if (hasFounder) {
+        if (!isObj(body.founder)) return json({ error: "founder must be an object with name and/or linkedin_url", hint: LOOKUP_HINT }, 400);
+        const name = body.founder.name ?? null; const linkedin = body.founder.linkedin_url ?? null;
+        if (name !== null && (typeof name !== "string" || name.length > 200)) return json({ error: "name must be text up to 200 characters", hint: LOOKUP_HINT }, 400);
+        if (linkedin !== null && (typeof linkedin !== "string" || linkedin.length > 500)) return json({ error: "linkedin_url must be text up to 500 characters", hint: LOOKUP_HINT }, 400);
+        if (!(name ?? "").trim() && !(linkedin ?? "").trim()) return json({ error: "send a name or a LinkedIn link", hint: LOOKUP_HINT }, 400);
+        const { data, error } = await db.rpc("v2_founder_lookup", { p_key: auth.key_id, p_name: name, p_linkedin: linkedin });
+        if (error || !data) return json({ error: "server error" }, 500);
+        if (!data.ok) return json({ error: data.error, hint: LOOKUP_HINT }, data.error === "unauthorized" ? 401 : 400);
+        const hint = data.found
+          ? "reuse a founder_id only when the LinkedIn is the same, or the name is the same and a startup or a past job matches; otherwise add a new person"
+          : "no founder matched this name or LinkedIn: not stored yet";
+        return json({ ...data, hint }, 200);
+      }
       const kind = hasFirm ? "firm" : "startup";
       const q = hasFirm ? body.firm : body.startup;
       if (!isObj(q)) return json({ error: kind + " must be an object with name and/or website", hint: LOOKUP_HINT }, 400);
@@ -326,7 +404,56 @@ Deno.serve(async (req) => {
       }
       return json({ ...data, hint: "send {\"action\":\"next_firm\",\"job\":\"" + usedJob + "\"} for the next firm" }, 200);
     }
-    if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, deals, missing, next_firm, firm_done, notes, notes_ack, lookup, list_queue or verdict", hint: HINT }, 400);
+    if (body.action === "add_founder") {
+      const problem = founderInputError(body);
+      if (problem) return json({ error: problem, hint: FOUNDER_HINT }, 400);
+      const { data, error } = await db.rpc("v2_founder_add", {
+        p_key_id: auth.key_id, p_startup_id: body.startup_id, p_founder: body.founder, p_role: body.role, p_facts: body.facts ?? [],
+      });
+      if (error || !data) return json({ error: "server error" }, 500);
+      bot = data.bot_id ?? "";
+      if (!data.ok) {
+        if (data.duplicate) return json(data, 409);
+        const err = String(data.error ?? "");
+        return json({ error: data.error }, err.startsWith("Key frozen") ? 403 : /not found/.test(err) ? 404 : 400);
+      }
+      return json(data, 200);
+    }
+    if (body.action === "claim_next_founder_startups" || body.action === "finish_founder_startup") {
+      let rpc: string; let args: Record<string, unknown>;
+      if (body.action === "claim_next_founder_startups") {
+        const count = body.count === undefined ? 1 : body.count;
+        if (typeof count !== "number" || !Number.isInteger(count) || count < 1 || count > 10) {
+          return json({ error: "count must be 1-10 (a bot holds at most 10 startups)", hint: FOUNDERLIST_HINT }, 400);
+        }
+        rpc = "founderlist_claim_next_founder_startups"; args = { p_key_id: auth.key_id, p_count: count };
+      } else {
+        const startupId = body.startup_id;
+        if (typeof startupId !== "number" || !Number.isInteger(startupId) || startupId <= 0) {
+          return json({ error: "startup_id must be the startup from claim_next_founder_startups", hint: FOUNDERLIST_HINT }, 400);
+        }
+        if (body.result !== "done" && body.result !== "rejected") return json({ error: "result must be done or rejected", hint: FOUNDERLIST_HINT }, 400);
+        if (typeof body.note !== "string" || body.note.trim() === "" || body.note.length > 4000) {
+          return json({ error: "note is required (up to 4000 characters)", hint: FOUNDERLIST_HINT }, 400);
+        }
+        rpc = "founderlist_finish_founder_startup"; args = { p_key_id: auth.key_id, p_startup_id: startupId, p_result: body.result, p_note: body.note };
+      }
+      const { data, error } = await db.rpc(rpc, args);
+      if (error || !data) return json({ error: "server error" }, 500);
+      bot = data.bot_id ?? "";
+      if (!data.ok) {
+        if (Array.isArray(data.held_startup_ids)) return json({ error: data.error, held_count: data.held_count, held_startup_ids: data.held_startup_ids }, 409);
+        return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
+      }
+      if (body.action === "claim_next_founder_startups") {
+        const hint = data.startup
+          ? "save this startup's founders with add_founder, then send {\"action\":\"finish_founder_startup\",\"startup_id\":" + data.startup.startup_id + ",\"result\":\"done\",\"note\":\"...\"} (up to 10 held at once)"
+          : "no open startup left";
+        return json({ ...data, hint }, 200);
+      }
+      return json(data, 200);
+    }
+    if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, deals, missing, next_firm, firm_done, notes, notes_ack, lookup, list_queue or verdict, or add_founder, claim_next_founder_startups or finish_founder_startup", hint: HINT }, 400);
     if (!Array.isArray(body.items) || body.items.length === 0) return json({ error: "items must be a non-empty array", hint: HINT }, 400);
     if (body.dry_run !== undefined && typeof body.dry_run !== "boolean") return json({ error: "dry_run must be true or false" }, 400);
     const { data, error } = await db.rpc("v2_research_submit", { p_key_id: auth.key_id, p_items: body.items, p_dry_run: body.dry_run === true });
