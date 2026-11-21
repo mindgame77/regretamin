@@ -42,3 +42,10 @@ def test_backgrounds_exist_and_page_never_invents_data():
     assert "sb.rpc('v2_map_summary'" in JS and "sb.rpc('v2_map_firms'" in JS and "sb.rpc('v2_map_updates'" in JS
     # the saved test answer is only ever read on a local preview host
     assert 'const FIXTURE = LOCAL ?' in JS
+
+
+def test_hot_view_reads_its_own_function_and_skips_year_only_dates():
+    hot_sql = (ROOT / 'docs/map_hot_function.sql').read_text()
+    assert "sb.rpc(hot ? 'v2_map_hot' : 'v2_map_summary'" in JS
+    # a deal known only by its year sits on 1 January and would fake a jump
+    assert "deal_date_precision::text <> 'year'" in hot_sql

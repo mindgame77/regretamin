@@ -1224,6 +1224,32 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-col .vm-zoom{top:20px;right:24px;bottom:auto;width:auto;flex-direction:row}
 .vm-col .vm-zoom button{text-align:center;padding:0 16px}
 .vm-col .vm-dock{left:calc(424px + (100% - 424px)/2);width:min(860px,calc(100% - 472px))}
+.vm-views{left:448px;top:20px;padding:5px;display:flex;gap:2px;border-radius:14px}
+.vm:not(.vm-col) .vm-views{left:50%;transform:translateX(-50%)}
+.vm-views button,.vm-period button{height:40px;padding:0 14px;border:0;border-radius:10px;background:none;font-size:14px}
+.vm-views button[aria-pressed=true],.vm-period button[aria-pressed=true]{background:var(--mi);color:#fff;font-weight:600}
+.vm-col .vm-legend{top:84px}
+.vm-hotview .vm-legend{width:520px}
+.vm-period{display:none;align-items:center;gap:6px;font-size:14px;color:var(--mm);margin:0 auto;white-space:nowrap}
+.vm-period button{border:1px solid #8A9893;color:var(--mi)}
+.vm-hotview .vm-period{display:flex}
+.vm-hotview .vm-dock>:not(.vm-period){display:none}
+.vm-hotview .vm-dock{width:auto;padding:10px 16px}
+.vm-pl.vm-hot{border:1.5px solid var(--mi)}
+.vm-pl.vm-up,i.vm-up{background:#F2A7A0}
+.vm-pl.vm-flat,i.vm-flat{background:#DADFDD}
+.vm-pl.vm-down,i.vm-down{background:#A9C4E8}
+.vm-pl.vm-few,i.vm-few{background:#fff;border:1.5px dashed #8A9893}
+.vm-keys{display:block;margin-top:4px}
+.vm-keys i,.vm-sec i{display:inline-block;width:11px;height:11px;border-radius:50%;border:1.5px solid var(--mi);box-sizing:border-box;vertical-align:-1px;margin:0 4px 0 8px}
+.vm-keys i:first-child{margin-left:0}
+.vm-sec{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;padding:0 6px;margin:0 -6px;border:0;border-top:1px solid var(--ml);background:none;font-size:14px;text-align:left;border-radius:0}
+.vm-sec i{margin:0;flex:none}
+.vm-sec span:nth-child(2){flex:1}
+.vm-sec:hover,.vm-sec.vm-secon{background:var(--ms)}
+.vm-sec.vm-secon span:nth-child(2){font-weight:600}
+.vm-sub{font-size:12px;margin:10px 0 2px}
+.vm-pc{font-family:'Geist Mono',ui-monospace,monospace;font-size:13px}
 @property --vm-a1{syntax:'<percentage>';inherits:false;initial-value:0%}
 @property --vm-a2{syntax:'<percentage>';inherits:false;initial-value:0%}
 @property --vm-a3{syntax:'<percentage>';inherits:false;initial-value:0%}
