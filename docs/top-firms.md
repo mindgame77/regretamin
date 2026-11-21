@@ -15,7 +15,7 @@ It exists for one reason: the map's "Top firms" filter (Hot right now view) need
 
 ### How the US 100 is filled
 
-TIME ranks 350 firms. Some are not on our site yet. We walk down TIME's list from the top and take the first 100 firms that we have listed and place in the United States. In 2026 that reaches TIME's 118th place, because 15 of TIME's first 100 are not in our database, and Index Ventures (64th) is placed in Europe on our map. The missing firms are listed in `claude/time-list-missing-firms.md`. When the Data owner adds them, rerun the US step in `docs/top_firms_2026.sql` and they take their places.
+TIME ranks 350 firms. Some are not on our site yet. We walk down TIME's list from the top and take the first 100 firms that we have listed and place in the United States. In 2026 that reaches TIME's 118th place, because 15 of TIME's first 100 are not in our database, and Index Ventures (64th) is placed in Europe on our map. The missing firms are listed in `claude/time-list-missing-firms.md`. The 2026 list stays as it is even after the Data owner adds them (founder, 2026-11-21: reshuffling mid-year is overkill). They come in with the 2027 edition.
 
 TIME's list is kept exactly as published in the table `v2_top_firms_external`. It includes a few accelerators (Plug and Play, Techstars, SOSV); they are kept, because the US list is TIME's, not ours.
 
