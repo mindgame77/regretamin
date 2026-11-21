@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'launch'))
 from pages.registry import PAGES
 
-SQL = (ROOT / 'docs/drafts/map_functions.sql').read_text()
+SQL = (ROOT / 'docs/map_functions.sql').read_text()
 GEO = json.loads((ROOT / 'launch/assets/map/places.json').read_text())
 JS = (ROOT / 'launch/js/map.js').read_text()
 

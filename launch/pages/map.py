@@ -1,6 +1,6 @@
 """The map page (/map/): where VC firms are based and what they invest in.
 
-The page is drawn by js/map.js from three read-only database functions (draft: docs/drafts/map_functions.sql).
+The page is drawn by js/map.js from three read-only database functions (docs/map_functions.sql).
 It is not linked from the navigation and is not indexed while it is being reviewed.
 """
 

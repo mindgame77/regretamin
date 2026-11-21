@@ -1,5 +1,5 @@
 // The map page (/map/). Reads three read-only database functions: v2_map_summary, v2_map_firms, v2_map_updates
-// (draft in docs/drafts/map_functions.sql). Rules it follows are in the project doc claude/plans/main-map.md.
+// (docs/map_functions.sql). Rules it follows are in the project doc claude/plans/main-map.md.
 // No data is invented here: if the functions are missing, the page says the map is not available.
 (function () {
   const el = document.getElementById('vm');
@@ -7,9 +7,11 @@
   const C = window.REGRET || {}, ROOT = window.REGRET_ROOT || '';
   const sb = C.url && C.key && window.supabase ? window.supabase.createClient(C.url, C.key) : null;
   const qs = new URLSearchParams(location.search);
-  // Local preview only: ?fixture=<url of a saved v2_map_summary answer>. Ignored on any real host.
+  // Local preview only: ?fixture=<saved v2_map_summary answer>&fx_firms=<saved v2_map_firms>&fx_updates=<saved v2_map_updates>.
+  // Ignored on any real host.
   const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const FIXTURE = LOCAL ? qs.get('fixture') : null;
+  const FX_FIRMS = FIXTURE && qs.get('fx_firms'), FX_UPDATES = FIXTURE && qs.get('fx_updates');
 
   const INK = '#10201C';
   const COLORS = { 'Enterprise software': '#A9C4E8', 'Health': '#F2A7A0', 'Fintech': '#F3D98B', 'Hardware & Robotics': '#9FD4C3', 'Consumer': '#D9B5E0', 'Climate & Energy': '#BFDCA0', 'Bio': '#C59AC7', 'AI agents': '#8E9BE0', 'AI models': '#C4CCF2', 'Security': '#A8BDB5', 'Crypto': '#F7E6B5', 'Media & Gaming': '#F5C19A', 'Food & Agriculture': '#D5E0A3', 'Defense': '#B5B5BD', 'Space': '#9AA5D1', 'Mobility': '#9CC9D9', 'Education': '#EFC4D0', 'Developer tools': '#B9E0E6', 'Real estate': '#E6C9B0', 'Govtech': '#C2D6C8', 'Other': '#DADFDD' };
@@ -44,14 +46,16 @@
     return out;
   }
   async function firms(place) {
+    if (FX_FIRMS) return fetch(FX_FIRMS).then((r) => r.json());
     if (FIXTURE || !sb) return null;
     const { data, error } = await sb.rpc('v2_map_firms', Object.assign({ p_level: S.level, p_place: place.p }, args()));
     return error ? null : data;
   }
   async function loadUpdates() {
-    if (FIXTURE || !sb) return;
-    const { data, error } = await sb.rpc('v2_map_updates', { p_limit: 4 });
-    if (!error && Array.isArray(data)) { S.updates = data; drawSide(); draw(); }
+    let data = null;
+    if (FX_UPDATES) data = await fetch(FX_UPDATES).then((r) => r.json());
+    else if (!FIXTURE && sb) { const r = await sb.rpc('v2_map_updates', { p_limit: 4 }); if (!r.error) data = r.data; }
+    if (Array.isArray(data)) { S.updates = data; drawSide(); draw(); }
   }
 
   // ---------- page shell

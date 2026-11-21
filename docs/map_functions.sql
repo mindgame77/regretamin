@@ -1,5 +1,11 @@
--- DRAFT for review. Not a migration and not applied anywhere.
--- Read-only helpers for the map page (/map/). When approved, move into supabase/migrations/ with a rollback.
+-- The map page's database side: one view and three read-only functions. Nothing here changes existing data.
+--
+-- STATUS: APPLIED TO PRODUCTION on 2026-11-21 (UTC) by Claude at the founder's request, through the Supabase
+-- connector, as three migrations: v2_map_functions, v2_map_summary_faster, v2_map_summary_preaggregated.
+-- This file is the final state of all three. It is NOT yet in supabase/migrations/ and has no CI guard.
+-- For the developer / data owner: please review, then add it to supabase/migrations/ in the repo's usual form
+-- (with the "v2 tables missing, skipped" guard) so the repo and the database agree.
+-- Undo: docs/map_functions_rollback.sql
 --
 -- What it adds
 --   view     v2_map_firm_places        one row per listed firm: world region, zoom level (us / eu) and area
@@ -11,12 +17,16 @@
 --   deals dated 2021 or later only; listed firms only; a place is the investor's head office;
 --   a startup with several sectors counts in each; status is today's status, whatever period is asked for.
 --
--- Known shortcuts to replace before or after launch:
+-- Known shortcuts to replace:
 --   1. US metro areas come from the hand list below. A real city-to-metro table should replace it.
 --   2. City names are matched case-insensitively and a missing state is tolerated, because the data has
 --      "NEW YORK", "New York" with no state, and similar. Cleaning hq_city / hq_state would remove the need.
+--   3. Speed, measured on production: v2_map_summary takes about 1.2 s with no filters and about 0.6 s with a
+--      short period. v2_deals has no index on (is_current, deal_date). An index, or a small table refreshed
+--      with the data, would make the map feel instant. The page caches every answer it has already asked for.
+--   4. The view is security_invoker and is not readable by anon or authenticated; only the functions use it.
 
-create or replace view public.v2_map_firm_places as
+create or replace view public.v2_map_firm_places with (security_invoker = true) as
 with metro(area, st, city) as (values
   ('Bay Area','CA','san francisco'),('Bay Area','CA','menlo park'),('Bay Area','CA','palo alto'),('Bay Area','CA','san mateo'),('Bay Area','CA','mountain view'),
   ('Bay Area','CA','pleasant hill'),('Bay Area','CA','redwood city'),('Bay Area','CA','oakland'),('Bay Area','CA','berkeley'),('Bay Area','CA','san jose'),
@@ -119,10 +129,14 @@ returns jsonb language sql stable security definer set search_path = public as $
 with stg(round, stage) as (values ('Pre-seed','Pre-seed'),('Seed','Seed'),('Series A','Series A'),('Series B','Series B'),
     ('Series C','Series C+'),('Series D','Series C+'),('Series E','Series C+'),('Series F','Series C+'),('Series G','Series C+'),
     ('Series H','Series C+'),('Series I','Series C+'),('Series J','Series C+'),('Series K','Series C+'),('Series L','Series C+'),('Growth','Growth')),
-d as (
-  select d.deal_id, d.startup_id, d.firm_id, p.region, p.level, p.area
-  from v2_deals d join v2_map_firm_places p using (firm_id) left join stg on stg.round = d.round::text
+-- Work out each firm's place once. Without this the metro lookup inside the view runs again for every deal.
+fp as materialized (select firm_id, region, level, area from v2_map_firm_places),
+-- The deals that pass the filters. One row is one firm's part in one round.
+d as materialized (
+  select d.startup_id, d.firm_id
+  from v2_deals d left join stg on stg.round = d.round::text
   where d.is_current
+    and d.firm_id in (select firm_id from fp)
     and d.deal_date >= greatest(coalesce(p_from, date '2021-01-01'), date '2021-01-01')
     and d.deal_date <= coalesce(p_to, current_date)
     and (p_stages is null or stg.stage = any(p_stages))
@@ -130,17 +144,20 @@ d as (
       select 1 from v2_startup_sectors ss join v2_sector sc using (sector_id)
       where ss.startup_id = d.startup_id and ss.is_current and sc.name = any(p_sectors)))
 ),
-pl as (
-  select 'world'::text lvl, region place, deal_id, startup_id, firm_id from d where region is not null
+-- Count per firm first, then add firms up into places. Much cheaper than counting per place from raw deals.
+fd as materialized (select firm_id, count(*) n from d group by 1),
+fs as materialized (
+  select d.firm_id, sc.name, count(*) n
+  from d join v2_startup_sectors ss on ss.startup_id = d.startup_id and ss.is_current join v2_sector sc using (sector_id)
+  group by 1, 2
+),
+pl as materialized (
+  select 'world'::text lvl, region place, firm_id from fp where region is not null
   union all
-  select level, area, deal_id, startup_id, firm_id from d where level is not null
+  select level, area, firm_id from fp where level is not null
 ),
-t as (select lvl, place, count(*) deals, count(distinct firm_id) firms from pl group by 1, 2),
-s as (
-  select pl.lvl, pl.place, sc.name, count(*) n
-  from pl join v2_startup_sectors ss on ss.startup_id = pl.startup_id and ss.is_current join v2_sector sc using (sector_id)
-  group by 1, 2, 3
-),
+t as (select pl.lvl, pl.place, sum(fd.n) deals, count(*) firms from pl join fd using (firm_id) group by 1, 2),
+s as (select pl.lvl, pl.place, fs.name, sum(fs.n) n from pl join fs using (firm_id) group by 1, 2, 3),
 k as (
   select s.*, row_number() over (partition by lvl, place order by n desc, name) rk,
     sum(n) over (partition by lvl, place) tot, sum(n) over (partition by lvl, name) sn, sum(n) over (partition by lvl) alln
@@ -152,16 +169,18 @@ x as (
     (array_agg(name order by (n::float8 / tot) / (sn::float8 / alln) desc, n desc) filter (where rk <= 5))[1] standout
   from k group by 1, 2
 ),
-tt as (select lvl, count(distinct deal_id) deals, count(distinct firm_id) firms from pl group by 1)
+tt as (select lvl, sum(deals) deals, sum(firms) firms from t group by 1)
 select jsonb_build_object(
   'from', greatest(coalesce(p_from, date '2021-01-01'), date '2021-01-01'),
   'to', coalesce(p_to, current_date),
   'totals', coalesce((select jsonb_object_agg(lvl, jsonb_build_object('deals', deals, 'firms', firms)) from tt), '{}'::jsonb),
+  -- US cities outside the metro list come out of the view as "City, ST". The map has no spot for them,
+  -- so they are counted in the totals above but not sent as places.
   'places', coalesce((
     select jsonb_agg(jsonb_build_object('l', t.lvl, 'p', t.place, 'd', t.deals, 'f', t.firms, 'tot', x.tot, 'top', x.top, 'so', x.standout)
                      order by t.lvl, t.deals desc, t.place)
     from t left join x using (lvl, place)
-    where t.place <> '(no city)'), '[]'::jsonb))
+    where t.place <> '(no city)' and not (t.lvl = 'us' and t.place ~ ', [A-Z]{2}$')), '[]'::jsonb))
 $fn$;
 
 create or replace function public.v2_map_firms(
