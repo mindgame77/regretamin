@@ -13,7 +13,8 @@ const usa = topo.feature(atlas, atlas.objects.countries).features.find((f) => f.
 const VIEWS = {
   world: { w: 1060, h: 620, step: 8, proj: d3.geoNaturalEarth1().fitExtent([[20, 70], [1040, 580]], { type: 'MultiPoint', coordinates: [[-170, -52], [180, 72], [-170, 72], [180, -52]] }), inside: (ll) => d3.geoContains(land, ll) },
   us: { w: 900, h: 540, step: 8, proj: d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], usa), inside: (ll) => d3.geoContains(usa, ll) },
-  eu: { w: 900, h: 600, step: 7, proj: d3.geoMercator().fitExtent([[0, 0], [900, 600]], { type: 'MultiPoint', coordinates: [[-25, 34], [36, 34], [-25, 70], [36, 70]] }), inside: (ll) => d3.geoContains(land, ll) },
+  // Europe is framed tightly, Iceland (top left) to Cyprus (bottom right), so the countries are as big as they can be.
+  eu: { w: 720, h: 600, step: 6, proj: d3.geoMercator().fitExtent([[0, 0], [720, 600]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [37, 34.5], [-25, 67], [37, 67]] }), inside: (ll) => d3.geoContains(land, ll) },
 };
 // [lat, lon] per place. World regions are hand-placed; the rest are city or country centres.
 const PLACES = {

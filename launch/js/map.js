@@ -74,8 +74,7 @@
 <div class="vm-card vm-dock"><button type="button" class="vm-play" id="vm-play" aria-label="Play"></button><button type="button" class="vm-all" id="vm-all">All years</button>
   <div class="vm-time"><div class="vm-track"><div class="vm-fill" id="vm-fill"></div>${Array.from({ length: NQ + 1 }, (_, i) => `<i class="${i % 4 ? '' : 'vm-y'}" style="left:${i / NQ * 100}%"></i>`).join('')}
     <input type="range" id="vm-q0" min="0" max="${NQ}" step="1" aria-label="From quarter"><input type="range" id="vm-q1" min="0" max="${NQ}" step="1" aria-label="To quarter"></div>
-    <div class="vm-years">${Array.from({ length: Math.ceil(NQ / 4) }, (_, i) => `<span style="left:${i * 4 / NQ * 100}%;width:${Math.min(4, NQ - i * 4) / NQ * 100}%">${2021 + i}</span>`).join('')}</div></div>
-  <span class="vm-range" id="vm-range"></span></div>
+    <div class="vm-years">${Array.from({ length: Math.ceil(NQ / 4) }, (_, i) => `<span style="left:${i * 4 / NQ * 100}%;width:${Math.min(4, NQ - i * 4) / NQ * 100}%">${2021 + i}</span>`).join('')}</div></div></div>
 <p class="vm-legend" id="vm-legend"></p>
 <div class="vm-msg" id="vm-msg" hidden></div>`;
   const stage = $('#vm-stage'), mapBox = $('#vm-map');
@@ -107,7 +106,8 @@
     q0.value = S.q0; q1.value = S.q1 + 1;
     $('#vm-fill').style.left = S.q0 / NQ * 100 + '%'; $('#vm-fill').style.right = (1 - (S.q1 + 1) / NQ) * 100 + '%';
     const a = qStart(S.q0), b = qEnd(S.q1), today = S.q1 === NQ - 1;
-    $('#vm-range').textContent = `${MONTHS[a.getMonth()]} ${a.getFullYear()} to ${today ? 'today' : MONTHS[b.getMonth()] + ' ' + b.getFullYear()}`;
+    // the chosen range is read from the handles; it is also spoken for screen readers
+    $('#vm-q0').setAttribute('aria-valuetext', `${MONTHS[a.getMonth()]} ${a.getFullYear()}`); $('#vm-q1').setAttribute('aria-valuetext', today ? 'today' : `${MONTHS[b.getMonth()]} ${b.getFullYear()}`);
     $('#vm-play').classList.toggle('vm-on', !!S.playing); $('#vm-play').setAttribute('aria-label', S.playing ? 'Pause' : 'Play');
   }
   let timer = null;
@@ -144,7 +144,7 @@
 
   // ---------- drawing the map
   // Room each view leaves for the cards around it: [left, right, top, bottom] in page pixels.
-  const ROOM = COL ? { world: [16, 16, 84, 104], us: [24, 24, 96, 120], eu: [24, 24, 84, 110] }
+  const ROOM = COL ? { world: [16, 16, 84, 104], us: [24, 24, 96, 120], eu: [24, 24, 62, 100] }
     : { world: [20, 20, 62, 60], us: [340, 220, 120, 120], eu: [210, 210, 30, 105] };
   function fit() {
     const g = S.geo && S.geo[S.level]; if (!g) return;
@@ -155,14 +155,17 @@
     stage.style.transform = `translate(${l + (r.width - l - rt - g.w * k) / 2}px, ${t}px) scale(${k})`;
   }
   window.addEventListener('resize', fit);
-  const litPlace = () => { const u = S.updates[0]; return !u ? null : S.level === 'world' ? u.region : u.level === S.level ? u.area : null; };
+  // Guernsey, Jersey and the Isle of Man are registration addresses, not places a founder would look for: they get no dot
+  // of their own (their deals stay in Europe's totals), and an update from one lights up the United Kingdom.
+  const FOLD = { GG: 'GB', JE: 'GB', IM: 'GB' };
+  const litPlace = () => { const u = S.updates[0]; return !u ? null : S.level === 'world' ? u.region : u.level === S.level ? (FOLD[u.area] || u.area) : null; };
   const placesNow = () => {
     const g = S.geo[S.level].places, sector = S.sectors.length > 0;
-    const rows = (S.data.places || []).filter((p) => p.l === S.level && g[p.p]).map((p) => Object.assign({}, p, g[p.p], { n: g[p.p].n || p.p }));
+    const rows = (S.data.places || []).filter((p) => p.l === S.level && g[p.p] && !FOLD[p.p]).map((p) => Object.assign({}, p, g[p.p], { n: g[p.p].n || p.p }));
     const max = Math.max(1, ...rows.map((p) => p.d));
     rows.forEach((p) => {
       p.kind = sector ? (S.sectors.length > 1 ? 'ring' : 'plain') : (S.level === 'world' || (p.d >= RING_DEALS && p.f >= RING_FIRMS)) ? 'ring' : p.d >= DOT_DEALS ? 'dot' : null;
-      p.r = p.kind === 'dot' ? 6 : S.level === 'world' ? Math.round(18 + 20 * Math.pow(p.d / max, 0.6)) : sector ? Math.round(7 + 30 * Math.sqrt(p.d / max)) : S.level === 'eu' ? Math.round(9 + 24 * Math.sqrt(p.d / max)) : Math.round(14 + 26 * Math.sqrt(p.d / max));
+      p.r = p.kind === 'dot' ? 6 : S.level === 'world' ? Math.round(18 + 20 * Math.pow(p.d / max, 0.6)) : sector ? Math.round(7 + 30 * Math.sqrt(p.d / max)) : S.level === 'eu' ? Math.round(11 + 27 * Math.sqrt(p.d / max)) : Math.round(14 + 26 * Math.sqrt(p.d / max));
       p.ax = p.x; p.ay = p.y;
     });
     const out = rows.filter((p) => p.kind), big = out.filter((p) => p.kind !== 'dot');
@@ -221,7 +224,7 @@
       // label: below, else above, else right, else left; dropped if nothing fits
       const sub = num(p.d) + (S.level === 'world' && !sector && p.so ? ' · ' + p.so : ''), small = p.kind === 'dot';
       const w = Math.max(p.n.length * (small ? 5.6 : 6.6), small ? 0 : sub.length * 5.9) + 8, h = small ? 14 : 30;
-      const tries = small ? [[p.x + p.r + 3, p.y - 7, 'l'], [p.x - p.r - 3 - w, p.y - 7, 'r']] : [[p.x - w / 2, p.y + p.r + 2, 'c'], [p.x - w / 2, p.y - p.r - h - 2, 'c'], [p.x + p.r + 4, p.y - h / 2, 'l'], [p.x - p.r - 4 - w, p.y - h / 2, 'r'],
+      const tries = small ? [[p.x + p.r + 6, p.y - 7, 'l'], [p.x - p.r - 6 - w, p.y - 7, 'r']] : [[p.x - w / 2, p.y + p.r + 2, 'c'], [p.x - w / 2, p.y - p.r - h - 2, 'c'], [p.x + p.r + 4, p.y - h / 2, 'l'], [p.x - p.r - 4 - w, p.y - h / 2, 'r'],
         [p.x + p.r * 0.7 + 2, p.y + p.r * 0.7, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y + p.r * 0.7, 'r'], [p.x + p.r * 0.7 + 2, p.y - p.r * 0.7 - h, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y - p.r * 0.7 - h, 'r']];
       for (const [x, y, al] of tries) {
         const bx = { x0: x, y0: y, x1: x + w, y1: y + h };
