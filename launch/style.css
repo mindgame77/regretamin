@@ -1120,9 +1120,13 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-card{position:absolute;background:#fff;border:1px solid var(--ml);border-radius:16px;box-shadow:0 8px 28px rgba(16,32,28,.08)}
 .vm-head{left:24px;top:20px;width:400px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
 .vm-head h1{margin:0;font-size:30px;font-weight:600;letter-spacing:-.05em;line-height:1.02}
-.vm-picks{display:flex;flex-wrap:wrap;gap:8px}
-.vm-pick{position:relative}
-.vm-pickbtn{height:44px;padding:0 12px 0 14px;border-radius:10px;border:1px solid #8A9893;background:#fff;font-size:14px;display:inline-flex;align-items:center;gap:8px}
+.vm-picks{display:flex;gap:6px}
+.vm-pick{position:relative;flex:0 0 auto}
+.vm-pick[data-pick="sectors"]{flex:0 1 auto;min-width:80px}
+.vm-pickbtn{height:44px;max-width:100%;padding:0 10px 0 12px;border-radius:10px;border:1px solid #8A9893;background:#fff;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.vm-pickbtn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vm-pickbtn svg{flex:none}
+.vm-who .vm-menu{left:auto;right:0}
 .vm-menu{position:absolute;z-index:6;left:0;top:48px;width:250px;max-height:340px;overflow:auto;background:#fff;border:1.5px solid var(--mi);border-radius:12px;padding:6px}
 .vm-menu label{display:flex;align-items:center;gap:8px;min-height:36px;padding:0 8px;border-radius:8px;font-size:14px;cursor:pointer}
 .vm-menu label:hover{background:var(--ms)}
@@ -1130,10 +1134,6 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-sw{width:10px;height:10px;border-radius:3px;flex:none}
 .vm-based{margin:0;font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;color:var(--mm)}
 .vm:not(.vm-hotview) .vm-who{display:none}
-.vm-who .vm-menu label{white-space:nowrap}
-.vm-copy{display:block;width:100%;height:44px;margin-top:8px;padding:0 16px;border:1px solid #8A9893;border-radius:10px;background:#fff;color:var(--mi);font:inherit;font-weight:500;cursor:pointer}
-.vm-copy:hover{background:var(--ms)}
-.vm-copy:focus-visible{outline:2px solid var(--mi);outline-offset:2px}
 .vm-btn{display:block;height:44px;line-height:44px;padding:0 16px;border:0;border-radius:10px;background:var(--mi);color:#fff!important;font-weight:600;text-align:center;text-decoration:none}
 .vm-link{border:0;background:none;padding:0;height:32px;font-size:13px;font-weight:600;text-decoration:underline}
 .vm-side{right:24px;top:20px;width:320px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}

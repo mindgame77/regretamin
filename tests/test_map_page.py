@@ -51,7 +51,7 @@ def test_hot_view_reads_its_own_function_and_skips_year_only_dates():
     assert "deal_date_precision::text <> 'year'" in hot_sql
 
 
-def test_which_firms_filter_and_copy_link():
+def test_which_firms_filter():
     js = (ROOT / "launch/js/map.js").read_text()
     sql = (ROOT / "docs/map_who_filter.sql").read_text()
     # the filter is sent only when it is on, so the first versions of the functions keep serving the plain view
@@ -60,5 +60,5 @@ def test_which_firms_filter_and_copy_link():
         assert f"'{mode}'" in sql and f"['{mode}'," in js
     assert "v2_map_hot(text, int, text[], text[])" in sql
     assert "v2_top_firms" in sql and (ROOT / "docs/top-firms.md").exists()
-    # the copied link is built on demand; the page never rewrites its own address
-    assert "linkNow" in js and "history.pushState" not in js and "history.replaceState" not in js
+    # a link can carry the view, but the page never rewrites its own address
+    assert "qs.get('firms')" in js and "history.pushState" not in js and "history.replaceState" not in js

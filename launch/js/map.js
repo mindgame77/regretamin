@@ -36,7 +36,7 @@
   // "Which firms" in the Hot right now view.
   const WHO = [['all', 'All firms'], ['top', 'Top firms'], ['focused', 'Focused funds'], ['new', 'New entrants']];
   const who = () => (S.view === 'hot' ? S.who : 'all');
-  // A copied link carries the view in its address. The address itself never changes while filtering.
+  // A link can carry the view in its address (view, days, zoom, sectors, stages, firms). The page never rewrites its own address.
   (() => {
     const list = (k, ok) => (qs.get(k) || '').split('|').filter((v) => ok.includes(v)), num = (k) => (/^\d+$/.test(qs.get(k) || '') ? +qs.get(k) : null);
     if (qs.get('view') === 'hot') S.view = 'hot';
@@ -46,15 +46,6 @@
     if (WHO.some(([k]) => k === qs.get('firms'))) S.who = qs.get('firms');
     const a = num('from'), b = num('to'); if (a !== null && b !== null && a <= b && b < NQ) { S.q0 = a; S.q1 = b; }
   })();
-  const linkNow = () => {
-    const u = new URLSearchParams();
-    if (S.view === 'hot') { u.set('view', 'hot'); if (S.days !== 90) u.set('days', S.days); if (who() !== 'all') u.set('firms', who()); }
-    else if (S.q0 !== 0 || S.q1 !== NQ - 1) { u.set('from', S.q0); u.set('to', S.q1); }
-    if (S.level !== 'world') u.set('zoom', S.level);
-    if (S.sectors.length) u.set('sectors', S.sectors.join('|'));
-    if (S.stages.length) u.set('stages', S.stages.join('|'));
-    const q = u.toString(); return location.origin + location.pathname + (q ? '?' + q : '');
-  };
   const $ = (s, r) => (r || el).querySelector(s);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = (n) => Number(n || 0).toLocaleString('en-US');
@@ -97,7 +88,7 @@
 <div class="vm-map" id="vm-map"><div class="vm-stage" id="vm-stage"><img class="vm-bg" id="vm-bg" alt=""><div class="vm-wave" id="vm-wave"></div><div id="vm-pls"></div><div id="vm-labs"></div></div><div class="vm-tip" id="vm-tip" hidden></div></div>
 <div class="vm-colwrap"><section class="vm-card vm-head" aria-live="polite"><h1 id="vm-h1"></h1>
   <div class="vm-picks"><div class="vm-pick" data-pick="sectors"></div><div class="vm-pick" data-pick="stages"></div><div class="vm-pick vm-who" data-pick="who"></div></div>
-  <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a><button type="button" class="vm-copy" id="vm-copy">Copy link</button></section>
+  <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a></section>
 <aside class="vm-card vm-side" id="vm-side"></aside></div>
 <div class="vm-card vm-views" role="group" aria-label="View"><button type="button" data-view="flow">Money flow</button><button type="button" data-view="hot">Hot right now</button></div>
 <div class="vm-card vm-zoom" role="group" aria-label="Zoom to">${LEVELS.map(([k, t]) => `<button type="button" data-level="${k}">${t}</button>`).join('')}</div>
@@ -114,11 +105,11 @@
     [['sectors', SECTORS, 'All sectors'], ['stages', STAGES, 'All stages']].forEach(([k, all, none]) => {
       const box = $(`[data-pick="${k}"]`), on = S[k], open = box.classList.contains('vm-open');
       const label = on.length === 0 ? none : on.length === 1 ? on[0] : on.length + ' ' + k;
-      box.innerHTML = `<button type="button" class="vm-pickbtn" aria-haspopup="true" aria-expanded="${open}">${esc(label)}<svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="${INK}" stroke-width="1.6"/></svg></button>
+      box.innerHTML = `<button type="button" class="vm-pickbtn" aria-haspopup="true" aria-expanded="${open}" title="${esc(label)}"><span>${esc(label)}</span><svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="${INK}" stroke-width="1.6"/></svg></button>
 <div class="vm-menu" ${open ? '' : 'hidden'}><label><input type="checkbox" data-v="" ${on.length ? '' : 'checked'}>${none}</label>${all.map((v) => `<label><input type="checkbox" data-v="${esc(v)}" ${on.includes(v) ? 'checked' : ''}>${k === 'sectors' ? `<span class="vm-sw" style="background:${COLORS[v]}"></span>` : ''}${esc(v)}</label>`).join('')}</div>`;
     });
     const box = $('[data-pick="who"]'), open = box.classList.contains('vm-open');
-    box.innerHTML = `<button type="button" class="vm-pickbtn" aria-haspopup="true" aria-expanded="${open}">${WHO.find(([k]) => k === who())[1]}<svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="${INK}" stroke-width="1.6"/></svg></button>
+    box.innerHTML = `<button type="button" class="vm-pickbtn" aria-haspopup="true" aria-expanded="${open}"><span>${WHO.find(([k]) => k === who())[1]}</span><svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="${INK}" stroke-width="1.6"/></svg></button>
 <div class="vm-menu" ${open ? '' : 'hidden'}>${WHO.map(([k, t]) => `<label><input type="radio" name="vm-who" data-who="${k}" ${k === who() ? 'checked' : ''}>${t}</label>`).join('')}</div>`;
   }
   el.addEventListener('click', (e) => {
@@ -134,14 +125,6 @@
     closeList(); drawPicks(); refresh().then(() => { if (!S.list) drawSide(); });
   });
 
-  $('#vm-copy').addEventListener('click', async (e) => {
-    const b = e.currentTarget, url = linkNow(); let ok = false;
-    try { await navigator.clipboard.writeText(url); ok = true; } catch (err) {
-      const t = document.createElement('textarea'); t.value = url; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(t); t.select();
-      try { ok = document.execCommand('copy'); } catch (err2) { ok = false; } t.remove();
-    }
-    b.textContent = ok ? 'Link copied' : 'Could not copy'; clearTimeout(b._t); b._t = setTimeout(() => { b.textContent = 'Copy link'; }, 2000);
-  });
   // ---------- time line
   const q0 = $('#vm-q0'), q1 = $('#vm-q1');
   function drawTime() {
@@ -366,11 +349,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     const sec = S.sectors.length === 1 ? inSentence(S.sectors[0]) : S.sectors.length ? 'these sectors' : '';
     $('#vm-h1').textContent = sec ? `Where ${sec} ${S.sectors.length === 1 && !PLURAL.includes(S.sectors[0]) ? 'is' : 'are'} heating up${where}.` : `Where it is heating up${where}.`;
     S.countId = (S.countId || 0) + 1; S.shown = null;
-    const one = S.sectors.length === 1 ? inSentence(S.sectors[0]) : 'these sectors';
-    // deal counts are not shown in this view (founder); the line only says whose deals are counted when a filter is on
-    $('#vm-based').textContent = { all: '', top: S.level === 'us' ? 'Top firms only: the US top 100, from TIME\u2019s 2026 list.' : S.level === 'eu' ? 'Top firms only: the top 100 in Europe.' : 'Top firms only: the top 100 in the world and the top 25 in each region.',
-      focused: S.sectors.length ? `Focused funds only: more than a third of their deals are in ${one}.` : 'Focused funds only: more than half of their deals are in one sector.',
-      new: `New entrants only: firms whose first deal${S.sectors.length ? ' in ' + one : ''} came in this period, against the newcomers of the period before.` }[who()];
+    $('#vm-based').textContent = '';  // no text under the filters in this view (founder); a question mark may come later
     $('#vm-legend').innerHTML = '<span class="vm-keys"><span><i class="vm-up"></i>up 10% or more</span><span><i class="vm-flat"></i>steady</span><span><i class="vm-down"></i>down 10% or more</span><span><i class="vm-few"></i>too few to call</span></span>';
   }
   function drawHead() {
