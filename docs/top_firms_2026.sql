@@ -72,3 +72,38 @@ select 2026, firm_id, region, led, deals,
 from k
 where w <= 100 or g <= 25 or (region like 'US %' and u <= 100) or (region = 'Europe' and e <= 100)
 on conflict (list_year, firm_id) do nothing;
+
+
+-- ---------------------------------------------------------------------------------------------
+-- Step 2, applied 2026-11-21: the US rank comes from an outside list (founder's decision).
+-- TIME and Statista, America's Top Venture Capital Firms 2026, kept as published in
+-- v2_top_firms_external (350 rows; loaded from TIME's published table, not reproduced here).
+-- us_rank = the first 100 firms on TIME's list that we have listed and place in the US.
+-- Rerun this block after the Data owner adds missing firms.
+
+create table if not exists public.v2_top_firms_external (
+  list_year int not null, source text not null, rank int not null,
+  firm_name text not null, domain text, firm_id bigint,
+  primary key (list_year, source, rank)
+);
+alter table public.v2_top_firms_external enable row level security;
+revoke all on public.v2_top_firms_external from anon, authenticated;
+
+update public.v2_top_firms_external t set firm_id = f.firm_id
+from (select firm_id, lower(regexp_replace(regexp_replace(coalesce(website_url,''),'^https?://(www\.)?',''),'/.*$','')) dom from firm_summary where listed) f
+where t.list_year = 2026 and t.source = 'TIME' and f.dom = t.domain;
+-- (A second pass matched by name where exactly one listed US firm has the same name once words like
+--  Ventures, Capital and Partners are removed. It matched Costanoa Ventures and Norwest.)
+
+update public.v2_top_firms set us_rank = null where list_year = 2026 and us_rank is not null;
+
+insert into public.v2_top_firms (list_year, firm_id, region, led, deals, us_rank, added_by, note)
+select 2026, x.firm_id, x.region,
+       coalesce((select count(distinct d.startup_id || '|' || coalesce(d.round::text,'')) from v2_deals d where d.firm_id = x.firm_id and d.is_current and d.lead::text = 'yes' and d.deal_date >= date '2026-11-21' - interval '3 years' and d.deal_date <= date '2026-11-21'), 0),
+       coalesce((select count(*) from v2_deals d where d.firm_id = x.firm_id and d.is_current and d.deal_date >= date '2026-11-21' - interval '3 years' and d.deal_date <= date '2026-11-21'), 0),
+       x.rn, 'TIME 2026', 'On the list only through TIME''s US ranking'
+from (select t.firm_id, p.region, row_number() over (order by t.rank) rn
+      from public.v2_top_firms_external t join v2_map_firm_places p using (firm_id)
+      where t.list_year = 2026 and t.source = 'TIME' and p.region like 'US %') x
+where x.rn <= 100
+on conflict (list_year, firm_id) do update set us_rank = excluded.us_rank;
