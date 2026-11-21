@@ -54,8 +54,8 @@
   async function loadUpdates() {
     let data = null;
     if (FX_UPDATES) data = await fetch(FX_UPDATES).then((r) => r.json());
-    else if (!FIXTURE && sb) { const r = await sb.rpc('v2_map_updates', { p_limit: 4 }); if (!r.error) data = r.data; }
-    if (Array.isArray(data)) { S.updates = data; drawSide(); draw(); }
+    else if (!FIXTURE && sb) { const r = await sb.rpc('v2_map_updates', { p_limit: 3 }); if (!r.error) data = r.data; }
+    if (Array.isArray(data)) { S.updates = data.slice(0, 3); drawSide(); draw(); }
   }
 
   // ---------- page shell
@@ -68,7 +68,7 @@
 <div class="vm-card vm-zoom" role="group" aria-label="Zoom to">${LEVELS.map(([k, t]) => `<button type="button" data-level="${k}">${t}</button>`).join('')}</div>
 <div class="vm-card vm-dock"><button type="button" class="vm-play" id="vm-play" aria-label="Play"></button><button type="button" class="vm-all" id="vm-all">All years</button>
   <div class="vm-time"><div class="vm-track"><div class="vm-fill" id="vm-fill"></div>${Array.from({ length: NQ + 1 }, (_, i) => `<i class="${i % 4 ? '' : 'vm-y'}" style="left:${i / NQ * 100}%"></i>`).join('')}
-    <input type="range" id="vm-q0" min="0" max="${NQ - 1}" step="1" aria-label="From quarter"><input type="range" id="vm-q1" min="1" max="${NQ}" step="1" aria-label="To quarter"></div>
+    <input type="range" id="vm-q0" min="0" max="${NQ}" step="1" aria-label="From quarter"><input type="range" id="vm-q1" min="0" max="${NQ}" step="1" aria-label="To quarter"></div>
     <div class="vm-years">${Array.from({ length: Math.ceil(NQ / 4) }, (_, i) => `<span style="left:${i * 4 / NQ * 100}%;width:${Math.min(4, NQ - i * 4) / NQ * 100}%">${2021 + i}</span>`).join('')}</div></div>
   <span class="vm-range" id="vm-range"></span></div>
 <p class="vm-legend" id="vm-legend"></p>
@@ -110,12 +110,19 @@
   q0.addEventListener('input', () => { stop(); S.q0 = Math.min(+q0.value, S.q1); closeList(); drawTime(); later(); });
   q1.addEventListener('input', () => { stop(); S.q1 = Math.max(+q1.value - 1, S.q0); closeList(); drawTime(); later(); });
   $('#vm-all').addEventListener('click', () => { stop(); S.q0 = 0; S.q1 = NQ - 1; closeList(); drawTime(); refresh(); });
-  function stop() { if (S.playing) { clearInterval(S.playing); S.playing = null; drawTime(); } }
-  $('#vm-play').addEventListener('click', () => {
+  function stop() { if (S.playing) { S.playing = null; drawTime(); } }
+  $('#vm-play').addEventListener('click', async () => {
     if (S.playing) return stop();
     closeList(); if (S.q1 >= NQ - 1) S.q1 = S.q0;  // play grows the range one quarter at a time, from the left handle
-    S.playing = setInterval(async () => { if (S.q1 >= NQ - 1) return stop(); S.q1 += 1; drawTime(); await refresh(); }, 900);
-    drawTime(); refresh();
+    const run = S.playing = {};
+    drawTime(); await refresh();
+    // One step at a time: wait for the numbers, show them, pause, then move on. Never ahead of the data.
+    while (S.playing === run && S.q1 < NQ - 1) {
+      await new Promise((r) => setTimeout(r, 450));
+      if (S.playing !== run) return;
+      S.q1 += 1; drawTime(); await refresh();
+    }
+    if (S.playing === run) stop();
   });
 
   // ---------- zoom
@@ -141,7 +148,7 @@
     const max = Math.max(1, ...rows.map((p) => p.d));
     rows.forEach((p) => {
       p.kind = sector ? 'plain' : (S.level === 'world' || (p.d >= RING_DEALS && p.f >= RING_FIRMS)) ? 'ring' : p.d >= DOT_DEALS ? 'dot' : null;
-      p.r = p.kind === 'dot' ? 6 : S.level === 'world' ? Math.max(9, Math.round(33 * Math.pow(p.d / max, 0.41))) : sector ? Math.round(7 + 30 * Math.sqrt(p.d / max)) : S.level === 'eu' ? Math.round(9 + 24 * Math.sqrt(p.d / max)) : Math.round(14 + 26 * Math.sqrt(p.d / max));
+      p.r = p.kind === 'dot' ? 6 : S.level === 'world' ? Math.round(18 + 20 * Math.pow(p.d / max, 0.6)) : sector ? Math.round(7 + 30 * Math.sqrt(p.d / max)) : S.level === 'eu' ? Math.round(9 + 24 * Math.sqrt(p.d / max)) : Math.round(14 + 26 * Math.sqrt(p.d / max));
       p.ax = p.x; p.ay = p.y;
     });
     const out = rows.filter((p) => p.kind), big = out.filter((p) => p.kind !== 'dot');
@@ -191,8 +198,7 @@
     const tot = p.tot || 1, sector = S.sectors.length > 0, top = p.top || [], rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
     t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} ${sector ? esc(S.sectors.join(', ')) + ' ' : ''}deal${p.d === 1 ? '' : 's'} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>
 ${!sector && p.so ? `<span>Stands out for <b>${esc(p.so)}</b></span>` : ''}
-${sector ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background:${COLORS[n] || COLORS.Other}"></i><span>${j + 1}. ${esc(n)}</span><span class="vm-pc">${Math.round(v / tot * 100)}%</span></span>`).join('') + (top.length ? `<span class="vm-tr"><i style="background:${REST}"></i><span>All other sectors</span><span class="vm-pc">${rest}%</span></span>` : '')}
-<button type="button" class="vm-btn" id="vm-see">See the ${num(p.f)} firm${p.f === 1 ? '' : 's'}</button>${ZOOM[p.p] && S.level === 'world' ? `<button type="button" class="vm-link" id="vm-in">Zoom in</button>` : ''}`;
+${sector ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background:${COLORS[n] || COLORS.Other}"></i><span>${j + 1}. ${esc(n)}</span><span class="vm-pc">${Math.round(v / tot * 100)}%</span></span>`).join('') + (top.length ? `<span class="vm-tr"><i style="background:${REST}"></i><span>All other sectors</span><span class="vm-pc">${rest}%</span></span>` : '')}${ZOOM[p.p] && S.level === 'world' ? `<button type="button" class="vm-link" id="vm-in">Zoom in to ${ZOOM[p.p] === 'us' ? 'the United States' : 'Europe'}</button>` : ''}`;
     t.hidden = false;
     // The card sits on the page (not inside the scaled map), beside the circle, and stays clear of the time line.
     const w = 236, h = t.offsetHeight || 220, cx = S.ox + p.x * S.k, cy = S.oy + p.y * S.k, rr = p.r * S.k;
@@ -200,7 +206,6 @@ ${sector ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background
     if (x + w > S.boxW - (S.list ? 410 : 10)) x = cx - rr - 10 - w;
     y = Math.max(4, Math.min(S.boxH - 112 - h, y));
     t.style.left = Math.max(4, x) + 'px'; t.style.top = y + 'px';
-    $('#vm-see').onclick = () => openList(p);
     const zi = $('#vm-in'); if (zi) zi.onclick = () => setLevel(ZOOM[p.p]);
   }
   stage.addEventListener('mouseover', (e) => { const b = e.target.closest('.vm-pl'); if (b && !S.pinned) { clearTimeout(hideT); tip(stage._rows[+b.dataset.i]); } });
@@ -212,10 +217,11 @@ ${sector ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background
   $('#vm-tip').addEventListener('mouseleave', hideSoon);
   stage.addEventListener('click', (e) => {
     const b = e.target.closest('.vm-pl');
-    if (b) { const p = stage._rows[+b.dataset.i]; S.pinned = S.pinned === p.p ? null : p.p; draw(); return; }
-    if (S.pinned && !S.list) { S.pinned = null; draw(); }
+    // Clicking a place opens the firms behind it straight away; clicking it again, or the empty map, closes them.
+    if (b) { const p = stage._rows[+b.dataset.i]; if (S.list && S.list.place.p === p.p) closeList(); else openList(p); return; }
+    if (S.list) closeList();
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (S.list) closeList(); else if (S.pinned) { S.pinned = null; draw(); } } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (S.list) closeList(); } });
 
   // ---------- headline card
   function drawHead() {
@@ -249,7 +255,7 @@ ${sector ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background
     side.innerHTML = `<h2>Latest updates</h2>${S.updates.length ? S.updates.map((u, i) => {
       const names = (u.firms || []).map((f) => f.name), who = names.length > 1 && (u.leads > 1 || !u.led) ? names[0] + ' and ' + names[1] : names[0] || '';
       const slug = u.firms && u.firms[0] && u.firms[0].slug;
-      return `<a class="${i ? '' : 'vm-first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="vm-tag">${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span>${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}</span></a>`;
+      return `<a class="${i ? '' : 'vm-first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="vm-tag">${i ? '' : '<i class="vm-new" title="Newest update: its place is lit up on the map"></i>'}${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span class="vm-line" title="${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}">${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}</span></a>`;
     }).join('') : '<p class="vm-mu">No updates to show yet.</p>'}`;
   }
   async function openList(place) {
