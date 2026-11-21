@@ -321,11 +321,13 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (S.list) closeList(); } });
 
   // ---------- headline card
+  // sector names inside a sentence: lower case, except the ones that start with an abbreviation
+  const inSentence = (name) => (/^AI /.test(name) ? name : name.toLowerCase()), PLURAL = ['AI agents', 'AI models', 'Developer tools'];
   const perText = () => (S.days === 365 ? 'year' : S.days + ' days');
   function drawHotHead() {
     const where = S.level === 'us' ? ' in the US' : S.level === 'eu' ? ' in Europe' : '', t = (S.data.totals || {})[S.level] || { deals: 0, prev: 0 };
-    const sec = S.sectors.length === 1 ? S.sectors[0].toLowerCase() : S.sectors.length ? 'these sectors' : '';
-    $('#vm-h1').textContent = sec ? `Where ${sec} ${S.sectors.length === 1 ? 'is' : 'are'} heating up${where}.` : `Where it is heating up${where}.`;
+    const sec = S.sectors.length === 1 ? inSentence(S.sectors[0]) : S.sectors.length ? 'these sectors' : '';
+    $('#vm-h1').textContent = sec ? `Where ${sec} ${S.sectors.length === 1 && !PLURAL.includes(S.sectors[0]) ? 'is' : 'are'} heating up${where}.` : `Where it is heating up${where}.`;
     S.countId = (S.countId || 0) + 1; S.shown = null;
     $('#vm-based').textContent = '';  // the founder found the deal counts here unnecessary in this view
     $('#vm-legend').innerHTML = '<span class="vm-keys"><span><i class="vm-up"></i>up 10% or more</span><span><i class="vm-flat"></i>steady</span><span><i class="vm-down"></i>down 10% or more</span><span><i class="vm-few"></i>too few to call</span></span>';
@@ -333,7 +335,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   function drawHead() {
     if (S.view === 'hot') return drawHotHead();
     const where = S.level === 'us' ? ' in the US' : S.level === 'eu' ? ' in Europe' : '', t = (S.data.totals || {})[S.level] || { deals: 0, firms: 0 };
-    const sec = S.sectors.length === 1 ? S.sectors[0].toLowerCase() : S.sectors.length ? 'these sectors' : '';
+    const sec = S.sectors.length === 1 ? inSentence(S.sectors[0]) : S.sectors.length ? 'these sectors' : '';
     $('#vm-h1').textContent = sec ? `Who backs ${sec}${where}.` : S.level === 'us' ? 'What US investors are backing.' : S.level === 'eu' ? 'What European investors are backing.' : 'What VCs are investing in.';
     // the two numbers count up or down to their new values
     const a0 = S.shown || { deals: t.deals, firms: t.firms }, t0 = performance.now(), my = S.countId = (S.countId || 0) + 1;
