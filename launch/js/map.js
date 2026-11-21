@@ -32,7 +32,29 @@
 
   const now = new Date();
   const NQ = (now.getFullYear() - 2021) * 4 + Math.floor(now.getMonth() / 3) + 1;  // quarters from 2021 Q1 to this one
-  const S = { view: 'flow', days: 90, level: 'world', q0: 0, q1: NQ - 1, stages: [], sectors: [], pinned: null, list: null, data: null, geo: null, updates: [], playing: null };
+  const S = { view: 'flow', days: 90, level: 'world', q0: 0, q1: NQ - 1, stages: [], sectors: [], who: 'all', pinned: null, list: null, data: null, geo: null, updates: [], playing: null };
+  // "Which firms" in the Hot right now view. Focused funds and New entrants need a sector to be chosen.
+  const WHO = [['all', 'All firms'], ['top', 'Top firms'], ['focused', 'Focused funds'], ['new', 'New entrants']];
+  const who = () => (S.view === 'hot' && (S.who === 'top' || (S.sectors.length && S.who !== 'all')) ? S.who : 'all');
+  // A copied link carries the view in its address. The address itself never changes while filtering.
+  (() => {
+    const list = (k, ok) => (qs.get(k) || '').split('|').filter((v) => ok.includes(v)), num = (k) => (/^\d+$/.test(qs.get(k) || '') ? +qs.get(k) : null);
+    if (qs.get('view') === 'hot') S.view = 'hot';
+    if ([90, 180, 365].includes(num('days'))) S.days = num('days');
+    if (['us', 'eu'].includes(qs.get('zoom'))) S.level = qs.get('zoom');
+    S.sectors = list('sectors', SECTORS); S.stages = list('stages', STAGES);
+    if (WHO.some(([k]) => k === qs.get('firms'))) S.who = qs.get('firms');
+    const a = num('from'), b = num('to'); if (a !== null && b !== null && a <= b && b < NQ) { S.q0 = a; S.q1 = b; }
+  })();
+  const linkNow = () => {
+    const u = new URLSearchParams();
+    if (S.view === 'hot') { u.set('view', 'hot'); if (S.days !== 90) u.set('days', S.days); if (who() !== 'all') u.set('firms', who()); }
+    else if (S.q0 !== 0 || S.q1 !== NQ - 1) { u.set('from', S.q0); u.set('to', S.q1); }
+    if (S.level !== 'world') u.set('zoom', S.level);
+    if (S.sectors.length) u.set('sectors', S.sectors.join('|'));
+    if (S.stages.length) u.set('stages', S.stages.join('|'));
+    const q = u.toString(); return location.origin + location.pathname + (q ? '?' + q : '');
+  };
   const $ = (s, r) => (r || el).querySelector(s);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = (n) => Number(n || 0).toLocaleString('en-US');
@@ -45,7 +67,9 @@
   const cache = new Map();
   async function summary() {
     const hot = S.view === 'hot';
-    const a = hot ? { p_days: S.days, p_stages: S.stages.length ? S.stages : null, p_sectors: S.sectors.length ? S.sectors : null } : args(), key = S.view + JSON.stringify(a);
+    const a = hot ? { p_days: S.days, p_stages: S.stages.length ? S.stages : null, p_sectors: S.sectors.length ? S.sectors : null } : args();
+    if (who() !== 'all') a.p_firms = who();  // sent only when a filter is on, so the plain view keeps using the first version of the function
+    const key = S.view + JSON.stringify(a);
     if (cache.has(key)) return cache.get(key);
     let out = null;
     if (FIXTURE) out = hot ? (FX_HOT ? await fetch(FX_HOT).then((r) => r.json()) : null) : await fetch(FIXTURE).then((r) => r.json());
@@ -58,7 +82,7 @@
     if (FIXTURE || !sb) return null;
     // in the 'Hot right now' view the list covers the same recent period the map is showing
     const win = S.view === 'hot' ? { p_from: iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - S.days + 1)), p_to: iso(now), p_stages: S.stages.length ? S.stages : null, p_sectors: S.sectors.length ? S.sectors : null } : args();
-    const { data, error } = await sb.rpc('v2_map_firms', Object.assign({ p_level: S.level, p_place: place.p }, win));
+    const { data, error } = await sb.rpc('v2_map_firms', Object.assign({ p_level: S.level, p_place: place.p }, win, who() !== 'all' ? { p_firms: who() } : {}));
     return error ? null : data;
   }
   async function loadUpdates() {
@@ -72,8 +96,8 @@
   el.innerHTML = `
 <div class="vm-map" id="vm-map"><div class="vm-stage" id="vm-stage"><img class="vm-bg" id="vm-bg" alt=""><div class="vm-wave" id="vm-wave"></div><div id="vm-pls"></div><div id="vm-labs"></div></div><div class="vm-tip" id="vm-tip" hidden></div></div>
 <div class="vm-colwrap"><section class="vm-card vm-head" aria-live="polite"><h1 id="vm-h1"></h1>
-  <div class="vm-picks"><div class="vm-pick" data-pick="sectors"></div><div class="vm-pick" data-pick="stages"></div></div>
-  <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a></section>
+  <div class="vm-picks"><div class="vm-pick" data-pick="sectors"></div><div class="vm-pick" data-pick="stages"></div><div class="vm-pick vm-who" data-pick="who"></div></div>
+  <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a><button type="button" class="vm-copy" id="vm-copy">Copy link</button></section>
 <aside class="vm-card vm-side" id="vm-side"></aside></div>
 <div class="vm-card vm-views" role="group" aria-label="View"><button type="button" data-view="flow">Money flow</button><button type="button" data-view="hot">Hot right now</button></div>
 <div class="vm-card vm-zoom" role="group" aria-label="Zoom to">${LEVELS.map(([k, t]) => `<button type="button" data-level="${k}">${t}</button>`).join('')}</div>
@@ -93,6 +117,9 @@
       box.innerHTML = `<button type="button" class="vm-pickbtn" aria-haspopup="true" aria-expanded="${open}">${esc(label)}<svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="${INK}" stroke-width="1.6"/></svg></button>
 <div class="vm-menu" ${open ? '' : 'hidden'}><label><input type="checkbox" data-v="" ${on.length ? '' : 'checked'}>${none}</label>${all.map((v) => `<label><input type="checkbox" data-v="${esc(v)}" ${on.includes(v) ? 'checked' : ''}>${k === 'sectors' ? `<span class="vm-sw" style="background:${COLORS[v]}"></span>` : ''}${esc(v)}</label>`).join('')}</div>`;
     });
+    const box = $('[data-pick="who"]'), open = box.classList.contains('vm-open'), need = !S.sectors.length;
+    box.innerHTML = `<button type="button" class="vm-pickbtn" aria-haspopup="true" aria-expanded="${open}">${WHO.find(([k]) => k === who())[1]}<svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="${INK}" stroke-width="1.6"/></svg></button>
+<div class="vm-menu" ${open ? '' : 'hidden'}>${WHO.map(([k, t]) => { const off = need && (k === 'focused' || k === 'new'); return `<label class="${off ? 'vm-off' : ''}"><input type="radio" name="vm-who" data-who="${k}" ${k === who() ? 'checked' : ''} ${off ? 'disabled' : ''}>${t}${off ? '<small>choose a sector first</small>' : ''}</label>`; }).join('')}</div>`;
   }
   el.addEventListener('click', (e) => {
     const pb = e.target.closest('.vm-pickbtn');
@@ -102,10 +129,19 @@
   el.addEventListener('change', (e) => {
     const cb = e.target.closest('.vm-menu input'); if (!cb) return;
     const k = cb.closest('.vm-pick').dataset.pick, v = cb.dataset.v;
-    S[k] = !v ? [] : cb.checked ? S[k].concat(v) : S[k].filter((x) => x !== v);
+    if (k === 'who') { S.who = cb.dataset.who; cb.closest('.vm-pick').classList.remove('vm-open'); }
+    else S[k] = !v ? [] : cb.checked ? S[k].concat(v) : S[k].filter((x) => x !== v);
     closeList(); drawPicks(); refresh().then(() => { if (!S.list) drawSide(); });
   });
 
+  $('#vm-copy').addEventListener('click', async (e) => {
+    const b = e.currentTarget, url = linkNow(); let ok = false;
+    try { await navigator.clipboard.writeText(url); ok = true; } catch (err) {
+      const t = document.createElement('textarea'); t.value = url; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(t); t.select();
+      try { ok = document.execCommand('copy'); } catch (err2) { ok = false; } t.remove();
+    }
+    b.textContent = ok ? 'Link copied' : 'Could not copy'; clearTimeout(b._t); b._t = setTimeout(() => { b.textContent = 'Copy link'; }, 2000);
+  });
   // ---------- time line
   const q0 = $('#vm-q0'), q1 = $('#vm-q1');
   function drawTime() {
@@ -146,7 +182,7 @@
     el.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === S.view));
     el.querySelectorAll('[data-days]').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.days === S.days));
   }
-  function setView(v) { if (v === S.view) return; stop(); S.view = v; S.list = null; S.pinned = null; marks(); refresh().then(drawSide); }
+  function setView(v) { if (v === S.view) return; stop(); S.view = v; S.list = null; S.pinned = null; marks(); drawPicks(); refresh().then(drawSide); }
   function setLevel(l) {
     if (l === S.level) return;
     // Zooming in from the world: remember where the parent regions sit on the page, so their places can fly out of them.
@@ -330,7 +366,10 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     const sec = S.sectors.length === 1 ? inSentence(S.sectors[0]) : S.sectors.length ? 'these sectors' : '';
     $('#vm-h1').textContent = sec ? `Where ${sec} ${S.sectors.length === 1 && !PLURAL.includes(S.sectors[0]) ? 'is' : 'are'} heating up${where}.` : `Where it is heating up${where}.`;
     S.countId = (S.countId || 0) + 1; S.shown = null;
-    $('#vm-based').textContent = '';  // the founder found the deal counts here unnecessary in this view
+    const one = S.sectors.length === 1 ? inSentence(S.sectors[0]) : 'these sectors';
+    // deal counts are not shown in this view (founder); the line only says whose deals are counted when a filter is on
+    $('#vm-based').textContent = { all: '', top: S.level === 'us' ? 'Top firms only: the US top 100, from TIME\u2019s 2026 list.' : S.level === 'eu' ? 'Top firms only: the top 100 in Europe.' : 'Top firms only: the top 100 in the world and the top 25 in each region.',
+      focused: `Focused funds only: more than a quarter of their deals are in ${one}.`, new: `New entrants only: firms whose first deal in ${one} came in this period, against the newcomers of the period before.` }[who()];
     $('#vm-legend').innerHTML = '<span class="vm-keys"><span><i class="vm-up"></i>up 10% or more</span><span><i class="vm-flat"></i>steady</span><span><i class="vm-down"></i>down 10% or more</span><span><i class="vm-few"></i>too few to call</span></span>';
   }
   function drawHead() {
