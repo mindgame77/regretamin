@@ -67,7 +67,7 @@
 <aside class="vm-card vm-side" id="vm-side"></aside>
 <div class="vm-card vm-zoom" role="group" aria-label="Zoom to">${LEVELS.map(([k, t]) => `<button type="button" data-level="${k}">${t}</button>`).join('')}</div>
 <div class="vm-card vm-dock"><button type="button" class="vm-play" id="vm-play" aria-label="Play"></button><button type="button" class="vm-all" id="vm-all">All years</button>
-  <div class="vm-time"><div class="vm-track"><div class="vm-fill" id="vm-fill"></div>${Array.from({ length: NQ + 1 }, (_, i) => `<i class="${i % 4 ? '' : 'y'}" style="left:${i / NQ * 100}%"></i>`).join('')}
+  <div class="vm-time"><div class="vm-track"><div class="vm-fill" id="vm-fill"></div>${Array.from({ length: NQ + 1 }, (_, i) => `<i class="${i % 4 ? '' : 'vm-y'}" style="left:${i / NQ * 100}%"></i>`).join('')}
     <input type="range" id="vm-q0" min="0" max="${NQ - 1}" step="1" aria-label="From quarter"><input type="range" id="vm-q1" min="1" max="${NQ}" step="1" aria-label="To quarter"></div>
     <div class="vm-years">${Array.from({ length: Math.ceil(NQ / 4) }, (_, i) => `<span style="left:${i * 4 / NQ * 100}%;width:${Math.min(4, NQ - i * 4) / NQ * 100}%">${2021 + i}</span>`).join('')}</div></div>
   <span class="vm-range" id="vm-range"></span></div>
@@ -78,7 +78,7 @@
   // ---------- filters (two pop-up lists of checkboxes)
   function drawPicks() {
     [['sectors', SECTORS, 'All sectors'], ['stages', STAGES, 'All stages']].forEach(([k, all, none]) => {
-      const box = $(`[data-pick="${k}"]`), on = S[k], open = box.classList.contains('open');
+      const box = $(`[data-pick="${k}"]`), on = S[k], open = box.classList.contains('vm-open');
       const label = on.length === 0 ? none : on.length === 1 ? on[0] : on.length + ' ' + k;
       box.innerHTML = `<button type="button" class="vm-pickbtn" aria-haspopup="true" aria-expanded="${open}">${esc(label)}<svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="${INK}" stroke-width="1.6"/></svg></button>
 <div class="vm-menu" ${open ? '' : 'hidden'}><label><input type="checkbox" data-v="" ${on.length ? '' : 'checked'}>${none}</label>${all.map((v) => `<label><input type="checkbox" data-v="${esc(v)}" ${on.includes(v) ? 'checked' : ''}>${k === 'sectors' ? `<span class="vm-sw" style="background:${COLORS[v]}"></span>` : ''}${esc(v)}</label>`).join('')}</div>`;
@@ -86,8 +86,8 @@
   }
   el.addEventListener('click', (e) => {
     const pb = e.target.closest('.vm-pickbtn');
-    el.querySelectorAll('.vm-pick.open').forEach((b) => { if (!pb || b !== pb.parentNode) { b.classList.remove('open'); if (!e.target.closest('.vm-menu')) drawPicks(); } });
-    if (pb) { pb.parentNode.classList.toggle('open'); drawPicks(); }
+    el.querySelectorAll('.vm-pick.vm-open').forEach((b) => { if (!pb || b !== pb.parentNode) { b.classList.remove('vm-open'); if (!e.target.closest('.vm-menu')) drawPicks(); } });
+    if (pb) { pb.parentNode.classList.toggle('vm-open'); drawPicks(); }
   });
   el.addEventListener('change', (e) => {
     const cb = e.target.closest('.vm-menu input'); if (!cb) return;
@@ -103,7 +103,7 @@
     $('#vm-fill').style.left = S.q0 / NQ * 100 + '%'; $('#vm-fill').style.right = (1 - (S.q1 + 1) / NQ) * 100 + '%';
     const a = qStart(S.q0), b = qEnd(S.q1), today = S.q1 === NQ - 1;
     $('#vm-range').textContent = `${MONTHS[a.getMonth()]} ${a.getFullYear()} to ${today ? 'today' : MONTHS[b.getMonth()] + ' ' + b.getFullYear()}`;
-    $('#vm-play').classList.toggle('on', !!S.playing); $('#vm-play').setAttribute('aria-label', S.playing ? 'Pause' : 'Play');
+    $('#vm-play').classList.toggle('vm-on', !!S.playing); $('#vm-play').setAttribute('aria-label', S.playing ? 'Pause' : 'Play');
   }
   let timer = null;
   const later = () => { clearTimeout(timer); timer = setTimeout(refresh, 180); };
@@ -177,7 +177,7 @@
         [p.x + p.r * 0.7 + 2, p.y + p.r * 0.7, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y + p.r * 0.7, 'r'], [p.x + p.r * 0.7 + 2, p.y - p.r * 0.7 - h, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y - p.r * 0.7 - h, 'r']];
       for (const [x, y, al] of tries) {
         const b = { x0: x, y0: y, x1: x + w, y1: y + h };
-        if (!hit(b)) { boxes.push(b); html += `<span class="vm-lab ${small ? 'sm' : ''}" style="left:${x}px;top:${y}px;width:${w}px;text-align:${al === 'c' ? 'center' : al === 'l' ? 'left' : 'right'}">${esc(p.n)}${small ? ' ' + num(p.d) : `<br><em>${esc(sub)}</em>`}</span>`; break; }
+        if (!hit(b)) { boxes.push(b); html += `<span class="vm-lab ${small ? 'vm-sm' : ''}" style="left:${x}px;top:${y}px;width:${w}px;text-align:${al === 'c' ? 'center' : al === 'l' ? 'left' : 'right'}">${esc(p.n)}${small ? ' ' + num(p.d) : `<br><em>${esc(sub)}</em>`}</span>`; break; }
       }
     });
     stage.innerHTML = html;
@@ -189,9 +189,9 @@
     const t = $('#vm-tip'); if (!t) return;
     if (!p) { t.hidden = true; return; }
     const tot = p.tot || 1, sector = S.sectors.length > 0, top = p.top || [], rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
-    t.innerHTML = `<b>${esc(p.n)}</b><span class="mu">${num(p.d)} ${sector ? esc(S.sectors.join(', ')) + ' ' : ''}deal${p.d === 1 ? '' : 's'} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>
+    t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} ${sector ? esc(S.sectors.join(', ')) + ' ' : ''}deal${p.d === 1 ? '' : 's'} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>
 ${!sector && p.so ? `<span>Stands out for <b>${esc(p.so)}</b></span>` : ''}
-${sector ? '' : top.map(([n, v], j) => `<span class="tr"><i style="background:${COLORS[n] || COLORS.Other}"></i><span>${j + 1}. ${esc(n)}</span><span class="pc">${Math.round(v / tot * 100)}%</span></span>`).join('') + (top.length ? `<span class="tr"><i style="background:${REST}"></i><span>All other sectors</span><span class="pc">${rest}%</span></span>` : '')}
+${sector ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background:${COLORS[n] || COLORS.Other}"></i><span>${j + 1}. ${esc(n)}</span><span class="vm-pc">${Math.round(v / tot * 100)}%</span></span>`).join('') + (top.length ? `<span class="vm-tr"><i style="background:${REST}"></i><span>All other sectors</span><span class="vm-pc">${rest}%</span></span>` : '')}
 <button type="button" class="vm-btn" id="vm-see">See the ${num(p.f)} firm${p.f === 1 ? '' : 's'}</button>${ZOOM[p.p] && S.level === 'world' ? `<button type="button" class="vm-link" id="vm-in">Zoom in</button>` : ''}`;
     t.hidden = false;
     // The card sits on the page (not inside the scaled map), beside the circle, and stays clear of the time line.
@@ -232,10 +232,10 @@ ${sector ? '' : top.map(([n, v], j) => `<span class="tr"><i style="background:${
     const side = $('#vm-side');
     if (S.list) {
       const L = S.list, chips = [[L.place.n, 'place']].concat(S.sectors.map((s) => [s, 'sector']), S.stages.map((s) => [s, 'stage']));
-      side.className = 'vm-card vm-side list';
+      side.className = 'vm-card vm-side vm-list';
       side.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
 <div class="vm-chips">${chips.map(([t, k]) => `<button type="button" class="vm-chip" data-k="${k}" data-v="${esc(t)}" aria-label="Remove filter ${esc(t)}">${esc(t)}<span aria-hidden="true">×</span></button>`).join('')}</div>
-<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="st ${f.status === 'Active' ? 'a' : f.status === 'Low activity' ? 'l' : 'n'}"><i></i>${esc(f.status)}${f.last ? `<span class="mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="ck">Check</span></a>`).join('')}</div>
+<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
 <a class="vm-more" href="${ROOT}investors/">Open the full investors list</a>`;
       $('#vm-close').onclick = closeList;
       side.querySelectorAll('.vm-chip').forEach((c) => c.onclick = () => {
@@ -249,8 +249,8 @@ ${sector ? '' : top.map(([n, v], j) => `<span class="tr"><i style="background:${
     side.innerHTML = `<h2>Latest updates</h2>${S.updates.length ? S.updates.map((u, i) => {
       const names = (u.firms || []).map((f) => f.name), who = names.length > 1 && (u.leads > 1 || !u.led) ? names[0] + ' and ' + names[1] : names[0] || '';
       const slug = u.firms && u.firms[0] && u.firms[0].slug;
-      return `<a class="${i ? '' : 'first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="tag">${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span>${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}</span></a>`;
-    }).join('') : '<p class="mu">No updates to show yet.</p>'}`;
+      return `<a class="${i ? '' : 'vm-first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="vm-tag">${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span>${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}</span></a>`;
+    }).join('') : '<p class="vm-mu">No updates to show yet.</p>'}`;
   }
   async function openList(place) {
     stop(); S.list = { place, data: null }; S.pinned = place.p; drawSide(); draw();
