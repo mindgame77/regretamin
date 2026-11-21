@@ -22,6 +22,10 @@
 // Required lookup (migration 20261120090000_v2_required_lookup): add_firm is refused (409, same_as ids) when lookup finds the same website or the
 // same name / short / legal name; a new startup in submit is refused when one older startup has the same name and website base.
 // Override: "not_same_as":[ids] + "not_same_reason". Switch: v2_work_setting lookup_block on/off.
+// fill_startup_location fills an EMPTY st_country / st_city on an existing startup, with a source link. A saved value is never overwritten;
+// a different value is refused, and "correction":true + "note" stores a correction request only (migration 20261121060000_v2_startup_location_fill).
+// claim_next_location_startups / finish_location_startup: a separate location hand-out on the founder list (loc_status), for the bots in
+// v2_work_setting location_list_bots. Up to 10 held, 2-hour hold; done needs a location saved by this bot since the claim. Switch: location_fill on/off.
 import { createClient } from "npm:@supabase/supabase-js@2";
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const MAX_BYTES = 2_000_000;
@@ -36,6 +40,7 @@ const LOOKUP_HINT = "{\"action\":\"lookup\",\"firm\":{\"name\":\"All Aboard Fund
 const ROUND_HINT = "Round list: {\"action\":\"add_round\",\"round\":{\"startup_name\",\"startup_website\",\"country\",\"round\",\"round_date\":\"YYYY-MM-DD\",\"source_url\"}} or {\"action\":\"claim_next_round\",\"count\":1} or {\"action\":\"finish_round\",\"round_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
 const FOUNDER_HINT = "{\"action\":\"add_founder\",\"startup_id\":10,\"founder\":{\"name\":\"Ada Lovelace\",\"linkedin_url\":\"https://www.linkedin.com/in/ada\",\"founder_id\":7},\"role\":{\"value\":\"CEO\",\"source_url\":\"https://example.com/about\"},\"facts\":[{\"fact\":\"current_country\",\"value\":\"GB\",\"source_url\":\"https://example.com/about\"},{\"fact\":\"past_job\",\"value\":\"Babbage Co\",\"role\":\"Mathematician\",\"company_website\":\"https://babbage.example\",\"source_url\":\"https://news.example/ada\"},{\"fact\":\"founded_before\",\"value\":\"yes: Analytical Kids\",\"exit_outcome\":\"acquired\",\"exit_acquirer\":\"Babbage Co\",\"exit_source_url\":\"https://news.example/ada\"}]}";
 const FOUNDERLIST_HINT = "Founder list: {\"action\":\"claim_next_founder_startups\",\"count\":1} or {\"action\":\"finish_founder_startup\",\"startup_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
+const LOCATION_HINT = "{\"action\":\"fill_startup_location\",\"startup_id\":10,\"country\":\"US\",\"city\":\"San Francisco\",\"source\":{\"source_url\":\"https://example.com/contact\",\"source_level\":1,\"source_date\":\"2025-03-01\",\"source_type\":\"company site\"}} (country and/or city; add \"correction\":true and \"note\" only when a saved value is wrong). Location list: {\"action\":\"claim_next_location_startups\",\"count\":1} or {\"action\":\"finish_location_startup\",\"startup_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
 const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === "object" && !Array.isArray(v);
 const HTTP_URL = /^https?:\/\/\S+$/i;
 const FOUNDER_FACTS = new Set(["current_city", "current_country", "previous_city", "previous_country", "university", "founded_before", "past_job"]);
@@ -484,7 +489,69 @@ Deno.serve(async (req) => {
       }
       return json(data, 200);
     }
-    if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, deals, missing, next_firm, firm_done, notes, notes_ack, lookup, list_queue or verdict, or add_founder, claim_next_founder_startups or finish_founder_startup", hint: HINT }, 400);
+    // Startup HQ location: fill an empty country / city on an existing startup (migration 20261121060000_v2_startup_location_fill).
+    if (body.action === "fill_startup_location") {
+      const startupId = body.startup_id;
+      if (typeof startupId !== "number" || !Number.isInteger(startupId) || startupId <= 0) {
+        return json({ error: "startup_id must be a positive integer", hint: LOCATION_HINT }, 400);
+      }
+      const country = body.country ?? null; const city = body.city ?? null;
+      if (country !== null && (typeof country !== "string" || country.length > 10)) return json({ error: "country must be the 2-letter code, like US", hint: LOCATION_HINT }, 400);
+      if (city !== null && (typeof city !== "string" || city.length > 200)) return json({ error: "city must be a city name in English", hint: LOCATION_HINT }, 400);
+      if ((country === null || country.trim() === "") && (city === null || city.trim() === "")) return json({ error: "send country, city, or both", hint: LOCATION_HINT }, 400);
+      const source = isObj(body.source) ? body.source : (typeof body.source_url === "string" ? { source_url: body.source_url } : null);
+      if (!source) return json({ error: "source must be an object with source_url (the page that states the HQ)", hint: LOCATION_HINT }, 400);
+      if (body.correction !== undefined && typeof body.correction !== "boolean") return json({ error: "correction must be true or false" }, 400);
+      if (body.note !== undefined && body.note !== null && (typeof body.note !== "string" || body.note.length > 2000)) return json({ error: "note must be text (up to 2000 characters)" }, 400);
+      const { data, error } = await db.rpc("v2_startup_location_fill", {
+        p_key_id: auth.key_id, p_startup_id: startupId, p_country: country, p_city: city, p_source: source,
+        p_correction: body.correction === true, p_note: body.note ?? null, p_dry_run: body.dry_run === true,
+      });
+      if (error || !data) return json({ error: "server error" }, 500);
+      bot = data.bot_id ?? "";
+      if (!data.ok) {
+        const err = String(data.error ?? "");
+        if (data.already_set) return json(data, 409);
+        return json({ error: data.error, hint: LOCATION_HINT }, err.startsWith("Key frozen") ? 403 : err.startsWith("location fill is switched off") ? 503 : /not found/.test(err) ? 404 : 400);
+      }
+      return json(data, 200);
+    }
+    if (body.action === "claim_next_location_startups" || body.action === "finish_location_startup") {
+      let rpc: string; let args: Record<string, unknown>;
+      if (body.action === "claim_next_location_startups") {
+        const count = body.count === undefined ? 1 : body.count;
+        if (typeof count !== "number" || !Number.isInteger(count) || count < 1 || count > 10) {
+          return json({ error: "count must be 1-10 (a bot holds at most 10 startups)", hint: LOCATION_HINT }, 400);
+        }
+        rpc = "founderlist_claim_next_location_startups"; args = { p_key_id: auth.key_id, p_count: count };
+      } else {
+        const startupId = body.startup_id;
+        if (typeof startupId !== "number" || !Number.isInteger(startupId) || startupId <= 0) {
+          return json({ error: "startup_id must be the startup from claim_next_location_startups", hint: LOCATION_HINT }, 400);
+        }
+        if (body.result !== "done" && body.result !== "rejected") return json({ error: "result must be done or rejected", hint: LOCATION_HINT }, 400);
+        if (typeof body.note !== "string" || body.note.trim() === "" || body.note.length > 4000) {
+          return json({ error: "note is required (up to 4000 characters)", hint: LOCATION_HINT }, 400);
+        }
+        rpc = "founderlist_finish_location_startup"; args = { p_key_id: auth.key_id, p_startup_id: startupId, p_result: body.result, p_note: body.note };
+      }
+      const { data, error } = await db.rpc(rpc, args);
+      if (error || !data) return json({ error: "server error" }, 500);
+      bot = data.bot_id ?? "";
+      if (!data.ok) {
+        if (Array.isArray(data.held_startup_ids)) return json({ error: data.error, held_count: data.held_count, held_startup_ids: data.held_startup_ids }, 409);
+        const err = String(data.error ?? "");
+        return json({ error: data.error }, err.startsWith("Key frozen") ? 403 : err.startsWith("location fill is switched off") ? 503 : 400);
+      }
+      if (body.action === "claim_next_location_startups") {
+        const hint = data.startup
+          ? "find the HQ country and city, save them with fill_startup_location, then send {\"action\":\"finish_location_startup\",\"startup_id\":" + data.startup.startup_id + ",\"result\":\"done\",\"note\":\"...\"} (up to 10 held at once)"
+          : "no open startup left";
+        return json({ ...data, hint }, 200);
+      }
+      return json(data, 200);
+    }
+    if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, deals, missing, next_firm, firm_done, notes, notes_ack, lookup, list_queue or verdict, or add_founder, claim_next_founder_startups or finish_founder_startup, or fill_startup_location, claim_next_location_startups or finish_location_startup", hint: HINT }, 400);
     if (!Array.isArray(body.items) || body.items.length === 0) return json({ error: "items must be a non-empty array", hint: HINT }, 400);
     if (body.dry_run !== undefined && typeof body.dry_run !== "boolean") return json({ error: "dry_run must be true or false" }, 400);
     const { data, error } = await db.rpc("v2_research_submit", { p_key_id: auth.key_id, p_items: body.items, p_dry_run: body.dry_run === true });
