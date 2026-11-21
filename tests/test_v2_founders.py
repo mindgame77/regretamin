@@ -18,12 +18,15 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 FNAME = "20261121010000_v2_founders.sql"
 LNAME = "20261121020000_founderlist.sql"
 ENAME = "20261121040000_v2_founder_founded_before_exit.sql"
+FILLNAME = "20261121050000_v2_founder_founded_before_exit_fill.sql"
 MIG = (ROOT / "supabase/migrations" / FNAME).read_text()
 UNDO = (ROOT / "supabase/rollbacks" / FNAME).read_text()
 LIST = (ROOT / "supabase/migrations" / LNAME).read_text()
 LIST_UNDO = (ROOT / "supabase/rollbacks" / LNAME).read_text()
 EXIT = (ROOT / "supabase/migrations" / ENAME).read_text()
 EXIT_UNDO = (ROOT / "supabase/rollbacks" / ENAME).read_text()
+FILL = (ROOT / "supabase/migrations" / FILLNAME).read_text()
+FILL_UNDO = (ROOT / "supabase/rollbacks" / FILLNAME).read_text()
 FN = (ROOT / "supabase/functions/research-ingest-v2/index.ts").read_text()
 REFUSE_DONE = ("finish_founder_startup done refused: you have no founder role saved for this startup since you took it. "
                "Save the founders with add_founder first, or finish it as rejected with the reason.")
@@ -92,6 +95,7 @@ def test_door_routes_founder_actions_from_the_key():
     assert "exit_outcome is only for founded_before" in FN
     assert "exit_acquirer is only allowed when exit_outcome is acquired" in FN
     assert "exit_source_url is required when exit_outcome is set" in FN
+    assert "status exit_added" in FN and "exit_already_set" in FN
 
 
 def test_founded_before_exit_is_optional_and_only_on_that_fact():
@@ -118,6 +122,30 @@ def test_founded_before_exit_is_optional_and_only_on_that_fact():
     assert "drop column if exists exit_acquirer" in undo
     assert "drop column if exists exit_source_url" in undo
     assert "create or replace function public.v2_founder_lookup" in undo
+
+
+def test_exit_fill_updates_only_an_empty_founded_before_exit():
+    code = _code(FILL)
+    low = code.lower()
+    assert "security definer" in low and "set search_path = public, bots, pg_catalog" in low
+    assert "grant execute on function public.v2_founder_add(uuid, bigint, jsonb, jsonb, jsonb) to service_role" in low
+    assert "revoke all on function public.v2_founder_add(uuid, bigint, jsonb, jsonb, jsonb) from public" in low
+    assert "v2 founder exit columns missing, skipped" in FILL
+    assert low.count("update public.v2_founder_facts") == 1
+    update = low.split("update public.v2_founder_facts", 1)[1].split("where fact_id = v_fid", 1)[0]
+    sets = [line.strip().rstrip(",").removeprefix("set ") for line in update.splitlines() if "=" in line]
+    assert sets == ["exit_outcome = v_in_exit", "exit_acquirer = v_in_buyer", "exit_source_url = v_in_src"]
+    assert "and fact = 'founded_before'" in low
+    assert "and exit_outcome is null" in low
+    assert "'status', 'exit_added'" in code
+    assert "'reason', 'exit_already_set'" in code
+    assert "for update;" in low
+    undo = _code(FILL_UNDO).lower()
+    assert "update public.v2_founder_facts" not in undo
+    assert "exit_added" not in undo and "exit_already_set" not in undo
+    assert "drop column" not in undo
+    assert "create or replace function public.v2_founder_lookup" not in undo
+    assert "reason', 'already stored'" in FILL_UNDO
 
 
 # ---------- database checks (local scratch Postgres only) ----------
@@ -164,9 +192,11 @@ def db():
         c.execute(WORK_SQL)
         c.execute(MIG)
         c.execute(EXIT)
+        c.execute(FILL)
         c.execute(LIST)
         yield c
         c.execute(LIST_UNDO)
+        c.execute(FILL_UNDO)
         c.execute(EXIT_UNDO)
         c.execute(UNDO)
         c.execute(WORK_UNDO)
@@ -446,6 +476,7 @@ def test_migration_is_a_no_op_without_v2(db):
         db.execute("drop function public.v2_work_bot(uuid)")
         db.execute(MIG)
         db.execute(EXIT)
+        db.execute(FILL)
         db.execute(LIST)
         assert db.execute("select to_regclass('public.v2_founders')").fetchone()[0] is None
         assert db.execute("select to_regclass('public.v2_founder_facts')").fetchone()[0] is None
@@ -536,12 +567,12 @@ def test_db_founded_before_exit_is_optional_and_refused_elsewhere(db):
         {"value": "yes: Exact", "exit_outcome": "acquired", "exit_acquirer": "x" * 300, "exit_source_url": src},
         {"value": "yes: Listed Co", "exit_outcome": "ipo", "exit_acquirer": None, "exit_source_url": "https://news.example/ipo"},
     ]
-    # The same founded_before value is not stored again, and the exit already saved stays.
+    # A different exit does not replace the one already saved.
     again = add(db, founder={"founder_id": none["founder_id"]}, facts=[
         {"fact": "founded_before", "value": "yes: Analytical Kids", "exit_outcome": "shut_down",
          "exit_source_url": "https://news.example/other", "source_url": src},
     ])
-    assert again["ok"] and again["facts"] == [] and again["skipped"][0]["reason"] == "already stored"
+    assert again["ok"] and again["facts"] == [] and again["skipped"][0]["reason"] == "exit_already_set"
     assert _exit_cols(db, none["founder_id"], "yes: Analytical Kids") == ("acquired", "Babbage Co", same_src)
 
     fid = none["founder_id"]
@@ -583,3 +614,188 @@ def test_db_founded_before_exit_is_optional_and_refused_elsewhere(db):
     assert "exit_outcome" in [r[0] for r in db.execute(
         "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'v2_founder_facts'"
     ).fetchall()]
+
+
+def _rest(db, fact_id):
+    return db.execute(
+        """select fact_id, founder_id, startup_id, fact, value, value_norm, company_website, job_role,
+                  source_url, added_by, created_at
+             from public.v2_founder_facts where fact_id = %s""",
+        (fact_id,),
+    ).fetchone()
+
+
+def test_db_empty_exit_is_filled_and_an_existing_exit_is_left_alone(db):
+    import psycopg
+    src = "https://news.example/ada"
+    exit_src = "https://news.example/exit"
+    saved = add(db, facts=[
+        {"fact": "founded_before", "value": "yes: Analytical Kids", "source_url": src},
+        {"fact": "founded_before", "value": "yes", "source_url": src},
+        {"fact": "past_job", "value": "Babbage Co", "role": "Mathematician", "source_url": src},
+    ])
+    assert saved["ok"] and saved["created"]
+    fid = saved["founder_id"]
+    fact_id = db.execute(
+        "select fact_id from public.v2_founder_facts where founder_id = %s and fact = 'founded_before' and value = 'yes: Analytical Kids'",
+        (fid,),
+    ).fetchone()[0]
+    before = _rest(db, fact_id)
+    assert db.execute(
+        "select prosecdef, pg_get_userbyid(proowner) = current_user from pg_proc where proname = 'v2_founder_add'"
+    ).fetchone() == (True, True)
+    sig = "public.v2_founder_add(uuid,bigint,jsonb,jsonb,jsonb)"
+    assert db.execute("select has_function_privilege('service_role', %s, 'execute')", (sig,)).fetchone()[0] is True
+    assert db.execute("select has_function_privilege('anon', %s, 'execute')", (sig,)).fetchone()[0] is False
+    for priv in ("select", "insert", "update", "delete"):
+        assert db.execute(
+            "select has_table_privilege('service_role', 'public.v2_founder_facts', %s)", (priv,)
+        ).fetchone()[0] is False, priv
+
+    # The door role cannot touch the table. The security definer function can, and the commit-time check still runs.
+    with db.transaction():
+        db.execute("set local role service_role")
+        filled = add(db, founder={"founder_id": fid}, facts=[
+            {"fact": "founded_before", "value": "yes: analytical kids", "exit_outcome": " Acquired ",
+             "exit_acquirer": " Babbage Co ", "exit_source_url": exit_src, "source_url": "https://other.example/new"},
+            {"fact": "current_city", "value": "London", "source_url": src},
+        ])
+    assert filled["ok"] and filled["created"] is False and filled["role"]["skipped"] is True
+    got = next(f for f in filled["facts"] if f["fact"] == "founded_before")
+    assert got["status"] == "exit_added" and got["fact_id"] == fact_id
+    assert got["exit_outcome"] == "acquired" and got["exit_acquirer"] == "Babbage Co" and got["exit_source_url"] == exit_src
+    assert got["value"] == "yes: analytical kids"
+    city = next(f for f in filled["facts"] if f["fact"] == "current_city")
+    assert "status" not in city and city["value"] == "London"
+    assert _rest(db, fact_id) == before
+    assert _exit_cols(db, fid, "yes: Analytical Kids") == ("acquired", "Babbage Co", exit_src)
+    assert db.execute("select count(*) from public.v2_founder_facts where founder_id = %s and fact = 'founded_before'", (fid,)).fetchone()[0] == 2
+    assert look(db, "Ada Lovelace")["matches"][0]["founded_before"][1]["exit_outcome"] == "acquired"
+
+    # Same exit again writes nothing. A resend with no exit does not clear it.
+    same = add(db, founder={"founder_id": fid}, facts=[
+        {"fact": "founded_before", "value": "YES: Analytical Kids", "exit_outcome": "acquired",
+         "exit_acquirer": "Babbage Co", "exit_source_url": exit_src, "source_url": src},
+    ])
+    assert same["ok"] and same["facts"] == [] and same["skipped"][0]["reason"] == "already stored"
+    quiet = add(db, founder={"founder_id": fid}, facts=[
+        {"fact": "founded_before", "value": "yes: Analytical Kids", "source_url": src},
+    ])
+    assert quiet["skipped"][0]["reason"] == "already stored"
+    blank = add(db, founder={"founder_id": fid}, facts=[
+        {"fact": "founded_before", "value": "yes: Analytical Kids", "exit_outcome": "  ", "source_url": src},
+    ])
+    assert blank["skipped"][0]["reason"] == "already stored"
+    assert _rest(db, fact_id) == before
+    assert _exit_cols(db, fid, "yes: Analytical Kids") == ("acquired", "Babbage Co", exit_src)
+
+    # A different exit, buyer, or link is reported and left alone. Another fact kind is not updated.
+    for fact in (
+        {"fact": "founded_before", "value": "yes: Analytical Kids", "exit_outcome": "shut_down",
+         "exit_source_url": "https://news.example/shut", "source_url": src},
+        {"fact": "founded_before", "value": "yes: Analytical Kids", "exit_outcome": "acquired",
+         "exit_acquirer": "Other Buyer", "exit_source_url": exit_src, "source_url": src},
+        {"fact": "founded_before", "value": "yes: Analytical Kids", "exit_outcome": "acquired",
+         "exit_acquirer": "Babbage Co", "exit_source_url": "https://news.example/other", "source_url": src},
+        {"fact": "past_job", "value": "Babbage Co", "role": "Engineer", "company_website": "https://other.example", "source_url": src},
+    ):
+        got = add(db, founder={"founder_id": fid}, facts=[fact])
+        assert got["ok"] and got["facts"] == [], got
+        assert got["skipped"][0]["reason"] == ("already stored" if fact["fact"] == "past_job" else "exit_already_set")
+    assert _exit_cols(db, fid, "yes: Analytical Kids") == ("acquired", "Babbage Co", exit_src)
+    assert db.execute("select job_role, company_website from public.v2_founder_facts where fact = 'past_job' and founder_id = %s", (fid,)).fetchone() == ("Mathematician", None)
+    assert _rest(db, fact_id) == before
+
+    # An empty exit of another value, and of another person, is its own row.
+    ipo_src = "https://news.example/ipo"
+    other = add(db, founder={"name": "Grace Hopper", "linkedin_url": "https://www.linkedin.com/in/grace"}, facts=[
+        {"fact": "founded_before", "value": "yes: Analytical Kids", "source_url": src},
+    ])
+    plain = add(db, founder={"founder_id": fid}, facts=[
+        {"fact": "founded_before", "value": "yes", "exit_outcome": "ipo", "exit_source_url": ipo_src, "source_url": src},
+        {"fact": "founded_before", "value": "no: Old Co", "exit_outcome": "shut_down",
+         "exit_source_url": "http://news.example/shut", "source_url": src},
+        {"fact": "founded_before", "value": "yes: Bought", "exit_outcome": "acquired", "exit_source_url": exit_src, "source_url": src},
+    ])
+    assert plain["ok"]
+    by_value = {f["value"]: f for f in plain["facts"]}
+    assert by_value["yes"]["status"] == "exit_added" and by_value["yes"]["exit_outcome"] == "ipo" and by_value["yes"]["exit_acquirer"] is None
+    assert "status" not in by_value["no: Old Co"] and by_value["no: Old Co"]["exit_outcome"] == "shut_down"
+    assert "status" not in by_value["yes: Bought"] and by_value["yes: Bought"]["exit_acquirer"] is None
+    assert _exit_cols(db, other["founder_id"], "yes: Analytical Kids") == (None, None, None)
+    assert _exit_cols(db, fid, "yes") == ("ipo", None, ipo_src)
+
+    # A bad exit still refuses the whole call, before any write.
+    n_before = db.execute("select count(*) from public.v2_founder_facts").fetchone()[0]
+    refused = add(db, founder={"founder_id": fid}, facts=[
+        {"fact": "founded_before", "value": "yes: Analytical Kids", "exit_outcome": "merged", "source_url": src},
+        {"fact": "current_city", "value": "Paris", "source_url": src},
+    ])
+    assert "exit_outcome must be acquired, ipo or shut_down" in refused["error"]
+    assert db.execute("select count(*) from public.v2_founder_facts").fetchone()[0] == n_before
+    assert db.execute("select count(*) from public.v2_founder_facts where value = 'Paris'").fetchone()[0] == 0
+    assert _exit_cols(db, fid, "yes: Analytical Kids") == ("acquired", "Babbage Co", exit_src)
+
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with db.transaction():
+            db.execute("set local role service_role")
+            db.execute("select exit_outcome from public.v2_founder_facts")
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with db.transaction():
+            db.execute("set local role service_role")
+            db.execute("update public.v2_founder_facts set exit_outcome = 'ipo'")
+
+    # Two calls at once: one exit is written, the other is left alone.
+    race_id = add(db, K2, startup=11, founder={"name": "Race Person", "linkedin_url": "https://www.linkedin.com/in/race"},
+                  facts=[{"fact": "founded_before", "value": "yes: Race Co", "source_url": src}])["founder_id"]
+    results = []
+    gate = threading.Barrier(2)
+
+    def run(outcome, buyer, url):
+        with psycopg.connect(URL, autocommit=True) as c:
+            gate.wait()
+            fact = {"fact": "founded_before", "value": "yes: Race Co", "exit_outcome": outcome,
+                    "exit_source_url": url, "source_url": src}
+            if buyer:
+                fact["exit_acquirer"] = buyer
+            results.append(add(c, K2, startup=11, founder={"founder_id": race_id}, facts=[fact]))
+
+    threads = [
+        threading.Thread(target=run, args=("acquired", "Buyer A", "https://news.example/a")),
+        threading.Thread(target=run, args=("ipo", None, "https://news.example/b")),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    reasons = []
+    for row in results:
+        assert row["ok"], row
+        if row["facts"]:
+            reasons.append(row["facts"][0]["status"])
+        else:
+            reasons.append(row["skipped"][0]["reason"])
+    assert sorted(reasons) == ["exit_added", "exit_already_set"]
+    stored = _exit_cols(db, race_id, "yes: Race Co")
+    assert stored in (("acquired", "Buyer A", "https://news.example/a"), ("ipo", None, "https://news.example/b"))
+
+    # Rolling the function back stops the fill. The exit already written stays. Applying it again fills an empty one.
+    db.execute(FILL_UNDO)
+    blocked = add(db, founder={"founder_id": fid}, facts=[
+        {"fact": "founded_before", "value": "yes: Still Empty", "source_url": src},
+    ])
+    assert blocked["facts"][0]["exit_outcome"] is None
+    later = add(db, founder={"founder_id": fid}, facts=[
+        {"fact": "founded_before", "value": "yes: Still Empty", "exit_outcome": "shut_down",
+         "exit_source_url": "https://news.example/shut", "source_url": src},
+    ])
+    assert later["facts"] == [] and later["skipped"][0]["reason"] == "already stored"
+    assert _exit_cols(db, fid, "yes: Still Empty") == (None, None, None)
+    assert _exit_cols(db, fid, "yes: Analytical Kids") == ("acquired", "Babbage Co", exit_src)
+    db.execute(FILL)
+    opened = add(db, founder={"founder_id": fid}, facts=[
+        {"fact": "founded_before", "value": "yes: Still Empty", "exit_outcome": "shut_down",
+         "exit_source_url": "https://news.example/shut", "source_url": src},
+    ])
+    assert opened["facts"][0]["status"] == "exit_added"
+    assert _exit_cols(db, fid, "yes: Still Empty") == ("shut_down", None, "https://news.example/shut")

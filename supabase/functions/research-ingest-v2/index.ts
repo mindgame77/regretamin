@@ -14,6 +14,7 @@
 // lookup is read-only: finds an existing firm or startup by website domain, name, or partial name (migration 20261120060000_v2_research_lookup).
 // lookup also accepts {"founder":{"name","linkedin_url"}} and returns up to 5 people with their startups, past jobs, and founded_before facts (migration 20261121010000_v2_founders).
 // A founded_before fact may include exit_outcome (acquired, ipo, shut_down), exit_acquirer (only when acquired), and exit_source_url (required when exit_outcome is set). Empty when unknown (migration 20261121040000_v2_founder_founded_before_exit).
+// A later add_founder for the same founded_before value fills those three fields when the stored row has no exit (status exit_added). An exit already stored stays: exit_already_set when the new exit differs, already stored when it is the same. The door passes the fact through; v2_founder_add does the write (migration 20261121050000_v2_founder_founded_before_exit_fill).
 // Reuse a founder_id only when the LinkedIn is the same, or the name is the same and a startup or a past job matches.
 // add_founder saves one person, their role at a startup, and optional facts, in one call. Nothing is written if any part is refused.
 // claim_next_founder_startups / finish_founder_startup: separate hand-out (schema founderlist, migration 20261121020000_founderlist).
