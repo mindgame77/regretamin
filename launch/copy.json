@@ -1011,6 +1011,10 @@
     "col_added": "Added",
     "filter_status": "Investor status"
    },
+   "map": {
+    "title": "Map of venture capital · Regretamin",
+    "description": "Where venture capital firms are based and what they invest in, by region, sector, stage and quarter since 2021."
+   },
    "404": {
     "title": "Not found · Regretamin",
     "description": "The requested Regretamin page could not be found.",
