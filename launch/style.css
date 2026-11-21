@@ -1203,17 +1203,16 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-tip .vm-pc{font-family:'Geist Mono',ui-monospace,monospace}
 .vm-tip .vm-btn{height:34px;line-height:34px;margin-top:4px;border-radius:8px;font-size:12px}
 .vm-colwrap{display:contents}
-/* Column layout: headline, filters and updates (or the firms list) in a left column; the map has the rest to itself. */
-.vm-col .vm-colwrap{position:absolute;left:0;top:0;bottom:0;width:400px;display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--ml);z-index:3}
-.vm-col .vm-map{left:400px}
-.vm-col .vm-head{position:static;width:auto;border:0;border-bottom:1px solid var(--ml);border-radius:0;box-shadow:none;padding:24px 24px 20px}
-.vm-col .vm-side,.vm-col .vm-side.vm-list{position:static;width:auto;flex:1;min-height:0;border:0;border-radius:0;box-shadow:none;padding:18px 24px 0;overflow:auto}
-.vm-col .vm-side:not(.vm-list){padding-bottom:84px}
-.vm-col .vm-side.vm-list{overflow:hidden}
-.vm-col .vm-side>a.vm-more{margin:0 -24px;padding:0 24px}
+/* Column layout (founder's choice "A"): a grey rail on the left holds two separate cards, controls and news; the map has the rest. */
+.vm-col .vm-colwrap{position:absolute;left:0;top:0;bottom:0;width:424px;display:flex;flex-direction:column;gap:16px;padding:20px;background:var(--ms);border-right:1px solid var(--ml);z-index:3}
+.vm-col .vm-map{left:424px}
+.vm-col .vm-head{position:static;width:auto;box-shadow:none;padding:20px}
+.vm-col .vm-head h1{font-size:27px}
+.vm-col .vm-side,.vm-col .vm-side.vm-list{position:static;width:auto;flex:1;min-height:0;box-shadow:none;padding:16px 20px 8px;overflow:auto}
+.vm-col .vm-side.vm-list{overflow:hidden;padding-bottom:0}
+.vm-col .vm-side>a.vm-more{margin:0 -20px;padding:0 20px}
 .vm-col .vm-line{white-space:normal}
-.vm-col .vm-legend{left:24px;bottom:16px;width:352px;z-index:4;background:#fff}
-.vm-col:has(.vm-side.vm-list) .vm-legend{display:none}
+.vm-col .vm-legend{left:448px;top:24px;bottom:auto;width:300px}
 .vm-facts{display:flex;flex-direction:column;gap:8px;font-size:13px}
 .vm-facts b{font-weight:600;color:var(--mi)}
 .vm-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:#F1F3F2}
@@ -1223,7 +1222,7 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-key i{width:9px;height:9px;border-radius:3px}
 .vm-col .vm-zoom{top:20px;right:24px;bottom:auto;width:auto;flex-direction:row}
 .vm-col .vm-zoom button{text-align:center;padding:0 16px}
-.vm-col .vm-dock{left:calc(400px + (100% - 400px)/2);width:min(860px,calc(100% - 448px))}
+.vm-col .vm-dock{left:calc(424px + (100% - 424px)/2);width:min(860px,calc(100% - 472px))}
 @property --vm-a1{syntax:'<percentage>';inherits:false;initial-value:0%}
 @property --vm-a2{syntax:'<percentage>';inherits:false;initial-value:0%}
 @property --vm-a3{syntax:'<percentage>';inherits:false;initial-value:0%}

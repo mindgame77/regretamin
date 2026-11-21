@@ -13,7 +13,7 @@
   const FIXTURE = LOCAL ? qs.get('fixture') : null;
   const FX_FIRMS = FIXTURE && qs.get('fx_firms'), FX_UPDATES = FIXTURE && qs.get('fx_updates');
 
-  // Layout to try: everything that is not the map sits in one column on the left, and nothing covers the map.
+  // Layout (founder's choice): a grey rail on the left holds two cards, controls and news; nothing covers the map.
   // ?layout=float brings back the first layout (cards floating over the map) for comparison.
   const COL = qs.get('layout') !== 'float';
   if (COL) el.classList.add('vm-col');
@@ -323,7 +323,7 @@ ${COL ? placeFacts(L.place) : ''}<div class="vm-rows">${!L.data ? '' : L.data.fi
       return;
     }
     side.className = 'vm-card vm-side';
-    side.innerHTML = `<h2>Latest updates</h2>${S.updates.length ? S.updates.map((u, i) => {
+    side.innerHTML = `<div class="vm-lh"><h2>Latest updates</h2><span class="vm-tag">new rounds</span></div>${S.updates.length ? S.updates.map((u, i) => {
       const names = (u.firms || []).map((f) => f.name), who = names.length > 1 && (u.leads > 1 || !u.led) ? names[0] + ' and ' + names[1] : names[0] || '';
       const slug = u.firms && u.firms[0] && u.firms[0].slug;
       return `<a class="${i ? '' : 'vm-first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="vm-tag">${i ? '' : '<i class="vm-new" title="Newest update: its place is lit up on the map"></i>'}${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span class="vm-line" title="${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}">${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}</span></a>`;
