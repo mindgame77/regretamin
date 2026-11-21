@@ -222,7 +222,7 @@
         if (!hit(bx)) { boxes.push(bx); labs += `<span class="vm-lab ${small ? 'vm-sm' : ''}" style="left:${x}px;top:${y}px;width:${w}px;text-align:${al === 'c' ? 'center' : al === 'l' ? 'left' : 'right'}">${esc(p.n)}${small ? ' ' + num(p.d) : `<br><em>${esc(sub)}</em>`}</span>`; break; }
       }
     });
-    els.forEach((b, key) => { if (!seen.has(key)) { els.delete(key); b.classList.add('vm-out'); setTimeout(() => b.remove(), 350); } });
+    els.forEach((b, key) => { if (!seen.has(key)) { els.delete(key); b.classList.add('vm-out'); setTimeout(() => b.remove(), 850); } });
     const lb = $('#vm-labs'); lb.className = from ? 'vm-late' : ''; lb.innerHTML = labs;
     // New circles: either fly out of the region they belong to (zooming in), or pop in where they are.
     if (from) fresh.forEach(([b, p], n) => {

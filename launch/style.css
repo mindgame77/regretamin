@@ -1179,11 +1179,12 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-range{flex:none;width:150px;font-size:13px;color:var(--mm);text-align:right}
 .vm-legend{position:absolute;left:24px;bottom:24px;width:230px;margin:0;font-size:13px;color:var(--mm)}
 .vm-msg{position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);padding:14px 18px;border:1.5px solid var(--mi);border-radius:12px;background:#fff;font-weight:600}
-.vm-pl{position:absolute;padding:0;border-radius:50%;border:2px solid #fff;transition:left .6s cubic-bezier(.2,.8,.2,1),top .6s cubic-bezier(.2,.8,.2,1),width .6s cubic-bezier(.2,.8,.2,1),height .6s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.9,.25,1.15),opacity .45s,background-color .4s,--vm-a1 .6s,--vm-a2 .6s,--vm-a3 .6s,--vm-a4 .6s,--vm-a5 .6s}
+.vm-pl{position:absolute;padding:0;border-radius:50%;border:2px solid #fff;transition:left .9s cubic-bezier(.3,.7,.2,1),top .9s cubic-bezier(.3,.7,.2,1),width .9s cubic-bezier(.3,.7,.2,1),height .9s cubic-bezier(.3,.7,.2,1),transform .8s cubic-bezier(.2,.9,.25,1.1),opacity .7s,background-color .6s,--vm-a1 .9s,--vm-a2 .9s,--vm-a3 .9s,--vm-a4 .9s,--vm-a5 .9s}
 .vm-pl.vm-in{transform:scale(.2);opacity:0}
-.vm-pl.vm-out{transform:scale(.2);opacity:0;pointer-events:none}
+.vm-pl.vm-out{transform:scale(0);opacity:0;pointer-events:none;transition:transform .8s cubic-bezier(.4,0,.6,1),opacity .8s}
 .vm-pl.vm-ring{background:conic-gradient(var(--vm-c1) 0 var(--vm-a1),var(--vm-c2) var(--vm-a1) var(--vm-a2),var(--vm-c3) var(--vm-a2) var(--vm-a3),var(--vm-c4) var(--vm-a3) var(--vm-a4),var(--vm-c5) var(--vm-a4) var(--vm-a5),#F1F3F2 var(--vm-a5) 100%)}
-.vm-pl.vm-ring:after{content:"";position:absolute;left:27%;top:27%;width:46%;height:46%;border-radius:50%;background:#fff}
+.vm-pl:after{content:"";position:absolute;left:27%;top:27%;width:46%;height:46%;border-radius:50%;background:#fff;transform:scale(0);transition:transform .7s cubic-bezier(.3,.7,.2,1)}
+.vm-pl.vm-ring:after{transform:scale(1)}
 .vm-pl.vm-dot,.vm-pl.vm-plain{border:1.5px solid var(--mi)}
 .vm-pl.vm-sel,.vm-pl:focus-visible{outline:2px solid var(--mi);outline-offset:2px}
 .vm-pl.vm-lit{box-shadow:0 0 0 2px var(--mi),0 0 0 9px rgba(240,134,30,.32),0 0 0 20px rgba(240,134,30,.14)}
