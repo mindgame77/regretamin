@@ -12,7 +12,8 @@
 // add_round / claim_next_round / finish_round: the separate round list (schema roundlist, migration 20261119170000_roundlist).
 // Up to 10 held rounds per key (count 1-10 per call), each with a 2-hour hold; a copy of a round is refused (409); done needs an accepted deal since the claim.
 // lookup is read-only: finds an existing firm or startup by website domain, name, or partial name (migration 20261120060000_v2_research_lookup).
-// lookup also accepts {"founder":{"name","linkedin_url"}} and returns up to 5 people with their startups and past jobs (migration 20261121010000_v2_founders).
+// lookup also accepts {"founder":{"name","linkedin_url"}} and returns up to 5 people with their startups, past jobs, and founded_before facts (migration 20261121010000_v2_founders).
+// A founded_before fact may include exit_outcome (acquired, ipo, shut_down), exit_acquirer (only when acquired), and exit_source_url (required when exit_outcome is set). Empty when unknown (migration 20261121040000_v2_founder_founded_before_exit).
 // Reuse a founder_id only when the LinkedIn is the same, or the name is the same and a startup or a past job matches.
 // add_founder saves one person, their role at a startup, and optional facts, in one call. Nothing is written if any part is refused.
 // claim_next_founder_startups / finish_founder_startup: separate hand-out (schema founderlist, migration 20261121020000_founderlist).
@@ -32,7 +33,7 @@ const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.diges
 const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"missing\",\"firm_id\":N} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]} or {\"action\":\"lookup\",\"firm\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"startup\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"founder\":{\"name\",\"linkedin_url\"}} or {\"action\":\"add_founder\",\"startup_id\":N,\"founder\":{\"name\",\"linkedin_url\"},\"role\":{\"source_url\"},\"facts\":[]} or {\"action\":\"claim_next_founder_startups\",\"count\":1} or {\"action\":\"finish_founder_startup\",\"startup_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
 const LOOKUP_HINT = "{\"action\":\"lookup\",\"firm\":{\"name\":\"All Aboard Fund\",\"website\":\"allaboard.vc\"}} or {\"action\":\"lookup\",\"startup\":{\"name\":\"Rivercell\",\"website\":\"rivercell.ai\"}} or {\"action\":\"lookup\",\"founder\":{\"name\":\"Ada Lovelace\",\"linkedin_url\":\"https://www.linkedin.com/in/ada\"}}; firm and startup take a name, a website, or both; a founder takes a name, a LinkedIn link, or both";
 const ROUND_HINT = "Round list: {\"action\":\"add_round\",\"round\":{\"startup_name\",\"startup_website\",\"country\",\"round\",\"round_date\":\"YYYY-MM-DD\",\"source_url\"}} or {\"action\":\"claim_next_round\",\"count\":1} or {\"action\":\"finish_round\",\"round_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
-const FOUNDER_HINT = "{\"action\":\"add_founder\",\"startup_id\":10,\"founder\":{\"name\":\"Ada Lovelace\",\"linkedin_url\":\"https://www.linkedin.com/in/ada\",\"founder_id\":7},\"role\":{\"value\":\"CEO\",\"source_url\":\"https://example.com/about\"},\"facts\":[{\"fact\":\"current_country\",\"value\":\"GB\",\"source_url\":\"https://example.com/about\"},{\"fact\":\"past_job\",\"value\":\"Babbage Co\",\"role\":\"Mathematician\",\"company_website\":\"https://babbage.example\",\"source_url\":\"https://news.example/ada\"},{\"fact\":\"founded_before\",\"value\":\"yes: Analytical Kids\",\"source_url\":\"https://news.example/ada\"}]}";
+const FOUNDER_HINT = "{\"action\":\"add_founder\",\"startup_id\":10,\"founder\":{\"name\":\"Ada Lovelace\",\"linkedin_url\":\"https://www.linkedin.com/in/ada\",\"founder_id\":7},\"role\":{\"value\":\"CEO\",\"source_url\":\"https://example.com/about\"},\"facts\":[{\"fact\":\"current_country\",\"value\":\"GB\",\"source_url\":\"https://example.com/about\"},{\"fact\":\"past_job\",\"value\":\"Babbage Co\",\"role\":\"Mathematician\",\"company_website\":\"https://babbage.example\",\"source_url\":\"https://news.example/ada\"},{\"fact\":\"founded_before\",\"value\":\"yes: Analytical Kids\",\"exit_outcome\":\"acquired\",\"exit_acquirer\":\"Babbage Co\",\"exit_source_url\":\"https://news.example/ada\"}]}";
 const FOUNDERLIST_HINT = "Founder list: {\"action\":\"claim_next_founder_startups\",\"count\":1} or {\"action\":\"finish_founder_startup\",\"startup_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
 const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === "object" && !Array.isArray(v);
 const HTTP_URL = /^https?:\/\/\S+$/i;
@@ -73,7 +74,13 @@ function founderInputError(body: any): string | null {
     if (!FOUNDER_FACTS.has(kind)) return "unknown fact type '" + f.fact.slice(0, 40) + "'; allowed: " + FOUNDER_FACT_LIST;
     if (typeof f.source_url !== "string" || !HTTP_URL.test(f.source_url.trim()) || f.source_url.trim().length > 2000) return at + " needs a source_url (an http(s) link)";
     const hasSite = f.company_website !== undefined && f.company_website !== null && String(f.company_website).trim() !== "";
+    const filled = (v: unknown) => v !== undefined && v !== null && String(v).trim() !== "";
     if (kind !== "past_job" && f.role !== undefined && f.role !== null && String(f.role).trim() !== "") return "role on a fact is only for past_job";
+    if (kind !== "founded_before") {
+      if (filled(f.exit_outcome)) return "exit_outcome is only for founded_before";
+      if (filled(f.exit_acquirer)) return "exit_acquirer is only for founded_before";
+      if (filled(f.exit_source_url)) return "exit_source_url is only for founded_before";
+    }
     if (kind === "past_job") {
       if (typeof f.value !== "string" || f.value.trim() === "" || f.value.length > 300) return "past_job needs a company name in value";
       if (f.role !== undefined && f.role !== null && f.role !== "" && (typeof f.role !== "string" || f.role.trim() === "" || f.role.length > 300)) {
@@ -89,6 +96,25 @@ function founderInputError(body: any): string | null {
     } else if (kind === "founded_before") {
       if (typeof f.value !== "string" || f.value.length > 300 || !/^(yes|no)(:\s*\S.*)?$/i.test(f.value.trim())) {
         return "founded_before value must be yes or no, optionally followed by the earlier company (yes: Earlier Company)";
+      }
+      if (f.exit_outcome !== undefined && f.exit_outcome !== null && f.exit_outcome !== "" && typeof f.exit_outcome !== "string") {
+        return "exit_outcome must be acquired, ipo or shut_down, or leave it out";
+      }
+      const outcome = typeof f.exit_outcome === "string" ? f.exit_outcome.trim().toLowerCase() : "";
+      if (outcome !== "" && outcome !== "acquired" && outcome !== "ipo" && outcome !== "shut_down") {
+        return "exit_outcome must be acquired, ipo or shut_down, or leave it out";
+      }
+      if (f.exit_acquirer !== undefined && f.exit_acquirer !== null && f.exit_acquirer !== "" && (typeof f.exit_acquirer !== "string" || f.exit_acquirer.trim() === "" || f.exit_acquirer.length > 300)) {
+        return "exit_acquirer must be text up to 300 characters, or leave it out";
+      }
+      if (typeof f.exit_acquirer === "string" && f.exit_acquirer.trim() !== "" && outcome !== "acquired") {
+        return "exit_acquirer is only allowed when exit_outcome is acquired";
+      }
+      const exitSrc = f.exit_source_url;
+      const hasExitSrc = exitSrc !== undefined && exitSrc !== null && String(exitSrc).trim() !== "";
+      if (hasExitSrc && outcome === "") return "exit_source_url is only allowed when exit_outcome is set";
+      if (outcome !== "" && (typeof exitSrc !== "string" || !HTTP_URL.test(exitSrc.trim()) || exitSrc.trim().length > 2000)) {
+        return "exit_source_url is required when exit_outcome is set (an http(s) link)";
       }
     } else if (typeof f.value !== "string" || f.value.trim() === "" || f.value.length > 300) {
       return kind + " needs a value";

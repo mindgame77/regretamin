@@ -17,10 +17,13 @@ from test_v2_work_claims import SQL as WORK_SQL, UNDO as WORK_UNDO
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 FNAME = "20261121010000_v2_founders.sql"
 LNAME = "20261121020000_founderlist.sql"
+ENAME = "20261121040000_v2_founder_founded_before_exit.sql"
 MIG = (ROOT / "supabase/migrations" / FNAME).read_text()
 UNDO = (ROOT / "supabase/rollbacks" / FNAME).read_text()
 LIST = (ROOT / "supabase/migrations" / LNAME).read_text()
 LIST_UNDO = (ROOT / "supabase/rollbacks" / LNAME).read_text()
+EXIT = (ROOT / "supabase/migrations" / ENAME).read_text()
+EXIT_UNDO = (ROOT / "supabase/rollbacks" / ENAME).read_text()
 FN = (ROOT / "supabase/functions/research-ingest-v2/index.ts").read_text()
 REFUSE_DONE = ("finish_founder_startup done refused: you have no founder role saved for this startup since you took it. "
                "Save the founders with add_founder first, or finish it as rejected with the reason.")
@@ -86,6 +89,35 @@ def test_door_routes_founder_actions_from_the_key():
     assert "body.bot_id" not in block
     assert "notes, notes_ack, lookup, list_queue or verdict" in FN
     assert "add_founder, claim_next_founder_startups or finish_founder_startup" in FN
+    assert "exit_outcome is only for founded_before" in FN
+    assert "exit_acquirer is only allowed when exit_outcome is acquired" in FN
+    assert "exit_source_url is required when exit_outcome is set" in FN
+
+
+def test_founded_before_exit_is_optional_and_only_on_that_fact():
+    code = _code(EXIT)
+    low = code.lower()
+    assert "add column if not exists exit_outcome text" in low
+    assert "add column if not exists exit_acquirer text" in low
+    assert "add column if not exists exit_source_url text" in low
+    assert "fact = 'founded_before' and exit_outcome in ('acquired', 'ipo', 'shut_down')" in low
+    assert "exit_outcome is not distinct from 'acquired'" in low
+    assert "length(exit_acquirer) <= 300" in low
+    assert "exit_outcome is null and exit_source_url is null" in low
+    assert "exit_source_url is not null" in low
+    assert "exit_source_url ~*" in low and "length(exit_source_url) <= 2000" in low
+    assert "alter function public.v2_founder_require_role() security definer" in low
+    assert "v2 founders missing, skipped" in EXIT
+    for banned in ("exit_year", "exit_amount", "exit_date", "exit_value_usd"):
+        assert banned not in low, banned
+    body = EXIT_UNDO.split("create or replace function public.v2_founder_add", 1)[1]
+    body = body.split("alter table public.v2_founder_facts drop constraint", 1)[0]
+    assert "exit_outcome" not in body.lower()
+    undo = _code(EXIT_UNDO).lower()
+    assert "drop column if exists exit_outcome" in undo
+    assert "drop column if exists exit_acquirer" in undo
+    assert "drop column if exists exit_source_url" in undo
+    assert "create or replace function public.v2_founder_lookup" in undo
 
 
 # ---------- database checks (local scratch Postgres only) ----------
@@ -131,9 +163,11 @@ def db():
             c.execute("insert into public.v2_startups(startup_id, startup_name, website_url) values (%s, %s, %s)", (sid, name, site))
         c.execute(WORK_SQL)
         c.execute(MIG)
+        c.execute(EXIT)
         c.execute(LIST)
         yield c
         c.execute(LIST_UNDO)
+        c.execute(EXIT_UNDO)
         c.execute(UNDO)
         c.execute(WORK_UNDO)
         c.execute("drop schema bots cascade; drop table if exists public.v2_deals, public.v2_startups, public.v2_bot_keys, public.v2_firms cascade")
@@ -411,8 +445,141 @@ def test_migration_is_a_no_op_without_v2(db):
         db.execute(UNDO)
         db.execute("drop function public.v2_work_bot(uuid)")
         db.execute(MIG)
+        db.execute(EXIT)
         db.execute(LIST)
         assert db.execute("select to_regclass('public.v2_founders')").fetchone()[0] is None
+        assert db.execute("select to_regclass('public.v2_founder_facts')").fetchone()[0] is None
         assert db.execute("select to_regnamespace('founderlist')").fetchone()[0] is None
     finally:
         db.execute("rollback")
+
+
+def _exit_cols(db, founder_id, value):
+    return db.execute(
+        """select exit_outcome, exit_acquirer, exit_source_url
+             from public.v2_founder_facts
+            where founder_id = %s and fact = 'founded_before' and value = %s""",
+        (founder_id, value),
+    ).fetchone()
+
+
+def test_db_founded_before_exit_is_optional_and_refused_elsewhere(db):
+    import psycopg
+    assert db.execute("select prosecdef from pg_proc where proname = 'v2_founder_require_role'").fetchone()[0] is True
+    src = "https://news.example/ada"
+    none = add(db, facts=[{"fact": "founded_before", "value": "yes", "source_url": src}])
+    assert none["ok"]
+    saved_plain = next(f for f in none["facts"] if f["fact"] == "founded_before")
+    assert saved_plain["exit_outcome"] is None and saved_plain["exit_acquirer"] is None and saved_plain["exit_source_url"] is None
+    assert _exit_cols(db, none["founder_id"], "yes") == (None, None, None)
+    plain_look = look(db, "Ada Lovelace")["matches"][0]["founded_before"]
+    assert plain_look == [{"value": "yes", "exit_outcome": None, "exit_acquirer": None, "exit_source_url": None}]
+
+    refused = [
+        ({"fact": "past_job", "value": "Babbage Co", "exit_outcome": "acquired", "exit_source_url": src, "source_url": src},
+         "exit_outcome is only for founded_before"),
+        ({"fact": "current_city", "value": "London", "exit_acquirer": "Babbage Co", "source_url": src},
+         "exit_acquirer is only for founded_before"),
+        ({"fact": "university", "value": "London", "exit_source_url": src, "source_url": src},
+         "exit_source_url is only for founded_before"),
+        ({"fact": "founded_before", "value": "yes", "exit_outcome": "merged", "source_url": src},
+         "exit_outcome must be acquired, ipo or shut_down, or leave it out"),
+        ({"fact": "founded_before", "value": "yes", "exit_outcome": 1, "source_url": src},
+         "exit_outcome must be acquired, ipo or shut_down, or leave it out"),
+        ({"fact": "founded_before", "value": "yes", "exit_outcome": "ipo", "exit_acquirer": "Buyer", "exit_source_url": src, "source_url": src},
+         "exit_acquirer is only allowed when exit_outcome is acquired"),
+        ({"fact": "founded_before", "value": "yes", "exit_acquirer": "Buyer", "source_url": src},
+         "exit_acquirer is only allowed when exit_outcome is acquired"),
+        ({"fact": "founded_before", "value": "yes", "exit_outcome": "acquired", "exit_acquirer": "x" * 301, "exit_source_url": src, "source_url": src},
+         "exit_acquirer must be text up to 300 characters, or leave it out"),
+        ({"fact": "founded_before", "value": "yes", "exit_outcome": "shut_down", "source_url": src},
+         "exit_source_url is required when exit_outcome is set"),
+        ({"fact": "founded_before", "value": "yes", "exit_outcome": "ipo", "exit_source_url": "ftp://news.example/ada", "source_url": src},
+         "exit_source_url is required when exit_outcome is set"),
+        ({"fact": "founded_before", "value": "yes", "exit_source_url": src, "source_url": src},
+         "exit_source_url is only allowed when exit_outcome is set"),
+    ]
+    before = db.execute("select count(*) from public.v2_founders").fetchone()[0]
+    for fact, needle in refused:
+        got = add(db, founder={"name": "Grace Hopper", "linkedin_url": "https://www.linkedin.com/in/grace"}, facts=[fact])
+        assert needle in got["error"], got
+        assert got["ok"] is False
+    assert db.execute("select count(*) from public.v2_founders").fetchone()[0] == before
+
+    same_src = "https://news.example/exit"
+    bought = add(db, founder={"founder_id": none["founder_id"]}, facts=[
+        {"fact": "founded_before", "value": "yes: Analytical Kids", "exit_outcome": "Acquired",
+         "exit_acquirer": " Babbage Co ", "exit_source_url": same_src, "source_url": same_src},
+        {"fact": "founded_before", "value": "no: Old Co", "exit_outcome": "shut_down",
+         "exit_source_url": "http://news.example/shut", "source_url": src},
+        {"fact": "founded_before", "value": "yes: Listed Co", "exit_outcome": "ipo",
+         "exit_source_url": "https://news.example/ipo", "source_url": src},
+        {"fact": "founded_before", "value": "yes: Exact", "exit_outcome": "acquired",
+         "exit_acquirer": "x" * 300, "exit_source_url": src, "source_url": src},
+    ])
+    assert bought["ok"]
+    by_value = {f["value"]: f for f in bought["facts"] if f["fact"] == "founded_before"}
+    assert by_value["yes: Analytical Kids"]["exit_outcome"] == "acquired"
+    assert by_value["yes: Analytical Kids"]["exit_acquirer"] == "Babbage Co"
+    assert by_value["yes: Analytical Kids"]["exit_source_url"] == same_src
+    assert by_value["no: Old Co"]["exit_outcome"] == "shut_down" and by_value["no: Old Co"]["exit_acquirer"] is None
+    assert by_value["yes: Listed Co"]["exit_outcome"] == "ipo" and by_value["yes: Listed Co"]["exit_acquirer"] is None
+    assert by_value["yes: Exact"]["exit_acquirer"] == "x" * 300
+    assert _exit_cols(db, none["founder_id"], "yes: Analytical Kids") == ("acquired", "Babbage Co", same_src)
+    assert _exit_cols(db, none["founder_id"], "no: Old Co") == ("shut_down", None, "http://news.example/shut")
+    assert _exit_cols(db, none["founder_id"], "yes: Listed Co") == ("ipo", None, "https://news.example/ipo")
+    listed = look(db, "Ada Lovelace")["matches"][0]["founded_before"]
+    assert listed == [
+        {"value": "no: Old Co", "exit_outcome": "shut_down", "exit_acquirer": None, "exit_source_url": "http://news.example/shut"},
+        {"value": "yes", "exit_outcome": None, "exit_acquirer": None, "exit_source_url": None},
+        {"value": "yes: Analytical Kids", "exit_outcome": "acquired", "exit_acquirer": "Babbage Co", "exit_source_url": same_src},
+        {"value": "yes: Exact", "exit_outcome": "acquired", "exit_acquirer": "x" * 300, "exit_source_url": src},
+        {"value": "yes: Listed Co", "exit_outcome": "ipo", "exit_acquirer": None, "exit_source_url": "https://news.example/ipo"},
+    ]
+    # The same founded_before value is not stored again, and the exit already saved stays.
+    again = add(db, founder={"founder_id": none["founder_id"]}, facts=[
+        {"fact": "founded_before", "value": "yes: Analytical Kids", "exit_outcome": "shut_down",
+         "exit_source_url": "https://news.example/other", "source_url": src},
+    ])
+    assert again["ok"] and again["facts"] == [] and again["skipped"][0]["reason"] == "already stored"
+    assert _exit_cols(db, none["founder_id"], "yes: Analytical Kids") == ("acquired", "Babbage Co", same_src)
+
+    fid = none["founder_id"]
+    bad_rows = [
+        ("v2_founder_facts_exit_outcome",
+         "insert into public.v2_founder_facts (founder_id, fact, value, exit_outcome, exit_source_url, source_url, added_by) "
+         "values (%s, 'past_job', 'Co', 'acquired', 'https://x', 'https://x', 'bot-a')"),
+        ("v2_founder_facts_exit_source",
+         "insert into public.v2_founder_facts (founder_id, fact, value, exit_outcome, source_url, added_by) "
+         "values (%s, 'founded_before', 'yes: Bare', 'ipo', 'https://x', 'bot-a')"),
+        ("v2_founder_facts_exit_acquirer",
+         "insert into public.v2_founder_facts (founder_id, fact, value, exit_outcome, exit_acquirer, exit_source_url, source_url, added_by) "
+         "values (%s, 'founded_before', 'yes: Too Long', 'acquired', '" + ("x" * 301) + "', 'https://x', 'https://x', 'bot-a')"),
+        ("v2_founder_facts_exit_acquirer",
+         "insert into public.v2_founder_facts (founder_id, fact, value, exit_outcome, exit_acquirer, exit_source_url, source_url, added_by) "
+         "values (%s, 'founded_before', 'yes: Not Bought', 'ipo', 'Buyer', 'https://x', 'https://x', 'bot-a')"),
+        ("v2_founder_facts_exit_source",
+         "insert into public.v2_founder_facts (founder_id, fact, value, exit_source_url, source_url, added_by) "
+         "values (%s, 'founded_before', 'yes: Source Only', 'https://x', 'https://x', 'bot-a')"),
+    ]
+    for constraint, sql in bad_rows:
+        with pytest.raises(psycopg.errors.CheckViolation) as err:
+            db.execute(sql, (fid,))
+        assert err.value.diag.constraint_name == constraint
+
+    db.execute(EXIT_UNDO)
+    cols = [r[0] for r in db.execute(
+        "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'v2_founder_facts'"
+    ).fetchall()]
+    assert "exit_outcome" not in cols and "exit_acquirer" not in cols and "exit_source_url" not in cols
+    assert db.execute("select prosecdef from pg_proc where proname = 'v2_founder_require_role'").fetchone()[0] is True
+    assert db.execute("select count(*) from public.v2_founders").fetchone()[0] == before
+    rolled = look(db, "Ada Lovelace")["matches"][0]
+    assert "founded_before" not in rolled and rolled["past_jobs"] == []
+    still = add(db, founder={"founder_id": fid}, facts=[{"fact": "current_city", "value": "London", "source_url": src}])
+    assert still["ok"] and still["facts"][0] == {"fact_id": still["facts"][0]["fact_id"], "fact": "current_city", "value": "London"}
+    db.execute(EXIT)
+    db.execute(EXIT)
+    assert "exit_outcome" in [r[0] for r in db.execute(
+        "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'v2_founder_facts'"
+    ).fetchall()]

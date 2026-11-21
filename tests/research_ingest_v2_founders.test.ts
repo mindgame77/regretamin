@@ -10,7 +10,7 @@ const KEY = "11111111-1111-1111-1111-111111111111";
 const calls: { name: string; args: any }[] = [];
 const replies: Record<string, any> = {
   v2_founder_add: { ok: true, bot_id: "bot-a", founder_id: 7, created: true, role: { fact_id: 1, startup_id: 10 } },
-  v2_founder_lookup: { ok: true, kind: "founder", found: true, total: 1, matches: [{ founder_id: 7, name: "Ada Lovelace", linkedin_url: "https://www.linkedin.com/in/ada", startups: [{ id: 10, name: "Analytical Engines" }], past_jobs: [{ company: "Babbage Co", job_role: "Mathematician" }], match_reason: "linkedin" }] },
+  v2_founder_lookup: { ok: true, kind: "founder", found: true, total: 1, matches: [{ founder_id: 7, name: "Ada Lovelace", linkedin_url: "https://www.linkedin.com/in/ada", startups: [{ id: 10, name: "Analytical Engines" }], past_jobs: [{ company: "Babbage Co", job_role: "Mathematician" }], founded_before: [{ value: "yes: Analytical Kids", exit_outcome: "acquired", exit_acquirer: "Babbage Co", exit_source_url: "https://news.example/ada" }], match_reason: "linkedin" }] },
   founderlist_claim_next_founder_startups: { ok: true, bot_id: "bot-a", startup: { startup_id: 10, startup_name: "Analytical Engines" }, startups: [{ startup_id: 10 }], claimed_count: 1, held_count: 1 },
   founderlist_finish_founder_startup: { ok: true, bot_id: "bot-a", startup: { startup_id: 10, status: "done" } },
 };
@@ -74,6 +74,16 @@ Deno.test("add_founder: refused before the database", async () => {
     [{ ...good, facts: [{ fact: "role", value: "CEO", source_url: "https://x" }] }, "send the startup role in role"],
     [{ ...good, founder: { name: "Ada", linkedin_url: "https://example.com/not-linkedin" } }, "LinkedIn profile"],
     [{ ...good, facts: [{ fact: "founded_before", value: "maybe", source_url: "https://x" }] }, "founded_before"],
+    [{ ...good, facts: [{ fact: "past_job", value: "Babbage Co", exit_outcome: "acquired", exit_source_url: "https://x", source_url: "https://x" }] }, "exit_outcome is only for founded_before"],
+    [{ ...good, facts: [{ fact: "current_city", value: "London", exit_acquirer: "Buyer", source_url: "https://x" }] }, "exit_acquirer is only for founded_before"],
+    [{ ...good, facts: [{ fact: "university", value: "London", exit_source_url: "https://x", source_url: "https://x" }] }, "exit_source_url is only for founded_before"],
+    [{ ...good, facts: [{ fact: "founded_before", value: "yes", exit_outcome: "merged", source_url: "https://x" }] }, "exit_outcome must be acquired, ipo or shut_down"],
+    [{ ...good, facts: [{ fact: "founded_before", value: "yes", exit_outcome: 1, source_url: "https://x" }] }, "exit_outcome must be acquired, ipo or shut_down"],
+    [{ ...good, facts: [{ fact: "founded_before", value: "yes", exit_outcome: "ipo", exit_acquirer: "Buyer", exit_source_url: "https://x", source_url: "https://x" }] }, "exit_acquirer is only allowed when exit_outcome is acquired"],
+    [{ ...good, facts: [{ fact: "founded_before", value: "yes", exit_outcome: "acquired", exit_acquirer: "x".repeat(301), exit_source_url: "https://x", source_url: "https://x" }] }, "exit_acquirer must be text up to 300"],
+    [{ ...good, facts: [{ fact: "founded_before", value: "yes", exit_outcome: "shut_down", source_url: "https://x" }] }, "exit_source_url is required when exit_outcome is set"],
+    [{ ...good, facts: [{ fact: "founded_before", value: "yes", exit_outcome: "ipo", exit_source_url: "notaurl", source_url: "https://x" }] }, "exit_source_url is required when exit_outcome is set"],
+    [{ ...good, facts: [{ fact: "founded_before", value: "yes", exit_source_url: "https://x", source_url: "https://x" }] }, "exit_source_url is only allowed when exit_outcome is set"],
   ];
   for (const [body, needle] of cases) {
     const r = await h(req(body));
@@ -82,6 +92,18 @@ Deno.test("add_founder: refused before the database", async () => {
     if (!err.includes(needle)) throw new Error(`expected ${needle}\n got ${err}`);
   }
   eq(calls.some((x) => x.name === "v2_founder_add"), false, "no rpc");
+});
+
+Deno.test("add_founder: exit fields on founded_before are passed through", async () => {
+  calls.length = 0;
+  const facts = [
+    { fact: "founded_before", value: "yes: Analytical Kids", exit_outcome: "ACQUIRED", exit_acquirer: "Babbage Co", exit_source_url: "https://news.example/ada", source_url: "https://news.example/ada" },
+    { fact: "founded_before", value: "no", exit_outcome: "shut_down", exit_source_url: "http://news.example/shut", source_url: "https://news.example/ada" },
+    { fact: "founded_before", value: "yes", source_url: "https://news.example/ada" },
+  ];
+  const r = await h(req({ ...good, facts }));
+  eq(r.status, 200, "status");
+  eq(calls.find((x) => x.name === "v2_founder_add")!.args.p_facts, facts, "facts");
 });
 
 Deno.test("add_founder: startup missing is 404, a duplicate LinkedIn is 409, a frozen key is 403", async () => {
@@ -104,6 +126,7 @@ Deno.test("lookup founder: name and linkedin passed through, firm lookup unchang
   eq(b.matches[0].founder_id, 7, "id");
   eq(b.matches[0].startups[0].name, "Analytical Engines", "startup");
   eq(b.matches[0].past_jobs[0], { company: "Babbage Co", job_role: "Mathematician" }, "job");
+  eq(b.matches[0].founded_before[0], { value: "yes: Analytical Kids", exit_outcome: "acquired", exit_acquirer: "Babbage Co", exit_source_url: "https://news.example/ada" }, "exit");
   if (!String(b.hint).includes("reuse a founder_id")) throw new Error("hint should say when to reuse");
   eq(calls.find((x) => x.name === "v2_founder_lookup")!.args, {
     p_key: KEY, p_name: "José Müller", p_linkedin: "https://www.linkedin.com/in/Jose-Muller/",
