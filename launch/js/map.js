@@ -245,7 +245,7 @@
     const tot = p.tot || 1, sector = S.sectors.length > 0, top = p.top || [], rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
     t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} ${S.sectors.length === 1 ? esc(S.sectors[0]) + ' ' : ''}deal${p.d === 1 ? '' : 's'}${S.sectors.length > 1 ? ' in the chosen sectors' : ''} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>
 ${!sector && p.so ? `<span>Stands out for <b>${esc(p.so)}</b></span>` : ''}
-${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background:${COLORS[n] || COLORS.Other}"></i><span>${j + 1}. ${esc(n)}</span><span class="vm-pc">${Math.round(v / tot * 100)}%</span></span>`).join('') + (top.length && (rest > 0 || !sector) ? `<span class="vm-tr"><i style="background:${REST}"></i><span>${sector ? 'Other chosen sectors' : 'All other sectors'}</span><span class="vm-pc">${rest}%</span></span>` : '')}${ZOOM[p.p] && S.level === 'world' ? `<button type="button" class="vm-link" id="vm-in">Zoom in to ${ZOOM[p.p] === 'us' ? 'the United States' : 'Europe'}</button>` : ''}`;
+${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background:${COLORS[n] || COLORS.Other}"></i><span>${j + 1}. ${esc(n)}</span><span class="vm-pc">${Math.round(v / tot * 100)}%</span></span>`).join('') + (top.length && (rest > 0 || !sector) ? `<span class="vm-tr"><i style="background:${REST}"></i><span>${sector ? 'Other chosen sectors' : 'All other sectors'}</span><span class="vm-pc">${rest}%</span></span>` : '')}`;
     t.hidden = false;
     // The card sits on the page (not inside the scaled map), beside the circle, and stays clear of the time line.
     const w = 236, h = t.offsetHeight || 220, cx = S.ox + p.x * S.k, cy = S.oy + p.y * S.k, rr = p.r * S.k;
@@ -253,7 +253,6 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     if (x + w > S.boxW - (S.list ? 410 : 10)) x = cx - rr - 10 - w;
     y = Math.max(4, Math.min(S.boxH - 112 - h, y));
     t.style.left = Math.max(4, x) + 'px'; t.style.top = y + 'px';
-    const zi = $('#vm-in'); if (zi) zi.onclick = () => setLevel(ZOOM[p.p]);
   }
   stage.addEventListener('mouseover', (e) => { const b = e.target.closest('.vm-pl'); if (b && !S.pinned) { clearTimeout(hideT); tip(stage._rows[+b.dataset.i]); } });
   stage.addEventListener('focusin', (e) => { const b = e.target.closest('.vm-pl'); if (b && !S.pinned) tip(stage._rows[+b.dataset.i]); });
