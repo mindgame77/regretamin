@@ -1,6 +1,7 @@
 -- "Hot right now" view of the map: deals in the last p_days days against the p_days before, per place and per sector.
 --
--- STATUS: NOT APPLIED YET. The page asks for it and says "not available" until it exists.
+-- STATUS: APPLIED TO PRODUCTION on 2026-11-21 by Claude at the founder's request (migration v2_map_hot).
+-- Not yet in supabase/migrations/: for the developer to add, like docs/map_functions.sql.
 -- Read-only: one new function, no existing data or function changes. Uses the view v2_map_firm_places
 -- from docs/map_functions.sql. Undo: drop function if exists public.v2_map_hot(int, text[], text[]);
 --

@@ -381,7 +381,10 @@ ${COL ? placeFacts(L.place) : ''}<div class="vm-rows">${!L.data ? '' : L.data.fi
     }
     side.className = 'vm-card vm-side';
     if (S.view === 'hot') {  // sectors heating up and cooling down; click one to see where
-      const rows = (((S.data || {}).sectors || {})[S.level] || []).filter(([, n, p]) => n + p >= 20 && p > 0).map(([name, n, p]) => ({ name, n, p, pct: Math.round((n - p) / p * 100) }));
+      // keep showing every sector while one is chosen: remember the full list from the last unfiltered answer for this period and stage
+      const memo = S.days + '|' + S.level + '|' + S.stages.join(','); S.secMemo = S.secMemo || {};
+      if (!S.sectors.length && S.data && S.data.sectors) S.secMemo[memo] = S.data.sectors[S.level] || [];
+      const rows = (S.secMemo[memo] || ((S.data || {}).sectors || {})[S.level] || []).filter(([, n, p]) => n + p >= 20 && p > 0).map(([name, n, p]) => ({ name, n, p, pct: Math.round((n - p) / p * 100) }));
       const up = rows.filter((r) => r.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 6), down = rows.filter((r) => r.pct < 0).sort((a, b) => a.pct - b.pct).slice(0, 6);
       const line = (r) => `<button type="button" class="vm-sec${S.sectors.includes(r.name) ? ' vm-secon' : ''}" data-s="${esc(r.name)}"><i class="${r.pct > 0 ? 'vm-up' : 'vm-down'}"></i><span>${esc(r.name)}</span><span class="vm-pc vm-mu">${num(r.n)} vs ${num(r.p)}</span><span class="vm-pc">${r.pct > 0 ? '+' : '−'}${Math.abs(r.pct)}%</span></button>`;
       side.innerHTML = `<div class="vm-lh"><h2>Sectors</h2><span class="vm-tag">last ${perText()} vs before</span></div>${S.sectors.length ? '<button type="button" class="vm-link" id="vm-allsec">Show all sectors</button>' : ''}
