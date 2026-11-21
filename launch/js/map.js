@@ -173,6 +173,7 @@
   // Guernsey, Jersey and the Isle of Man are registration addresses, not places a founder would look for: they get no dot
   // of their own (their deals stay in Europe's totals), and an update from one lights up the United Kingdom.
   const FOLD = { GG: 'GB', JE: 'GB', IM: 'GB' };
+  const toneHtml = (p) => p.tone === 'up' ? `<span class="vm-tu">${toneText(p)}</span>` : p.tone === 'down' ? `<span class="vm-td">${toneText(p)}</span>` : toneText(p);
   const toneText = (p) => p.tone === 'few' ? 'too few to call' : p.tone === 'up' ? 'up ' + p.pct + '%' : p.tone === 'down' ? 'down ' + (-p.pct) + '%' : 'steady';
   const litPlace = () => { const u = S.updates[0]; return !u || S.view === 'hot' ? null : S.level === 'world' ? u.region : u.level === S.level ? (FOLD[u.area] || u.area) : null; };
   const placesNow = () => {
@@ -253,7 +254,7 @@
       let placed = false;
       for (const [x, y, al] of tries) {
         const bx = { x0: x, y0: y, x1: x + w, y1: y + h };
-        if (!hit(bx)) { boxes.push(bx); placed = true; labs += `<span class="vm-lab ${small ? 'vm-sm' : ''}" style="left:${x}px;top:${y}px;width:${w}px;text-align:${al === 'c' ? 'center' : al === 'l' ? 'left' : 'right'}">${esc(p.n)}${small ? ' ' + num(p.d) : `<br><em>${esc(sub)}</em>`}</span>`; break; }
+        if (!hit(bx)) { boxes.push(bx); placed = true; labs += `<span class="vm-lab ${small ? 'vm-sm' : ''}" style="left:${x}px;top:${y}px;width:${w}px;text-align:${al === 'c' ? 'center' : al === 'l' ? 'left' : 'right'}">${esc(p.n)}${small ? ' ' + num(p.d) : `<br><em>${p.kind === 'hot' ? (S.level === 'world' ? toneHtml(p) + (p.hot && p.tone !== 'few' ? ' · ' + esc(p.hot[0]) : '') : num(p.d) + ' · ' + toneHtml(p)) : esc(sub)}</em>`}</span>`; break; }
       }
       // No room for the full name (crowded Europe): fall back to the two-letter country code, beside the ring if it fits, else in its centre.
       if (!placed && S.level === 'eu' && !small) {
@@ -289,7 +290,7 @@
     if (!p) { t.hidden = true; return; }
     if (S.view === 'hot') {
       const per = S.days === 365 ? 'year' : S.days + ' days';
-      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${per} · ${toneText(p)}${p.tone === 'few' ? '' : ` (${num(p.pv)} before)`}</span>${p.hot ? `<span>Heating up: <b>${esc(p.hot[0])}</b> <span class="vm-pc">${num(p.hot[1])} vs ${num(p.hot[2])}</span></span>` : ''}${p.cold ? `<span>Cooling down: <b>${esc(p.cold[0])}</b> <span class="vm-pc">${num(p.cold[1])} vs ${num(p.cold[2])}</span></span>` : ''}`;
+      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${per} · ${toneHtml(p)}${p.tone === 'few' ? '' : ` (${num(p.pv)} before)`}</span>${p.hot ? `<span>Heating up: <b>${esc(p.hot[0])}</b> <span class="vm-pc">${num(p.hot[1])} vs ${num(p.hot[2])}</span></span>` : ''}${p.cold ? `<span>Cooling down: <b>${esc(p.cold[0])}</b> <span class="vm-pc">${num(p.cold[1])} vs ${num(p.cold[2])}</span></span>` : ''}`;
     } else {
     const tot = p.tot || 1, sector = S.sectors.length > 0, top = p.top || [], rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
     t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} ${S.sectors.length === 1 ? esc(S.sectors[0]) + ' ' : ''}deal${p.d === 1 ? '' : 's'}${S.sectors.length > 1 ? ' in the chosen sectors' : ''} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>
@@ -327,10 +328,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     $('#vm-h1').textContent = sec ? `Where ${sec} ${S.sectors.length === 1 ? 'is' : 'are'} heating up${where}.` : `Where it is heating up${where}.`;
     S.countId = (S.countId || 0) + 1; S.shown = null;
     $('#vm-based').textContent = '';  // the founder found the deal counts here unnecessary in this view
-    // one plain sentence about the biggest move among places with enough deals to trust
-    const big = (stage._rows || []).filter((p) => (p.tone === 'up' || p.tone === 'down') && p.d + p.pv >= 100).sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))[0];
-    $('#vm-legend').innerHTML = (big ? `<b>${esc(big.n)} is ${big.tone} ${Math.abs(big.pct)}%${big.tone === 'up' && big.hot ? ', led by ' + esc(big.hot[0]) : big.tone === 'down' && big.cold ? ', led by ' + esc(big.cold[0]) : ''}.</b> ` : '')
-      + `<span class="vm-keys"><i class="vm-up"></i>up 10% or more <i class="vm-flat"></i>steady <i class="vm-down"></i>down 10% or more <i class="vm-few"></i>too few to call</span>`;
+    $('#vm-legend').innerHTML = '<span class="vm-keys"><span><i class="vm-up"></i>up 10% or more</span><span><i class="vm-flat"></i>steady</span><span><i class="vm-down"></i>down 10% or more</span><span><i class="vm-few"></i>too few to call</span></span>';
   }
   function drawHead() {
     if (S.view === 'hot') return drawHotHead();
@@ -356,7 +354,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   const day = (s) => { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : MONTHS[d.getMonth()] + ' ' + d.getDate() + (d.getFullYear() === now.getFullYear() ? '' : ', ' + d.getFullYear()); };
   // The chosen place's own numbers, shown above its firms in the column layout.
   function placeFacts(p) {
-    if (S.view === 'hot') return `<div class="vm-facts"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${perText()} · ${toneText(p)}${p.hot ? ` · heating up: <b>${esc(p.hot[0])}</b>` : ''}</span></div>`;
+    if (S.view === 'hot') return `<div class="vm-facts"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${perText()} · ${toneHtml(p)}${p.hot ? ` · heating up: <b>${esc(p.hot[0])}</b>` : ''}</span></div>`;
     const tot = p.tot || 1, top = p.top || [], one = S.sectors.length === 1, sector = S.sectors.length > 0;
     if (one || !top.length) return `<div class="vm-facts"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'}</span></div>`;
     const rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
@@ -385,11 +383,11 @@ ${COL ? placeFacts(L.place) : ''}<div class="vm-rows">${!L.data ? '' : L.data.fi
       const memo = S.days + '|' + S.level + '|' + S.stages.join(','); S.secMemo = S.secMemo || {};
       if (!S.sectors.length && S.data && S.data.sectors) S.secMemo[memo] = S.data.sectors[S.level] || [];
       const rows = (S.secMemo[memo] || ((S.data || {}).sectors || {})[S.level] || []).filter(([, n, p]) => n + p >= 20 && p > 0).map(([name, n, p]) => ({ name, n, p, pct: Math.round((n - p) / p * 100) }));
-      // chosen sectors come first, with their own numbers; then every other sector, from the strongest rise to the strongest fall
+      // with sectors chosen, only those are listed (and a link back to all); otherwise every sector, from the strongest rise to the strongest fall
       const mk = ([name, n, p]) => ({ name, n, p, pct: p > 0 ? Math.round((n - p) / p * 100) : null });
       const chosen = S.sectors.length ? (((S.data || {}).sectors || {})[S.level] || []).map(mk).sort((a, b) => (b.pct || 0) - (a.pct || 0)) : [];
-      const others = rows.filter((r) => !S.sectors.includes(r.name)).sort((a, b) => b.pct - a.pct), rest = others.length > 12 ? others.slice(0, 6).concat(others.slice(-6)) : others;
-      const line = (r) => `<button type="button" class="vm-sec${S.sectors.includes(r.name) ? ' vm-secon' : ''}" data-s="${esc(r.name)}"><i class="${r.pct == null ? 'vm-few' : r.pct >= 0 ? 'vm-up' : 'vm-down'}"></i><span>${esc(r.name)}</span><span class="vm-pc vm-mu">${num(r.n)} vs ${num(r.p)}</span><span class="vm-pc">${r.pct == null ? '' : (r.pct >= 0 ? '+' : '−') + Math.abs(r.pct) + '%'}</span></button>`;
+      const others = S.sectors.length ? [] : rows.slice().sort((a, b) => b.pct - a.pct), rest = others.length > 12 ? others.slice(0, 6).concat(others.slice(-6)) : others;
+      const line = (r) => `<button type="button" class="vm-sec${S.sectors.includes(r.name) ? ' vm-secon' : ''}" data-s="${esc(r.name)}"><i class="${r.pct == null ? 'vm-few' : r.pct >= 10 ? 'vm-up' : r.pct <= -10 ? 'vm-down' : 'vm-flat'}"></i><span>${esc(r.name)}</span><span class="vm-pc vm-mu">${num(r.n)} vs ${num(r.p)}</span><span class="vm-pc ${r.pct == null ? '' : r.pct >= 10 ? 'vm-tu' : r.pct <= -10 ? 'vm-td' : ''}">${r.pct == null ? '' : (r.pct >= 0 ? '+' : '−') + Math.abs(r.pct) + '%'}</span></button>`;
       side.innerHTML = `<div class="vm-lh"><h2>Sectors</h2><span class="vm-tag">last ${perText()} vs before</span></div>${chosen.map(line).join('')}${S.sectors.length ? '<button type="button" class="vm-link" id="vm-allsec">Show all sectors</button>' : ''}${rest.map(line).join('')}`;
       side.querySelectorAll('.vm-sec').forEach((b) => b.onclick = () => { S.sectors = S.sectors.includes(b.dataset.s) ? S.sectors.filter((x) => x !== b.dataset.s) : [b.dataset.s]; drawPicks(); refresh().then(drawSide); });
       const all = $('#vm-allsec'); if (all) all.onclick = () => { S.sectors = []; drawPicks(); refresh().then(drawSide); };
