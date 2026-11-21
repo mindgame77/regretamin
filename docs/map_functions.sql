@@ -1,8 +1,8 @@
 -- The map page's database side: one view and three read-only functions. Nothing here changes existing data.
 --
 -- STATUS: APPLIED TO PRODUCTION on 2026-11-21 (UTC) by Claude at the founder's request, through the Supabase
--- connector, as four migrations: v2_map_functions, v2_map_summary_faster, v2_map_summary_preaggregated,
--- v2_map_summary_chosen_sectors_split. This file is the final state of all four. It is NOT yet in supabase/migrations/ and has no CI guard.
+-- connector, as five migrations: v2_map_functions, v2_map_summary_faster, v2_map_summary_preaggregated,
+-- v2_map_summary_chosen_sectors_split, v2_map_fold_crown_dependencies_into_gb. This file is the final state of all five. It is NOT yet in supabase/migrations/ and has no CI guard.
 -- For the developer / data owner: please review, then add it to supabase/migrations/ in the repo's usual form
 -- (with the "v2 tables missing, skipped" guard) so the repo and the database agree.
 -- Undo: docs/map_functions_rollback.sql
@@ -115,7 +115,8 @@ select f.firm_id,
       (select m.area from metro m where m.city = lower(btrim(f.hq_city)) and (m.st = f.hq_state or f.hq_state is null) order by (m.st = f.hq_state) desc nulls last limit 1),
       nullif(btrim(f.hq_city), '') || coalesce(', ' || f.hq_state, ''),
       '(no city)')
-    else f.hq_country
+    -- Guernsey, Jersey and the Isle of Man are registration addresses: on the Europe view they are part of the United Kingdom
+    else case when f.hq_country in ('GG','JE','IM') then 'GB' else f.hq_country end
   end as area
 from public.firm_summary f
 where f.listed;
