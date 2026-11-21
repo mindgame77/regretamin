@@ -94,6 +94,36 @@ Deno.test("add_founder: refused before the database", async () => {
   eq(calls.some((x) => x.name === "v2_founder_add"), false, "no rpc");
 });
 
+Deno.test("add_founder: exit fill statuses from the database are returned as sent", async () => {
+  const prior = replies.v2_founder_add;
+  replies.v2_founder_add = {
+    ok: true,
+    bot_id: "bot-a",
+    founder_id: 7,
+    created: false,
+    facts: [{ fact_id: 9, fact: "founded_before", value: "yes: Analytical Kids", exit_outcome: "acquired", exit_acquirer: "Babbage Co", exit_source_url: "https://news.example/ada", status: "exit_added" }],
+    skipped: [
+      { fact: "founded_before", value: "yes: Other", reason: "exit_already_set" },
+      { fact: "founded_before", value: "yes: Same", reason: "already stored" },
+    ],
+  };
+  calls.length = 0;
+  const facts = [
+    { fact: "founded_before", value: "yes: Analytical Kids", exit_outcome: "acquired", exit_acquirer: "Babbage Co", exit_source_url: "https://news.example/ada", source_url: "https://news.example/ada" },
+    { fact: "founded_before", value: "yes: Other", exit_outcome: "ipo", exit_source_url: "https://news.example/ipo", source_url: "https://news.example/ada" },
+    { fact: "founded_before", value: "yes: Same", exit_outcome: "shut_down", exit_source_url: "https://news.example/shut", source_url: "https://news.example/ada" },
+  ];
+  const r = await h(req({ ...good, founder: { founder_id: 7, name: "Ada Lovelace" }, facts }));
+  eq(r.status, 200, "status");
+  const b = await r.json();
+  eq(b.facts[0].status, "exit_added", "exit_added");
+  eq(b.facts[0].fact_id, 9, "same row");
+  eq(b.skipped[0].reason, "exit_already_set", "exit_already_set");
+  eq(b.skipped[1].reason, "already stored", "same exit");
+  eq(calls.find((x) => x.name === "v2_founder_add")!.args.p_facts, facts, "exit still sent");
+  replies.v2_founder_add = prior;
+});
+
 Deno.test("add_founder: exit fields on founded_before are passed through", async () => {
   calls.length = 0;
   const facts = [
