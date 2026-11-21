@@ -14,7 +14,7 @@ E = html.escape
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); OUT = os.path.join(ROOT, 'site-launch')
 def _v(f):  # query on the script/link. The file path does not change, so _headers makes the CDN revalidate.
     return hashlib.sha1(open(os.path.join(HERE, f), 'rb').read()).hexdigest()[:10]
-V = {k: _v(f) for k, f in (('company', 'js/company.js'), ('app', 'js/app.js'), ('search', 'js/search.js'), ('dates', 'js/dates.js'), ('firms', 'js/firms.js'), ('css', 'style.css'))}
+V = {k: _v(f) for k, f in (('company', 'js/company.js'), ('app', 'js/app.js'), ('search', 'js/search.js'), ('dates', 'js/dates.js'), ('firms', 'js/firms.js'), ('map', 'js/map.js'), ('css', 'style.css'))}
 COPY = json.load(open(os.path.join(HERE, 'copy.json')))
 S = COPY['site']
 NOINDEX = os.environ.get('REGRET_NOINDEX') == '1'
@@ -382,9 +382,10 @@ def launch_firms():
 
 def main():
     shutil.rmtree(OUT, ignore_errors=True); os.makedirs(OUT)
-    for f in ('style.css', 'logo.svg', 'js/app.js', 'js/company.js', 'js/search.js', 'js/dates.js', 'js/firms.js'): shutil.copy(os.path.join(HERE, f), OUT)
+    for f in ('style.css', 'logo.svg', 'js/app.js', 'js/company.js', 'js/search.js', 'js/dates.js', 'js/firms.js', 'js/map.js'): shutil.copy(os.path.join(HERE, f), OUT)
     shutil.copytree(os.path.join(HERE, 'fav'), os.path.join(OUT, 'fav'))
     shutil.copytree(os.path.join(HERE, 'assets', 'video'), os.path.join(OUT, 'assets', 'video'))
+    shutil.copytree(os.path.join(HERE, 'assets', 'map'), os.path.join(OUT, 'assets', 'map'))  # backgrounds and coordinates for /map/ (tools/map/gen_assets.cjs)
     # Email templates load this from https://regretamin.com/assets/logo/lockup-light@2x.png
     logo_dir = os.path.join(OUT, 'assets', 'logo')
     os.makedirs(logo_dir, exist_ok=True)
@@ -443,6 +444,7 @@ def main():
         '/search.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/dates.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/firms.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
+        '/map.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/firms.json\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/style.css\n  Cache-Control: public, max-age=0, must-revalidate\n')
     print('built', len(firms), 'firms', '->', OUT)
