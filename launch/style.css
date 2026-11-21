@@ -1113,7 +1113,10 @@ main.wrap.firms-pg{max-width:1320px}
 .vm button{font:inherit;color:inherit;cursor:pointer}
 .vm-map{position:absolute;inset:0}
 .vm-stage{position:absolute;left:0;top:0;transform-origin:0 0}
-.vm-stage>img{position:absolute;left:0;top:0}
+.vm-bg{position:absolute;left:0;top:0;transition:opacity .45s}
+.vm-wave{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:linear-gradient(90deg,transparent,rgba(16,32,28,.7),transparent) no-repeat;background-size:30% 100%;-webkit-mask-size:100% 100%;mask-size:100% 100%;animation:vm-wave 1.15s linear infinite}
+.vm-busy .vm-wave{opacity:1}
+@keyframes vm-wave{from{background-position:-45% 0}to{background-position:145% 0}}
 .vm-card{position:absolute;background:#fff;border:1px solid var(--ml);border-radius:16px;box-shadow:0 8px 28px rgba(16,32,28,.08)}
 .vm-head{left:24px;top:20px;width:400px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
 .vm-head h1{margin:0;font-size:30px;font-weight:600;letter-spacing:-.05em;line-height:1.02}
@@ -1176,12 +1179,18 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-range{flex:none;width:150px;font-size:13px;color:var(--mm);text-align:right}
 .vm-legend{position:absolute;left:24px;bottom:24px;width:230px;margin:0;font-size:13px;color:var(--mm)}
 .vm-msg{position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);padding:14px 18px;border:1.5px solid var(--mi);border-radius:12px;background:#fff;font-weight:600}
-.vm-pl{position:absolute;padding:0;border-radius:50%;border:2px solid #fff}
-.vm-pl.ring:after{content:"";position:absolute;left:27%;top:27%;width:46%;height:46%;border-radius:50%;background:#fff}
-.vm-pl.dot,.vm-pl.plain{border:1.5px solid var(--mi)}
-.vm-pl.sel,.vm-pl:focus-visible{outline:2px solid var(--mi);outline-offset:2px}
-.vm-pl.lit{box-shadow:0 0 0 2px var(--mi),0 0 0 9px rgba(240,134,30,.32),0 0 0 20px rgba(240,134,30,.14)}
+.vm-pl{position:absolute;padding:0;border-radius:50%;border:2px solid #fff;transition:left .6s cubic-bezier(.2,.8,.2,1),top .6s cubic-bezier(.2,.8,.2,1),width .6s cubic-bezier(.2,.8,.2,1),height .6s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.9,.25,1.15),opacity .45s,background-color .4s,--vm-a1 .6s,--vm-a2 .6s,--vm-a3 .6s,--vm-a4 .6s,--vm-a5 .6s}
+.vm-pl.vm-in{transform:scale(.2);opacity:0}
+.vm-pl.vm-out{transform:scale(.2);opacity:0;pointer-events:none}
+.vm-pl.vm-ring{background:conic-gradient(var(--vm-c1) 0 var(--vm-a1),var(--vm-c2) var(--vm-a1) var(--vm-a2),var(--vm-c3) var(--vm-a2) var(--vm-a3),var(--vm-c4) var(--vm-a3) var(--vm-a4),var(--vm-c5) var(--vm-a4) var(--vm-a5),#F1F3F2 var(--vm-a5) 100%)}
+.vm-pl.vm-ring:after{content:"";position:absolute;left:27%;top:27%;width:46%;height:46%;border-radius:50%;background:#fff}
+.vm-pl.vm-dot,.vm-pl.vm-plain{border:1.5px solid var(--mi)}
+.vm-pl.vm-sel,.vm-pl:focus-visible{outline:2px solid var(--mi);outline-offset:2px}
+.vm-pl.vm-lit{box-shadow:0 0 0 2px var(--mi),0 0 0 9px rgba(240,134,30,.32),0 0 0 20px rgba(240,134,30,.14)}
 .vm-lab{position:absolute;font-size:12px;font-weight:600;line-height:15px;white-space:nowrap;pointer-events:none;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 4px #fff,0 0 4px #fff}
+#vm-labs .vm-lab{animation:vm-fade .35s both}
+#vm-labs.vm-late .vm-lab{animation-delay:.55s}
+@keyframes vm-fade{from{opacity:0}to{opacity:1}}
 .vm-lab em{font-style:normal;font-weight:400;color:var(--mm)}
 .vm-lab.vm-sm{font-size:10px;line-height:14px;font-weight:400;color:var(--mm)}
 .vm-tip{position:absolute;z-index:5;width:236px;background:#fff;border:1.5px solid var(--mi);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:12px}
@@ -1192,3 +1201,9 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-tip .vm-tr span:nth-child(2){flex:1}
 .vm-tip .vm-pc{font-family:'Geist Mono',ui-monospace,monospace}
 .vm-tip .vm-btn{height:34px;line-height:34px;margin-top:4px;border-radius:8px;font-size:12px}
+@property --vm-a1{syntax:'<percentage>';inherits:false;initial-value:0%}
+@property --vm-a2{syntax:'<percentage>';inherits:false;initial-value:0%}
+@property --vm-a3{syntax:'<percentage>';inherits:false;initial-value:0%}
+@property --vm-a4{syntax:'<percentage>';inherits:false;initial-value:0%}
+@property --vm-a5{syntax:'<percentage>';inherits:false;initial-value:0%}
+@media (prefers-reduced-motion:reduce){.vm-pl,.vm-bg{transition:opacity .2s}.vm-wave{animation:none;background:rgba(16,32,28,.25)}#vm-labs .vm-lab{animation:none}}

@@ -60,7 +60,7 @@
 
   // ---------- page shell
   el.innerHTML = `
-<div class="vm-map" id="vm-map"><div class="vm-stage" id="vm-stage"></div><div class="vm-tip" id="vm-tip" hidden></div></div>
+<div class="vm-map" id="vm-map"><div class="vm-stage" id="vm-stage"><img class="vm-bg" id="vm-bg" alt=""><div class="vm-wave" id="vm-wave"></div><div id="vm-pls"></div><div id="vm-labs"></div></div><div class="vm-tip" id="vm-tip" hidden></div></div>
 <section class="vm-card vm-head" aria-live="polite"><h1 id="vm-h1"></h1>
   <div class="vm-picks"><div class="vm-pick" data-pick="sectors"></div><div class="vm-pick" data-pick="stages"></div></div>
   <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a></section>
@@ -127,7 +127,15 @@
 
   // ---------- zoom
   el.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => setLevel(b.dataset.level)));
-  function setLevel(l) { S.level = l; S.pinned = null; closeList(); draw(); }
+  function setLevel(l) {
+    if (l === S.level) return;
+    // Zooming in from the world: remember where the parent regions sit on the page, so their places can fly out of them.
+    let from = null;
+    if (S.level === 'world' && stage._rows) {
+      from = {}; stage._rows.forEach((p) => { if (ZOOM[p.p] === l) from[p.p] = { x: S.ox + p.x * S.k, y: S.oy + p.y * S.k }; });
+    }
+    S.list = null; S.pinned = null; S.level = l; drawSide(); draw(from);
+  }
 
   // ---------- drawing the map
   // Room each view leaves for the cards around it: [left, right, top, bottom] in page pixels.
@@ -162,33 +170,72 @@
     // a small dot that would sit on top of a ring is left out (its firms are still in that ring's neighbourhood list)
     return out.filter((p) => p.kind !== 'dot' || !big.some((b) => Math.hypot(b.x - p.x, b.y - p.y) < b.r + 8)).sort((a, b) => (a.kind === 'dot') - (b.kind === 'dot') || b.d - a.d);
   };
-  const ringBg = (p) => {
+  // Each circle is one lasting element, so a change of numbers glides (size, position, slices) instead of jumping.
+  const els = new Map();  // "level|place" -> button
+  const WEST = ['Bay Area', 'Los Angeles', 'San Diego', 'Seattle', 'Portland', 'Denver', 'Salt Lake City', 'Vail', 'Aspen', 'Las Vegas', 'Phoenix', 'Santa Rosa', 'Santa Barbara', 'Sacramento', 'Jackson', 'Bend'];
+  const EAST = ['New York', 'Boston', 'Washington DC', 'Miami', 'Philadelphia', 'Atlanta', 'Raleigh-Durham', 'Tampa', 'Baltimore', 'Dover', 'Princeton', 'Charleston', 'Portsmouth', 'Providence', 'Pittsburgh', 'Charlotte'];
+  const parentOf = (lvl, place) => lvl === 'eu' ? 'Europe' : WEST.includes(place) ? 'US West' : EAST.includes(place) ? 'US East' : 'US Central';
+  const setSlices = (b, p) => {
     const tot = p.tot || 1; let acc = 0;
-    const st = (p.top || []).map(([n, v]) => { const a = acc, b = acc + v / tot * 100; acc = b; return `${COLORS[n] || COLORS.Other} ${a}% ${b}%`; });
-    return `conic-gradient(${st.concat(`${REST} ${acc}% 100%`).join(',')})`;
+    for (let k = 1; k <= 5; k++) {
+      const t = (p.top || [])[k - 1];
+      if (t) acc += t[1] / tot * 100;
+      b.style.setProperty('--vm-c' + k, t ? (COLORS[t[0]] || COLORS.Other) : REST);
+      b.style.setProperty('--vm-a' + k, Math.min(100, acc) + '%');
+    }
   };
-  function draw() {
+  function draw(from) {  // from: where the new circles fly out of when zooming in ({ parentPlace: {x, y} } in page pixels)
     if (!S.data || !S.geo) return;
     const g = S.geo[S.level], rows = placesNow(), lit = litPlace(), sector = S.sectors.length > 0;
+    const bg = $('#vm-bg'), pls = $('#vm-pls'), src = `${ROOT}assets/map/${S.level}.svg`;
+    if (bg.dataset.l !== S.level) {
+      bg.dataset.l = S.level; bg.style.opacity = 0; bg.onload = () => { bg.style.opacity = 1; };
+      bg.src = src; bg.width = g.w; bg.height = g.h;
+      $('#vm-wave').style.webkitMaskImage = $('#vm-wave').style.maskImage = `url(${src})`;
+      els.forEach((b) => b.remove()); els.clear();
+    }
+    fit();
     const boxes = rows.map((p) => ({ x0: p.x - p.r, y0: p.y - p.r, x1: p.x + p.r, y1: p.y + p.r }));
     const hit = (b) => b.x0 < 0 || b.x1 > g.w || boxes.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
-    let html = `<img src="${ROOT}assets/map/${S.level}.svg" alt="" width="${g.w}" height="${g.h}">`;
+    const seen = new Set(), fresh = [];
+    let labs = '';
     rows.forEach((p, i) => {
-      const cls = `vm-pl ${p.kind}${lit === p.p ? ' lit' : ''}${S.pinned === p.p ? ' sel' : ''}`;
-      const bg = p.kind === 'ring' ? ringBg(p) : p.kind === 'plain' ? (S.sectors.length === 1 ? COLORS[S.sectors[0]] : '#C9D1CE') : (COLORS[(p.top && p.top[0] && p.top[0][0])] || '#C9D1CE');
-      html += `<button type="button" class="${cls}" data-i="${i}" aria-label="${esc(p.n)}: ${num(p.d)} deals, ${num(p.f)} firms" style="left:${p.x - p.r}px;top:${p.y - p.r}px;width:${p.r * 2}px;height:${p.r * 2}px;background:${bg}"></button>`;
+      const key = S.level + '|' + p.p; seen.add(key);
+      let b = els.get(key);
+      if (!b) {
+        b = document.createElement('button'); b.type = 'button';
+        b.style.left = p.x - p.r + 'px'; b.style.top = p.y - p.r + 'px'; b.style.width = b.style.height = p.r * 2 + 'px';
+        b.className = 'vm-pl vm-in'; pls.appendChild(b); els.set(key, b); fresh.push([b, p]);
+      }
+      b.className = `vm-pl vm-${p.kind}${lit === p.p ? ' vm-lit' : ''}${S.pinned === p.p ? ' vm-sel' : ''}${b.classList.contains('vm-in') ? ' vm-in' : ''}`;
+      b.dataset.i = i; b.setAttribute('aria-label', `${p.n}: ${num(p.d)} deals, ${num(p.f)} firms`);
+      b.style.left = p.x - p.r + 'px'; b.style.top = p.y - p.r + 'px'; b.style.width = b.style.height = p.r * 2 + 'px';
+      if (p.kind === 'ring') { b.style.backgroundColor = ''; setSlices(b, p); }
+      else b.style.backgroundColor = p.kind === 'plain' ? (S.sectors.length === 1 ? COLORS[S.sectors[0]] : '#C9D1CE') : (COLORS[(p.top && p.top[0] && p.top[0][0])] || '#C9D1CE');
       // label: below, else above, else right, else left; dropped if nothing fits
       const sub = num(p.d) + (S.level === 'world' && !sector && p.so ? ' · ' + p.so : ''), small = p.kind === 'dot';
       const w = Math.max(p.n.length * (small ? 5.6 : 6.6), small ? 0 : sub.length * 5.9) + 8, h = small ? 14 : 30;
       const tries = small ? [[p.x + p.r + 3, p.y - 7, 'l'], [p.x - p.r - 3 - w, p.y - 7, 'r']] : [[p.x - w / 2, p.y + p.r + 2, 'c'], [p.x - w / 2, p.y - p.r - h - 2, 'c'], [p.x + p.r + 4, p.y - h / 2, 'l'], [p.x - p.r - 4 - w, p.y - h / 2, 'r'],
         [p.x + p.r * 0.7 + 2, p.y + p.r * 0.7, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y + p.r * 0.7, 'r'], [p.x + p.r * 0.7 + 2, p.y - p.r * 0.7 - h, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y - p.r * 0.7 - h, 'r']];
       for (const [x, y, al] of tries) {
-        const b = { x0: x, y0: y, x1: x + w, y1: y + h };
-        if (!hit(b)) { boxes.push(b); html += `<span class="vm-lab ${small ? 'vm-sm' : ''}" style="left:${x}px;top:${y}px;width:${w}px;text-align:${al === 'c' ? 'center' : al === 'l' ? 'left' : 'right'}">${esc(p.n)}${small ? ' ' + num(p.d) : `<br><em>${esc(sub)}</em>`}</span>`; break; }
+        const bx = { x0: x, y0: y, x1: x + w, y1: y + h };
+        if (!hit(bx)) { boxes.push(bx); labs += `<span class="vm-lab ${small ? 'vm-sm' : ''}" style="left:${x}px;top:${y}px;width:${w}px;text-align:${al === 'c' ? 'center' : al === 'l' ? 'left' : 'right'}">${esc(p.n)}${small ? ' ' + num(p.d) : `<br><em>${esc(sub)}</em>`}</span>`; break; }
       }
     });
-    stage.innerHTML = html;
-    stage._rows = rows; fit(); drawHead();
+    els.forEach((b, key) => { if (!seen.has(key)) { els.delete(key); b.classList.add('vm-out'); setTimeout(() => b.remove(), 350); } });
+    const lb = $('#vm-labs'); lb.className = from ? 'vm-late' : ''; lb.innerHTML = labs;
+    // New circles: either fly out of the region they belong to (zooming in), or pop in where they are.
+    if (from) fresh.forEach(([b, p], n) => {
+      const o = from[parentOf(S.level, p.p)]; if (!o) return;
+      const cx = S.ox + p.x * S.k, cy = S.oy + p.y * S.k;
+      b.classList.remove('vm-in'); b.style.transition = 'none';
+      b.style.transform = `translate(${(o.x - cx) / S.k}px, ${(o.y - cy) / S.k}px) scale(0.3)`; b.style.opacity = 0.3;
+      void b.offsetWidth;
+      b.style.transition = ''; b.style.transitionDelay = Math.min(n * 12, 300) + 'ms'; b.style.transform = ''; b.style.opacity = '';
+      setTimeout(() => { b.style.transitionDelay = ''; }, 1200);
+    });
+    else if (fresh.length) { void pls.offsetWidth; fresh.forEach(([b]) => b.classList.remove('vm-in')); }
+    stage._rows = rows; drawHead();
     el.querySelectorAll('[data-level]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.level === S.level));
     const pin = S.pinned ? rows.find((p) => p.p === S.pinned) : null; tip(pin || null);
   }
@@ -228,7 +275,18 @@ ${sector ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background
     const where = S.level === 'us' ? ' in the US' : S.level === 'eu' ? ' in Europe' : '', t = (S.data.totals || {})[S.level] || { deals: 0, firms: 0 };
     const sec = S.sectors.length === 1 ? S.sectors[0].toLowerCase() : S.sectors.length ? 'these sectors' : '';
     $('#vm-h1').textContent = sec ? `Who backs ${sec}${where}.` : S.level === 'us' ? 'What US investors are backing.' : S.level === 'eu' ? 'What European investors are backing.' : 'What VCs are investing in.';
-    $('#vm-based').textContent = `Based on ${num(t.deals)} deal${t.deals === 1 ? '' : 's'} and ${num(t.firms)} VC firm${t.firms === 1 ? '' : 's'}`;
+    // the two numbers count up or down to their new values
+    const a0 = S.shown || { deals: t.deals, firms: t.firms }, t0 = performance.now(), my = S.countId = (S.countId || 0) + 1;
+    const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const step = (now) => {
+      if (my !== S.countId) return;
+      const k = still ? 1 : Math.min(1, (now - t0) / 500), e = 1 - Math.pow(1 - k, 3);
+      const dd = Math.round(a0.deals + (t.deals - a0.deals) * e), ff = Math.round(a0.firms + (t.firms - a0.firms) * e);
+      S.shown = { deals: dd, firms: ff };
+      $('#vm-based').textContent = `Based on ${num(dd)} deal${dd === 1 ? '' : 's'} and ${num(ff)} VC firm${ff === 1 ? '' : 's'}`;
+      if (k < 1) requestAnimationFrame(step);
+    };
+    step(t0);
     $('#vm-legend').innerHTML = sec ? 'Circle size: deals in the chosen sector by VCs based there.' : S.level === 'world' ? 'Rings: each place&#39;s own top 5 sectors. Size: share of all deals in the period.' : `Ring: ${RING_DEALS}+ deals from ${RING_FIRMS}+ firms. Small dot: ${DOT_DEALS} to ${RING_DEALS - 1} deals, in the colour of its biggest sector.`;
   }
 
@@ -268,8 +326,12 @@ ${sector ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background
   // ---------- start
   let asked = 0;
   async function refresh() {
-    const mine = ++asked, d = await summary(), msg = $('#vm-msg');
+    const mine = ++asked, msg = $('#vm-msg');
+    const busy = setTimeout(() => { if (mine === asked) el.classList.add('vm-busy'); }, 120);  // the scan runs only when the answer is not instant
+    const d = await summary();
+    clearTimeout(busy);
     if (mine !== asked) return;  // a newer question was asked while this one was on its way; drop the old answer
+    el.classList.remove('vm-busy');
     if (!d) { msg.hidden = false; msg.textContent = 'The map is not available right now.'; return; }
     msg.hidden = true; S.data = d; draw();
   }
