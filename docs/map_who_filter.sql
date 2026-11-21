@@ -9,10 +9,12 @@
 -- p_firms: 'all' | 'top' | 'focused' | 'new'
 --   top      firms on the frozen yearly list v2_top_firms (docs/top-firms.md). World: world top 100 plus top 25 per
 --            region. United States: the US 100 (TIME's list). Europe: the European top 100.
---   focused  more than 25% of the firm's deals in the last three years are in the chosen sectors (5 deals or more)
+--   focused  firms with at least 10 deals in the last three years. With sectors chosen: more than 33% of those deals
+--            are in them. With none chosen: more than 50% are in any one sector (specialists).
 --   new      the firm's first deal in the chosen sectors falls inside the period. On the map this compares the
 --            newcomers of the recent period with the newcomers of the period before.
---   focused and new need p_sectors; without it they behave like 'all'.
+--   new with no sector chosen means the firm's first deal of any kind.
+--   (Second migration the same day, v2_map_who_filter_focus_rules, set these rules; this file is the final state.)
 -- Undo: drop function if exists public.v2_map_hot(text, int, text[], text[]);
 --       drop function if exists public.v2_map_firms(text, text, text, date, date, text[], text[], int);
 
@@ -20,25 +22,24 @@ create or replace function public.v2_map_hot(
   p_firms text, p_days int default 90, p_stages text[] default null, p_sectors text[] default null)
 returns jsonb language sql stable security definer set search_path = public as $fn$
 with cfg as (select greatest(30, least(coalesce(p_days, 90), 366)) days,
-  -- Focused funds and New entrants only mean something with a sector chosen; without one they count all firms.
-  case when p_firms = 'top' then 'top' when p_firms in ('focused', 'new') and p_sectors is not null then p_firms else 'all' end mode),
+  case when p_firms in ('top', 'focused', 'new') then p_firms else 'all' end mode),
 -- Top firms: the frozen yearly list (docs/top-firms.md). Which rank counts depends on the zoom level.
 top as materialized (select firm_id, (world_rank is not null or region_rank is not null) w, us_rank is not null u, eu_rank is not null e
   from v2_top_firms where list_year = 2026 and (select mode from cfg) = 'top'),
--- Focused funds: more than 25% of the firm's deals in the last three years are in the chosen sectors (5 deals or more).
+-- Focused funds: 10 deals or more in three years; over 33% in the chosen sectors, or over 50% in any one sector when none is chosen.
 foc as materialized (
   select x.firm_id from v2_deals x
   where (select mode from cfg) = 'focused' and x.is_current and x.deal_date > current_date - interval '3 years' and x.deal_date <= current_date
   group by x.firm_id
-  having count(*) >= 5 and count(*) filter (where exists (
+  having count(*) >= 10 and case when p_sectors is null then exists (select 1 from v2_deals y join v2_startup_sectors ss on ss.startup_id = y.startup_id and ss.is_current join v2_sector sc using (sector_id) where y.firm_id = x.firm_id and y.is_current and y.deal_date > current_date - interval '3 years' and y.deal_date <= current_date and sc.name <> 'Other' group by sc.name having count(*) > 0.5 * (select count(*) from v2_deals z where z.firm_id = x.firm_id and z.is_current and z.deal_date > current_date - interval '3 years' and z.deal_date <= current_date)) else count(*) filter (where exists (
       select 1 from v2_startup_sectors ss join v2_sector sc using (sector_id)
-      where ss.startup_id = x.startup_id and ss.is_current and sc.name = any(p_sectors))) > 0.25 * count(*)),
--- New entrants: the date of each firm's first deal in the chosen sectors.
+      where ss.startup_id = x.startup_id and ss.is_current and sc.name = any(p_sectors))) > 0.33 * count(*) end),
+-- New entrants: the date of each firm's first deal in the chosen sectors (any deal when none is chosen).
 fst as materialized (
   select x.firm_id, min(x.deal_date) fdate from v2_deals x
-  where (select mode from cfg) = 'new' and x.is_current and x.deal_date is not null and exists (
+  where (select mode from cfg) = 'new' and x.is_current and x.deal_date is not null and (p_sectors is null or exists (
       select 1 from v2_startup_sectors ss join v2_sector sc using (sector_id)
-      where ss.startup_id = x.startup_id and ss.is_current and sc.name = any(p_sectors))
+      where ss.startup_id = x.startup_id and ss.is_current and sc.name = any(p_sectors)))
   group by x.firm_id),
 stg(round, stage) as (values ('Pre-seed','Pre-seed'),('Seed','Seed'),('Series A','Series A'),('Series B','Series B'),
     ('Series C','Series C+'),('Series D','Series C+'),('Series E','Series C+'),('Series F','Series C+'),('Series G','Series C+'),
@@ -105,7 +106,7 @@ returns jsonb language sql stable security definer set search_path = public as $
 with stg(round, stage) as (values ('Pre-seed','Pre-seed'),('Seed','Seed'),('Series A','Series A'),('Series B','Series B'),
     ('Series C','Series C+'),('Series D','Series C+'),('Series E','Series C+'),('Series F','Series C+'),('Series G','Series C+'),
     ('Series H','Series C+'),('Series I','Series C+'),('Series J','Series C+'),('Series K','Series C+'),('Series L','Series C+'),('Growth','Growth')),
-cfg as (select case when p_firms = 'top' then 'top' when p_firms in ('focused', 'new') and p_sectors is not null then p_firms else 'all' end mode),
+cfg as (select case when p_firms in ('top', 'focused', 'new') then p_firms else 'all' end mode),
 fp as (
   select p.firm_id from v2_map_firm_places p, cfg
   where ((p_level = 'world' and p.region = p_place) or (p_level in ('us', 'eu') and p.level = p_level and p.area = p_place))
@@ -115,14 +116,14 @@ fp as (
           select x.firm_id from v2_deals x
           where x.firm_id = p.firm_id and x.is_current and x.deal_date > current_date - interval '3 years' and x.deal_date <= current_date
           group by x.firm_id
-          having count(*) >= 5 and count(*) filter (where exists (
+          having count(*) >= 10 and case when p_sectors is null then exists (select 1 from v2_deals y join v2_startup_sectors ss on ss.startup_id = y.startup_id and ss.is_current join v2_sector sc using (sector_id) where y.firm_id = x.firm_id and y.is_current and y.deal_date > current_date - interval '3 years' and y.deal_date <= current_date and sc.name <> 'Other' group by sc.name having count(*) > 0.5 * (select count(*) from v2_deals z where z.firm_id = x.firm_id and z.is_current and z.deal_date > current_date - interval '3 years' and z.deal_date <= current_date)) else count(*) filter (where exists (
               select 1 from v2_startup_sectors ss join v2_sector sc using (sector_id)
-              where ss.startup_id = x.startup_id and ss.is_current and sc.name = any(p_sectors))) > 0.25 * count(*)))
+              where ss.startup_id = x.startup_id and ss.is_current and sc.name = any(p_sectors))) > 0.33 * count(*) end))
     and (cfg.mode <> 'new' or (
           select min(x.deal_date) from v2_deals x
-          where x.firm_id = p.firm_id and x.is_current and x.deal_date is not null and exists (
+          where x.firm_id = p.firm_id and x.is_current and x.deal_date is not null and (p_sectors is null or exists (
               select 1 from v2_startup_sectors ss join v2_sector sc using (sector_id)
-              where ss.startup_id = x.startup_id and ss.is_current and sc.name = any(p_sectors))) >= coalesce(p_from, date '2021-01-01'))
+              where ss.startup_id = x.startup_id and ss.is_current and sc.name = any(p_sectors)))) >= coalesce(p_from, date '2021-01-01'))
 ),
 d as (
   select d.firm_id, count(*) deals, count(*) filter (where d.lead::text = 'yes') led

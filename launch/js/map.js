@@ -33,9 +33,9 @@
   const now = new Date();
   const NQ = (now.getFullYear() - 2021) * 4 + Math.floor(now.getMonth() / 3) + 1;  // quarters from 2021 Q1 to this one
   const S = { view: 'flow', days: 90, level: 'world', q0: 0, q1: NQ - 1, stages: [], sectors: [], who: 'all', pinned: null, list: null, data: null, geo: null, updates: [], playing: null };
-  // "Which firms" in the Hot right now view. Focused funds and New entrants need a sector to be chosen.
+  // "Which firms" in the Hot right now view.
   const WHO = [['all', 'All firms'], ['top', 'Top firms'], ['focused', 'Focused funds'], ['new', 'New entrants']];
-  const who = () => (S.view === 'hot' && (S.who === 'top' || (S.sectors.length && S.who !== 'all')) ? S.who : 'all');
+  const who = () => (S.view === 'hot' ? S.who : 'all');
   // A copied link carries the view in its address. The address itself never changes while filtering.
   (() => {
     const list = (k, ok) => (qs.get(k) || '').split('|').filter((v) => ok.includes(v)), num = (k) => (/^\d+$/.test(qs.get(k) || '') ? +qs.get(k) : null);
@@ -117,9 +117,9 @@
       box.innerHTML = `<button type="button" class="vm-pickbtn" aria-haspopup="true" aria-expanded="${open}">${esc(label)}<svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="${INK}" stroke-width="1.6"/></svg></button>
 <div class="vm-menu" ${open ? '' : 'hidden'}><label><input type="checkbox" data-v="" ${on.length ? '' : 'checked'}>${none}</label>${all.map((v) => `<label><input type="checkbox" data-v="${esc(v)}" ${on.includes(v) ? 'checked' : ''}>${k === 'sectors' ? `<span class="vm-sw" style="background:${COLORS[v]}"></span>` : ''}${esc(v)}</label>`).join('')}</div>`;
     });
-    const box = $('[data-pick="who"]'), open = box.classList.contains('vm-open'), need = !S.sectors.length;
+    const box = $('[data-pick="who"]'), open = box.classList.contains('vm-open');
     box.innerHTML = `<button type="button" class="vm-pickbtn" aria-haspopup="true" aria-expanded="${open}">${WHO.find(([k]) => k === who())[1]}<svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="${INK}" stroke-width="1.6"/></svg></button>
-<div class="vm-menu" ${open ? '' : 'hidden'}>${WHO.map(([k, t]) => { const off = need && (k === 'focused' || k === 'new'); return `<label class="${off ? 'vm-off' : ''}"><input type="radio" name="vm-who" data-who="${k}" ${k === who() ? 'checked' : ''} ${off ? 'disabled' : ''}>${t}${off ? '<small>choose a sector first</small>' : ''}</label>`; }).join('')}</div>`;
+<div class="vm-menu" ${open ? '' : 'hidden'}>${WHO.map(([k, t]) => `<label><input type="radio" name="vm-who" data-who="${k}" ${k === who() ? 'checked' : ''}>${t}</label>`).join('')}</div>`;
   }
   el.addEventListener('click', (e) => {
     const pb = e.target.closest('.vm-pickbtn');
@@ -369,7 +369,8 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     const one = S.sectors.length === 1 ? inSentence(S.sectors[0]) : 'these sectors';
     // deal counts are not shown in this view (founder); the line only says whose deals are counted when a filter is on
     $('#vm-based').textContent = { all: '', top: S.level === 'us' ? 'Top firms only: the US top 100, from TIME\u2019s 2026 list.' : S.level === 'eu' ? 'Top firms only: the top 100 in Europe.' : 'Top firms only: the top 100 in the world and the top 25 in each region.',
-      focused: `Focused funds only: more than a quarter of their deals are in ${one}.`, new: `New entrants only: firms whose first deal in ${one} came in this period, against the newcomers of the period before.` }[who()];
+      focused: S.sectors.length ? `Focused funds only: more than a third of their deals are in ${one}.` : 'Focused funds only: more than half of their deals are in one sector.',
+      new: `New entrants only: firms whose first deal${S.sectors.length ? ' in ' + one : ''} came in this period, against the newcomers of the period before.` }[who()];
     $('#vm-legend').innerHTML = '<span class="vm-keys"><span><i class="vm-up"></i>up 10% or more</span><span><i class="vm-flat"></i>steady</span><span><i class="vm-down"></i>down 10% or more</span><span><i class="vm-few"></i>too few to call</span></span>';
   }
   function drawHead() {
