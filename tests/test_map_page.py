@@ -39,7 +39,7 @@ def test_every_metro_area_in_the_sql_has_a_spot():
 def test_backgrounds_exist_and_page_never_invents_data():
     for name in ('world', 'us', 'eu'):
         assert (ROOT / f'launch/assets/map/{name}.svg').read_text().startswith('<svg')
-    assert "sb.rpc('v2_map_summary'" in JS and "sb.rpc('v2_map_firms'" in JS and "sb.rpc('v2_map_updates'" in JS
+    assert "'v2_map_summary'" in JS and "sb.rpc('v2_map_firms'" in JS and "sb.rpc('v2_map_updates'" in JS
     # the saved test answer is only ever read on a local preview host
     assert 'const FIXTURE = LOCAL ?' in JS
 

@@ -1,4 +1,5 @@
-// The map page (/map/). Reads three read-only database functions: v2_map_summary, v2_map_firms, v2_map_updates
+// The map page (/map/). Reads four read-only database functions: v2_map_summary, v2_map_firms, v2_map_updates
+// and, for the 'Hot right now' view, v2_map_hot (docs/map_hot_function.sql).
 // (docs/map_functions.sql). Rules it follows are in the project doc claude/plans/main-map.md.
 // No data is invented here: if the functions are missing, the page says the map is not available.
 (function () {
