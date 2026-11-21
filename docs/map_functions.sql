@@ -1,8 +1,8 @@
 -- The map page's database side: one view and three read-only functions. Nothing here changes existing data.
 --
 -- STATUS: APPLIED TO PRODUCTION on 2026-11-21 (UTC) by Claude at the founder's request, through the Supabase
--- connector, as three migrations: v2_map_functions, v2_map_summary_faster, v2_map_summary_preaggregated.
--- This file is the final state of all three. It is NOT yet in supabase/migrations/ and has no CI guard.
+-- connector, as four migrations: v2_map_functions, v2_map_summary_faster, v2_map_summary_preaggregated,
+-- v2_map_summary_chosen_sectors_split. This file is the final state of all four. It is NOT yet in supabase/migrations/ and has no CI guard.
 -- For the developer / data owner: please review, then add it to supabase/migrations/ in the repo's usual form
 -- (with the "v2 tables missing, skipped" guard) so the repo and the database agree.
 -- Undo: docs/map_functions_rollback.sql
@@ -146,9 +146,11 @@ d as materialized (
 ),
 -- Count per firm first, then add firms up into places. Much cheaper than counting per place from raw deals.
 fd as materialized (select firm_id, count(*) n from d group by 1),
+-- When sectors are chosen, the split is among the chosen sectors only (top 5 of them, the rest together).
 fs as materialized (
   select d.firm_id, sc.name, count(*) n
   from d join v2_startup_sectors ss on ss.startup_id = d.startup_id and ss.is_current join v2_sector sc using (sector_id)
+  where p_sectors is null or sc.name = any(p_sectors)
   group by 1, 2
 ),
 pl as materialized (

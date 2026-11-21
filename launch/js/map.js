@@ -155,7 +155,7 @@
     const rows = (S.data.places || []).filter((p) => p.l === S.level && g[p.p]).map((p) => Object.assign({}, p, g[p.p], { n: g[p.p].n || p.p }));
     const max = Math.max(1, ...rows.map((p) => p.d));
     rows.forEach((p) => {
-      p.kind = sector ? 'plain' : (S.level === 'world' || (p.d >= RING_DEALS && p.f >= RING_FIRMS)) ? 'ring' : p.d >= DOT_DEALS ? 'dot' : null;
+      p.kind = sector ? (S.sectors.length > 1 ? 'ring' : 'plain') : (S.level === 'world' || (p.d >= RING_DEALS && p.f >= RING_FIRMS)) ? 'ring' : p.d >= DOT_DEALS ? 'dot' : null;
       p.r = p.kind === 'dot' ? 6 : S.level === 'world' ? Math.round(18 + 20 * Math.pow(p.d / max, 0.6)) : sector ? Math.round(7 + 30 * Math.sqrt(p.d / max)) : S.level === 'eu' ? Math.round(9 + 24 * Math.sqrt(p.d / max)) : Math.round(14 + 26 * Math.sqrt(p.d / max));
       p.ax = p.x; p.ay = p.y;
     });
@@ -243,9 +243,9 @@
     const t = $('#vm-tip'); if (!t) return;
     if (!p) { t.hidden = true; return; }
     const tot = p.tot || 1, sector = S.sectors.length > 0, top = p.top || [], rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
-    t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} ${sector ? esc(S.sectors.join(', ')) + ' ' : ''}deal${p.d === 1 ? '' : 's'} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>
+    t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} ${S.sectors.length === 1 ? esc(S.sectors[0]) + ' ' : ''}deal${p.d === 1 ? '' : 's'}${S.sectors.length > 1 ? ' in the chosen sectors' : ''} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>
 ${!sector && p.so ? `<span>Stands out for <b>${esc(p.so)}</b></span>` : ''}
-${sector ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background:${COLORS[n] || COLORS.Other}"></i><span>${j + 1}. ${esc(n)}</span><span class="vm-pc">${Math.round(v / tot * 100)}%</span></span>`).join('') + (top.length ? `<span class="vm-tr"><i style="background:${REST}"></i><span>All other sectors</span><span class="vm-pc">${rest}%</span></span>` : '')}${ZOOM[p.p] && S.level === 'world' ? `<button type="button" class="vm-link" id="vm-in">Zoom in to ${ZOOM[p.p] === 'us' ? 'the United States' : 'Europe'}</button>` : ''}`;
+${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background:${COLORS[n] || COLORS.Other}"></i><span>${j + 1}. ${esc(n)}</span><span class="vm-pc">${Math.round(v / tot * 100)}%</span></span>`).join('') + (top.length && (rest > 0 || !sector) ? `<span class="vm-tr"><i style="background:${REST}"></i><span>${sector ? 'Other chosen sectors' : 'All other sectors'}</span><span class="vm-pc">${rest}%</span></span>` : '')}${ZOOM[p.p] && S.level === 'world' ? `<button type="button" class="vm-link" id="vm-in">Zoom in to ${ZOOM[p.p] === 'us' ? 'the United States' : 'Europe'}</button>` : ''}`;
     t.hidden = false;
     // The card sits on the page (not inside the scaled map), beside the circle, and stays clear of the time line.
     const w = 236, h = t.offsetHeight || 220, cx = S.ox + p.x * S.k, cy = S.oy + p.y * S.k, rr = p.r * S.k;
@@ -287,7 +287,7 @@ ${sector ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i style="background
       if (k < 1) requestAnimationFrame(step);
     };
     step(t0);
-    $('#vm-legend').innerHTML = sec ? 'Circle size: deals in the chosen sector by VCs based there.' : S.level === 'world' ? 'Rings: each place&#39;s own top 5 sectors. Size: share of all deals in the period.' : `Ring: ${RING_DEALS}+ deals from ${RING_FIRMS}+ firms. Small dot: ${DOT_DEALS} to ${RING_DEALS - 1} deals, in the colour of its biggest sector.`;
+    $('#vm-legend').innerHTML = S.sectors.length > 1 ? 'Rings: split among the sectors you chose (top 5, the rest together). Size: their deals by VCs based there.' : sec ? 'Circle size: deals in the chosen sector by VCs based there.' : S.level === 'world' ? 'Rings: each place&#39;s own top 5 sectors. Size: share of all deals in the period.' : `Ring: ${RING_DEALS}+ deals from ${RING_FIRMS}+ firms. Small dot: ${DOT_DEALS} to ${RING_DEALS - 1} deals, in the colour of its biggest sector.`;
   }
 
   // ---------- right side: latest updates, or the firms behind a place
