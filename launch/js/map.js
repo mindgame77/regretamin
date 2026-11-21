@@ -13,6 +13,11 @@
   const FIXTURE = LOCAL ? qs.get('fixture') : null;
   const FX_FIRMS = FIXTURE && qs.get('fx_firms'), FX_UPDATES = FIXTURE && qs.get('fx_updates');
 
+  // Layout to try: everything that is not the map sits in one column on the left, and nothing covers the map.
+  // ?layout=float brings back the first layout (cards floating over the map) for comparison.
+  const COL = qs.get('layout') !== 'float';
+  if (COL) el.classList.add('vm-col');
+
   const INK = '#10201C';
   const COLORS = { 'Enterprise software': '#A9C4E8', 'Health': '#F2A7A0', 'Fintech': '#F3D98B', 'Hardware & Robotics': '#9FD4C3', 'Consumer': '#D9B5E0', 'Climate & Energy': '#BFDCA0', 'Bio': '#C59AC7', 'AI agents': '#8E9BE0', 'AI models': '#C4CCF2', 'Security': '#A8BDB5', 'Crypto': '#F7E6B5', 'Media & Gaming': '#F5C19A', 'Food & Agriculture': '#D5E0A3', 'Defense': '#B5B5BD', 'Space': '#9AA5D1', 'Mobility': '#9CC9D9', 'Education': '#EFC4D0', 'Developer tools': '#B9E0E6', 'Real estate': '#E6C9B0', 'Govtech': '#C2D6C8', 'Other': '#DADFDD' };
   const REST = '#F1F3F2';
@@ -54,17 +59,17 @@
   async function loadUpdates() {
     let data = null;
     if (FX_UPDATES) data = await fetch(FX_UPDATES).then((r) => r.json());
-    else if (!FIXTURE && sb) { const r = await sb.rpc('v2_map_updates', { p_limit: 3 }); if (!r.error) data = r.data; }
-    if (Array.isArray(data)) { S.updates = data.slice(0, 3); drawSide(); draw(); }
+    else if (!FIXTURE && sb) { const r = await sb.rpc('v2_map_updates', { p_limit: COL ? 6 : 3 }); if (!r.error) data = r.data; }
+    if (Array.isArray(data)) { S.updates = data.slice(0, COL ? 6 : 3); drawSide(); draw(); }
   }
 
   // ---------- page shell
   el.innerHTML = `
 <div class="vm-map" id="vm-map"><div class="vm-stage" id="vm-stage"><img class="vm-bg" id="vm-bg" alt=""><div class="vm-wave" id="vm-wave"></div><div id="vm-pls"></div><div id="vm-labs"></div></div><div class="vm-tip" id="vm-tip" hidden></div></div>
-<section class="vm-card vm-head" aria-live="polite"><h1 id="vm-h1"></h1>
+<div class="vm-colwrap"><section class="vm-card vm-head" aria-live="polite"><h1 id="vm-h1"></h1>
   <div class="vm-picks"><div class="vm-pick" data-pick="sectors"></div><div class="vm-pick" data-pick="stages"></div></div>
   <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a></section>
-<aside class="vm-card vm-side" id="vm-side"></aside>
+<aside class="vm-card vm-side" id="vm-side"></aside></div>
 <div class="vm-card vm-zoom" role="group" aria-label="Zoom to">${LEVELS.map(([k, t]) => `<button type="button" data-level="${k}">${t}</button>`).join('')}</div>
 <div class="vm-card vm-dock"><button type="button" class="vm-play" id="vm-play" aria-label="Play"></button><button type="button" class="vm-all" id="vm-all">All years</button>
   <div class="vm-time"><div class="vm-track"><div class="vm-fill" id="vm-fill"></div>${Array.from({ length: NQ + 1 }, (_, i) => `<i class="${i % 4 ? '' : 'vm-y'}" style="left:${i / NQ * 100}%"></i>`).join('')}
@@ -139,7 +144,8 @@
 
   // ---------- drawing the map
   // Room each view leaves for the cards around it: [left, right, top, bottom] in page pixels.
-  const ROOM = { world: [20, 20, 62, 60], us: [340, 220, 120, 120], eu: [210, 210, 30, 105] };
+  const ROOM = COL ? { world: [16, 16, 84, 104], us: [24, 24, 96, 120], eu: [24, 24, 84, 110] }
+    : { world: [20, 20, 62, 60], us: [340, 220, 120, 120], eu: [210, 210, 30, 105] };
   function fit() {
     const g = S.geo && S.geo[S.level]; if (!g) return;
     const r = mapBox.getBoundingClientRect(), [l, rt, t, b] = ROOM[S.level];
@@ -237,7 +243,8 @@
     else if (fresh.length) { void pls.offsetWidth; fresh.forEach(([b]) => b.classList.remove('vm-in')); }
     stage._rows = rows; drawHead();
     el.querySelectorAll('[data-level]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.level === S.level));
-    const pin = S.pinned ? rows.find((p) => p.p === S.pinned) : null; tip(pin || null);
+    // Floating layout: the chosen place keeps its card open. Column layout: its numbers move into the column, so the map stays clear.
+    const pin = S.pinned && !COL ? rows.find((p) => p.p === S.pinned) : null; tip(pin || null);
   }
   function tip(p) {
     const t = $('#vm-tip'); if (!t) return;
@@ -250,14 +257,14 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     // The card sits on the page (not inside the scaled map), beside the circle, and stays clear of the time line.
     const w = 236, h = t.offsetHeight || 220, cx = S.ox + p.x * S.k, cy = S.oy + p.y * S.k, rr = p.r * S.k;
     let x = cx + rr + 10, y = cy - 30;
-    if (x + w > S.boxW - (S.list ? 410 : 10)) x = cx - rr - 10 - w;
+    if (x + w > S.boxW - (S.list && !COL ? 410 : 10)) x = cx - rr - 10 - w;
     y = Math.max(4, Math.min(S.boxH - 112 - h, y));
     t.style.left = Math.max(4, x) + 'px'; t.style.top = y + 'px';
   }
-  stage.addEventListener('mouseover', (e) => { const b = e.target.closest('.vm-pl'); if (b && !S.pinned) { clearTimeout(hideT); tip(stage._rows[+b.dataset.i]); } });
-  stage.addEventListener('focusin', (e) => { const b = e.target.closest('.vm-pl'); if (b && !S.pinned) tip(stage._rows[+b.dataset.i]); });
+  stage.addEventListener('mouseover', (e) => { const b = e.target.closest('.vm-pl'); if (b && (!S.pinned || COL)) { clearTimeout(hideT); tip(stage._rows[+b.dataset.i]); } });
+  stage.addEventListener('focusin', (e) => { const b = e.target.closest('.vm-pl'); if (b && (!S.pinned || COL)) tip(stage._rows[+b.dataset.i]); });
   let hideT = null;
-  const hideSoon = () => { clearTimeout(hideT); hideT = setTimeout(() => { if (!S.pinned) tip(null); }, 220); };
+  const hideSoon = () => { clearTimeout(hideT); hideT = setTimeout(() => { if (!S.pinned || COL) tip(null); }, 220); };
   stage.addEventListener('mouseout', (e) => { if (e.target.closest('.vm-pl')) hideSoon(); });
   $('#vm-tip').addEventListener('mouseenter', () => clearTimeout(hideT));
   $('#vm-tip').addEventListener('mouseleave', hideSoon);
@@ -291,6 +298,13 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
 
   // ---------- right side: latest updates, or the firms behind a place
   const day = (s) => { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : MONTHS[d.getMonth()] + ' ' + d.getDate() + (d.getFullYear() === now.getFullYear() ? '' : ', ' + d.getFullYear()); };
+  // The chosen place's own numbers, shown above its firms in the column layout.
+  function placeFacts(p) {
+    const tot = p.tot || 1, top = p.top || [], one = S.sectors.length === 1, sector = S.sectors.length > 0;
+    if (one || !top.length) return `<div class="vm-facts"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'}</span></div>`;
+    const rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
+    return `<div class="vm-facts"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'}${!sector && p.so ? ` · stands out for <b>${esc(p.so)}</b>` : ''}</span><span class="vm-bar">${top.map(([n, v]) => `<i style="width:${v / tot * 100}%;background:${COLORS[n] || COLORS.Other}" title="${esc(n)} ${Math.round(v / tot * 100)}%"></i>`).join('')}</span><span class="vm-key">${top.map(([n, v]) => `<span><i style="background:${COLORS[n] || COLORS.Other}"></i>${esc(n)} ${Math.round(v / tot * 100)}%</span>`).join('')}${rest > 0 ? `<span><i style="background:${REST}"></i>${sector ? 'Other chosen' : 'All other'} ${rest}%</span>` : ''}</span></div>`;
+  }
   function drawSide() {
     const side = $('#vm-side');
     if (S.list) {
@@ -298,7 +312,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
       side.className = 'vm-card vm-side vm-list';
       side.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
 <div class="vm-chips">${chips.map(([t, k]) => `<button type="button" class="vm-chip" data-k="${k}" data-v="${esc(t)}" aria-label="Remove filter ${esc(t)}">${esc(t)}<span aria-hidden="true">×</span></button>`).join('')}</div>
-<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
+${COL ? placeFacts(L.place) : ''}<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
 <a class="vm-more" href="${ROOT}investors/">Open the full investors list</a>`;
       $('#vm-close').onclick = closeList;
       side.querySelectorAll('.vm-chip').forEach((c) => c.onclick = () => {
