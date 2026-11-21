@@ -10,7 +10,7 @@ const KEY = "11111111-1111-1111-1111-111111111111";
 const calls: { name: string; args: any }[] = [];
 const replies: Record<string, any> = {
   v2_founder_add: { ok: true, bot_id: "bot-a", founder_id: 7, created: true, role: { fact_id: 1, startup_id: 10 } },
-  v2_founder_lookup: { ok: true, kind: "founder", found: true, total: 1, matches: [{ founder_id: 7, name: "Ada Lovelace", linkedin_url: "https://www.linkedin.com/in/ada", startups: [{ id: 10, name: "Analytical Engines" }], past_jobs: ["Babbage Co"], match_reason: "linkedin" }] },
+  v2_founder_lookup: { ok: true, kind: "founder", found: true, total: 1, matches: [{ founder_id: 7, name: "Ada Lovelace", linkedin_url: "https://www.linkedin.com/in/ada", startups: [{ id: 10, name: "Analytical Engines" }], past_jobs: [{ company: "Babbage Co", job_role: "Mathematician" }], match_reason: "linkedin" }] },
   founderlist_claim_next_founder_startups: { ok: true, bot_id: "bot-a", startup: { startup_id: 10, startup_name: "Analytical Engines" }, startups: [{ startup_id: 10 }], claimed_count: 1, held_count: 1 },
   founderlist_finish_founder_startup: { ok: true, bot_id: "bot-a", startup: { startup_id: 10, status: "done" } },
 };
@@ -39,7 +39,7 @@ const good = {
   role: { value: "CEO", source_url: "https://example.com/ada" },
   facts: [
     { fact: "current_country", value: "GB", source_url: "https://example.com/ada" },
-    { fact: "past_job", value: "Babbage Co", company_website: "https://babbage.example", source_url: "https://news.example/ada" },
+    { fact: "past_job", value: "Babbage Co", role: "Mathematician", company_website: "https://babbage.example", source_url: "https://news.example/ada" },
     { fact: "founded_before", value: "yes: Analytical Kids", source_url: "https://news.example/ada" },
   ],
   bot_id: "someone-else",
@@ -67,6 +67,8 @@ Deno.test("add_founder: refused before the database", async () => {
     [{ ...good, role: { value: "CEO" } }, "role source_url is required"],
     [{ ...good, facts: [{ fact: "current_city", value: "London" }] }, "needs a source_url"],
     [{ ...good, facts: [{ fact: "past_job", value: "  ", source_url: "https://x" }] }, "past_job needs a company name"],
+    [{ ...good, facts: [{ fact: "past_job", value: "Babbage Co", role: "x".repeat(301), source_url: "https://x" }] }, "past_job role must be text up to 300"],
+    [{ ...good, facts: [{ fact: "current_city", value: "London", role: "Mayor", source_url: "https://x" }] }, "role on a fact is only for past_job"],
     [{ ...good, facts: [{ fact: "current_country", value: "England", source_url: "https://x" }] }, "2-letter country code"],
     [{ ...good, facts: [{ fact: "salary", value: "1", source_url: "https://x" }] }, "unknown fact type"],
     [{ ...good, facts: [{ fact: "role", value: "CEO", source_url: "https://x" }] }, "send the startup role in role"],
@@ -101,7 +103,7 @@ Deno.test("lookup founder: name and linkedin passed through, firm lookup unchang
   const b = await r.json();
   eq(b.matches[0].founder_id, 7, "id");
   eq(b.matches[0].startups[0].name, "Analytical Engines", "startup");
-  eq(b.matches[0].past_jobs[0], "Babbage Co", "job");
+  eq(b.matches[0].past_jobs[0], { company: "Babbage Co", job_role: "Mathematician" }, "job");
   if (!String(b.hint).includes("reuse a founder_id")) throw new Error("hint should say when to reuse");
   eq(calls.find((x) => x.name === "v2_founder_lookup")!.args, {
     p_key: KEY, p_name: "José Müller", p_linkedin: "https://www.linkedin.com/in/Jose-Muller/",

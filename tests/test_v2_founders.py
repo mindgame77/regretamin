@@ -46,6 +46,8 @@ def test_founders_link_only_to_startups_and_keep_the_rules():
     assert "fact <> 'role' or startup_id is not null" in low
     assert "value ~ '^[A-Z]{2}$'" in code
     assert "^(yes|no)(: \\S.*)?$" in code
+    assert "job_role text" in low
+    assert "job_role is null or (fact = 'past_job'" in low
     assert "No year" in code
     assert "a founder must have at least one role fact" in low
     assert "deferrable initially deferred" in low
@@ -187,6 +189,8 @@ def test_db_add_rules_reuse_and_no_duplicate_facts(db):
     assert "2-letter country code" in add(db, facts=[{"fact": "current_country", "value": "USA", "source_url": "https://x"}])["error"]
     assert "source_url" in add(db, facts=[{"fact": "current_city", "value": "London"}])["error"]
     assert "company_website is only for past_job" in add(db, facts=[{"fact": "current_city", "value": "London", "company_website": "https://x", "source_url": "https://x"}])["error"]
+    assert add(db, facts=[{"fact": "current_city", "value": "London", "role": "Mayor", "source_url": "https://x"}])["error"] == "role on a fact is only for past_job"
+    assert "300 characters" in add(db, facts=[{"fact": "past_job", "value": "Babbage Co", "role": "x" * 301, "source_url": "https://x"}])["error"]
     assert "founded_before" in add(db, facts=[{"fact": "founded_before", "value": "maybe", "source_url": "https://x"}])["error"]
     # A bad fact in the same call writes nothing.
     assert not add(db, facts=[{"fact": "current_city", "value": "London", "source_url": "https://x"},
@@ -197,7 +201,7 @@ def test_db_add_rules_reuse_and_no_duplicate_facts(db):
         {"fact": "current_city", "value": "London", "source_url": "https://example.com/ada"},
         {"fact": "current_country", "value": "gb", "source_url": "https://example.com/ada"},
         {"fact": "previous_country", "value": "FR", "source_url": "https://example.com/ada"},
-        {"fact": "past_job", "value": "Babbage Co", "company_website": "https://babbage.example", "source_url": "https://news.example/ada"},
+        {"fact": "past_job", "value": "Babbage Co", "role": "Mathematician", "company_website": "https://babbage.example", "source_url": "https://news.example/ada"},
         {"fact": "founded_before", "value": "Yes: Analytical Kids", "source_url": "https://news.example/ada"},
         {"fact": "university", "value": "University of London", "source_url": "https://news.example/ada"},
     ])
@@ -206,6 +210,10 @@ def test_db_add_rules_reuse_and_no_duplicate_facts(db):
     countries = dict(db.execute("select fact, value from public.v2_founder_facts where fact like '%country'").fetchall())
     assert countries == {"current_country": "GB", "previous_country": "FR"}
     assert db.execute("select value from public.v2_founder_facts where fact = 'founded_before'").fetchone()[0] == "yes: Analytical Kids"
+    assert db.execute("select company_website, job_role from public.v2_founder_facts where fact = 'past_job'").fetchone() == ("https://babbage.example", "Mathematician")
+    plain = add(db, founder={"founder_id": saved["founder_id"]},
+                facts=[{"fact": "past_job", "value": "No Title Co", "source_url": "https://news.example/ada"}])
+    assert plain["ok"] and db.execute("select job_role from public.v2_founder_facts where value = 'No Title Co'").fetchone()[0] is None
     # Same LinkedIn, other spelling: refused, with the id to reuse.
     dup = add(db, K2, startup=11, founder={"name": "Someone Else", "linkedin_url": "http://linkedin.com/in/ada/"})
     assert not dup["ok"] and dup["duplicate"] and dup["founder_id"] == saved["founder_id"]
@@ -227,11 +235,11 @@ def test_db_add_rules_reuse_and_no_duplicate_facts(db):
 
 def test_db_lookup_matches_linkedin_then_name_with_startups_and_jobs(db):
     jose = add(db, founder={"name": "José Müller", "linkedin_url": "https://www.linkedin.com/in/Jose-Muller/"},
-               facts=[{"fact": "past_job", "value": "Babbage Co", "source_url": "https://news.example/j"}])
+               facts=[{"fact": "past_job", "value": "Babbage Co", "role": "Mathematician", "source_url": "https://news.example/j"}])
     add(db, K2, startup=11, founder={"founder_id": jose["founder_id"]}, role={"value": "Founder", "source_url": "https://adalabs.example/team"})
     by_name = look(db, "jose   muller")
     assert by_name["found"] and by_name["matches"][0]["match_reason"] == "name"
-    assert by_name["matches"][0]["past_jobs"] == ["Babbage Co"]
+    assert by_name["matches"][0]["past_jobs"] == [{"company": "Babbage Co", "job_role": "Mathematician"}]
     assert by_name["matches"][0]["startups"] == [{"id": 10, "name": "Analytical Engines"}, {"id": 11, "name": "Ada Labs"}]
     by_link = look(db, "nobody", "https://uk.linkedin.com/in/jose-muller?trk=1")
     assert by_link["matches"][0]["match_reason"] == "linkedin" and by_link["matches"][0]["founder_id"] == jose["founder_id"]

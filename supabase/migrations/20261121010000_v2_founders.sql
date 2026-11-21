@@ -13,7 +13,8 @@
 --   This is the only foreign key. Deleting a startup that still has facts is refused.
 --   source_url is required (http or https). company_website is only for past_job.
 --   current_country and previous_country are 2-letter uppercase codes (US, GB).
---   past_job value is the company name (required) .
+--   past_job value is the company name (required). job_role is optional, only for past_job:
+--   the role at that company, up to 300 characters. The door sends it as "role" on the fact.
 --   founded_before value is yes or no, or yes: Earlier Company / no: Earlier Company
 --   (the earlier company as written, after a colon and one space). No year column.
 --   The same founder + fact + normalized value + startup is not stored twice.
@@ -119,6 +120,7 @@ create table if not exists public.v2_founder_facts (
   value text check (value is null or length(value) <= 300),
   value_norm text not null default '',
   company_website text,
+  job_role text,
   source_url text not null check (source_url ~* '^https?://[^[:space:]]+$' and length(source_url) <= 2000),
   added_by text not null check (btrim(added_by) <> '' and length(added_by) <= 200),
   created_at timestamptz not null default now(),
@@ -129,10 +131,12 @@ create table if not exists public.v2_founder_facts (
   check (fact <> 'founded_before' or value ~ '^(yes|no)(: \S.*)?$'),
   check (company_website is null or (
     fact = 'past_job' and company_website ~* '^https?://[^[:space:]]+$' and length(company_website) <= 500)),
+  check (job_role is null or (fact = 'past_job' and length(job_role) <= 300 and btrim(job_role) <> '')),
   constraint v2_founder_facts_no_copies unique nulls not distinct (founder_id, fact, value_norm, startup_id)
 )
 $ddl$;
   execute 'comment on column public.v2_founder_facts.value is ''As written, except countries are 2-letter uppercase codes and founded_before is yes, no, or yes: Earlier Company / no: Earlier Company. past_job value is the company name. No year.''';
+  execute 'comment on column public.v2_founder_facts.job_role is ''Optional. Only for past_job: the role at that company, as written, up to 300 characters.''';
   execute 'create index if not exists v2_founder_facts_founder_idx on public.v2_founder_facts (founder_id, fact)';
   execute 'create index if not exists v2_founder_facts_role_startup_idx on public.v2_founder_facts (startup_id, created_at) where fact = ''role''';
 
@@ -191,7 +195,8 @@ $ddl$;
   end if;
 
   -- add_founder. One transaction: the person (new, or founder_id to reuse), the role at p_startup_id, then facts.
-  -- p_founder {"name","linkedin_url","founder_id"}, p_role {"value","source_url"}, p_facts [{fact,value,company_website,source_url}]
+  -- p_founder {"name","linkedin_url","founder_id"}, p_role {"value","source_url"},
+  -- p_facts [{fact,value,company_website,source_url,role}]  role is only for past_job and is stored in job_role
   execute $ddl$
 create or replace function public.v2_founder_add(p_key_id uuid, p_startup_id bigint, p_founder jsonb, p_role jsonb, p_facts jsonb)
  returns jsonb
@@ -220,6 +225,7 @@ declare
   v_yn text;
   v_body text;
   v_site text;
+  v_job text;
   v_src text;
   v_clean jsonb := '[]'::jsonb;
   v_seen text[] := '{}';
@@ -325,11 +331,24 @@ begin
     end if;
     v_value := btrim(coalesce(v_item->>'value', ''));
     v_site := null;
+    v_job := null;
+    if v_fact <> 'past_job' and v_item ? 'role' and nullif(btrim(coalesce(v_item->>'role', '')), '') is not null then
+      return jsonb_build_object('ok', false, 'bot_id', v_bot.bot_name, 'error', 'role on a fact is only for past_job');
+    end if;
     if v_fact = 'past_job' then
       if v_value = '' or length(v_value) > 300 then
         return jsonb_build_object('ok', false, 'bot_id', v_bot.bot_name, 'error', 'past_job needs a company name in value');
       end if;
       v_store := v_value;
+      if v_item ? 'role' and v_item->'role' is not null and jsonb_typeof(v_item->'role') <> 'null' then
+        if jsonb_typeof(v_item->'role') <> 'string' then
+          return jsonb_build_object('ok', false, 'bot_id', v_bot.bot_name, 'error', 'past_job role must be text up to 300 characters, or leave it out');
+        end if;
+        v_job := nullif(btrim(v_item->>'role'), '');
+        if v_job is not null and length(v_job) > 300 then
+          return jsonb_build_object('ok', false, 'bot_id', v_bot.bot_name, 'error', 'past_job role must be text up to 300 characters, or leave it out');
+        end if;
+      end if;
       if v_item ? 'company_website' and nullif(btrim(coalesce(v_item->>'company_website', '')), '') is not null then
         if jsonb_typeof(v_item->'company_website') <> 'string' then
           return jsonb_build_object('ok', false, 'bot_id', v_bot.bot_name, 'error', 'past_job company_website must be an http(s) link, or leave it out');
@@ -375,7 +394,7 @@ begin
     else
       v_seen := v_seen || v_key;
       v_clean := v_clean || jsonb_build_array(jsonb_build_object(
-        'fact', v_fact, 'value', v_store, 'company_website', v_site, 'source_url', v_src));
+        'fact', v_fact, 'value', v_store, 'company_website', v_site, 'job_role', v_job, 'source_url', v_src));
     end if;
   end loop;
 
@@ -442,8 +461,8 @@ begin
       if found then
         v_skipped := v_skipped || jsonb_build_array(jsonb_build_object('fact', v_fact, 'value', v_store, 'reason', 'already stored'));
       else
-        insert into public.v2_founder_facts (founder_id, fact, value, company_website, source_url, added_by)
-        values (v_id, v_fact, v_store, nullif(v_item->>'company_website', ''), v_item->>'source_url', v_bot.bot_name)
+        insert into public.v2_founder_facts (founder_id, fact, value, company_website, job_role, source_url, added_by)
+        values (v_id, v_fact, v_store, nullif(v_item->>'company_website', ''), nullif(v_item->>'job_role', ''), v_item->>'source_url', v_bot.bot_name)
         returning fact_id into v_fid;
         v_saved := v_saved || jsonb_build_array(jsonb_build_object('fact_id', v_fid, 'fact', v_fact, 'value', v_store));
       end if;
@@ -472,7 +491,7 @@ $function$
 $ddl$;
 
   -- Read-only same-person check. Up to 5. LinkedIn match first, then the same normalized name.
-  -- Each match includes startups (from role rows) and past_job company names.
+  -- Each match includes startups (from role rows) and past jobs (company name plus job_role).
   execute $ddl$
 create or replace function public.v2_founder_lookup(p_key uuid, p_name text, p_linkedin text)
  returns jsonb
@@ -531,9 +550,9 @@ begin
                         ) x
                     ), '[]'::jsonb),
                     'past_jobs', coalesce((
-                      select jsonb_agg(p.value order by p.value)
+                      select jsonb_agg(jsonb_build_object('company', p.value, 'job_role', p.job_role) order by p.value, p.job_role)
                         from (
-                          select distinct f.value
+                          select distinct f.value, f.job_role
                             from public.v2_founder_facts f
                            where f.founder_id = t.founder_id and f.fact = 'past_job' and f.value is not null
                         ) p
