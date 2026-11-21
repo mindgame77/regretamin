@@ -260,8 +260,10 @@ ${sector ? '' : top.map(([n, v], j) => `<span class="tr"><i style="background:${
   function closeList() { if (S.list) { S.list = null; S.pinned = null; drawSide(); draw(); } }
 
   // ---------- start
+  let asked = 0;
   async function refresh() {
-    const d = await summary(), msg = $('#vm-msg');
+    const mine = ++asked, d = await summary(), msg = $('#vm-msg');
+    if (mine !== asked) return;  // a newer question was asked while this one was on its way; drop the old answer
     if (!d) { msg.hidden = false; msg.textContent = 'The map is not available right now.'; return; }
     msg.hidden = true; S.data = d; draw();
   }
