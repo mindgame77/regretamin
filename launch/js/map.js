@@ -290,7 +290,8 @@
     if (!p) { t.hidden = true; return; }
     if (S.view === 'hot') {
       const per = S.days === 365 ? 'year' : S.days + ' days';
-      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${per} · ${toneHtml(p)}${p.tone === 'few' ? '' : ` (${num(p.pv)} before)`}</span>${p.hot ? `<span>Heating up: <b>${esc(p.hot[0])}</b> <span class="vm-pc">${num(p.hot[1])} vs ${num(p.hot[2])}</span></span>` : ''}${p.cold ? `<span>Cooling down: <b>${esc(p.cold[0])}</b> <span class="vm-pc">${num(p.cold[1])} vs ${num(p.cold[2])}</span></span>` : ''}`;
+      // each fact on its own line, with its numbers kept together on the right so nothing breaks mid-number
+      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-tr"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${per}</span></span><span class="vm-tr"><span>${toneHtml(p)}</span>${p.tone === 'few' ? '' : `<span class="vm-pc vm-mu">${num(p.pv)} before</span>`}</span>${p.hot ? `<span class="vm-tr vm-rule"><span><i class="vm-up"></i><b>${esc(p.hot[0])}</b></span><span class="vm-pc">${num(p.hot[1])} vs ${num(p.hot[2])}</span></span>` : ''}${p.cold ? `<span class="vm-tr${p.hot ? '' : ' vm-rule'}"><span><i class="vm-down"></i><b>${esc(p.cold[0])}</b></span><span class="vm-pc">${num(p.cold[1])} vs ${num(p.cold[2])}</span></span>` : ''}`;
     } else {
     const tot = p.tot || 1, sector = S.sectors.length > 0, top = p.top || [], rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
     t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} ${S.sectors.length === 1 ? esc(S.sectors[0]) + ' ' : ''}deal${p.d === 1 ? '' : 's'}${S.sectors.length > 1 ? ' in the chosen sectors' : ''} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>
@@ -299,7 +300,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     }
     t.hidden = false;
     // The card sits on the page (not inside the scaled map), beside the circle, and stays clear of the time line.
-    const w = 236, h = t.offsetHeight || 220, cx = S.ox + p.x * S.k, cy = S.oy + p.y * S.k, rr = p.r * S.k;
+    const w = S.view === 'hot' ? 272 : 236, h = t.offsetHeight || 220, cx = S.ox + p.x * S.k, cy = S.oy + p.y * S.k, rr = p.r * S.k;
     let x = cx + rr + 10, y = cy - 30;
     if (x + w > S.boxW - (S.list && !COL ? 410 : 10)) x = cx - rr - 10 - w;
     y = Math.max(4, Math.min(S.boxH - 112 - h, y));

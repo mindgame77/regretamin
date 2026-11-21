@@ -1253,7 +1253,14 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-sec:hover,.vm-sec.vm-secon{background:var(--ms)}
 .vm-sec.vm-secon span:nth-child(2){font-weight:600}
 .vm-sub{font-size:12px;margin:10px 0 2px}
-.vm-pc{font-family:'Geist Mono',ui-monospace,monospace;font-size:13px}
+.vm-pc{font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;white-space:nowrap}
+.vm-hotview .vm-tip{width:272px}
+.vm-hotview .vm-tip .vm-tr{justify-content:space-between;gap:10px}
+.vm-hotview .vm-tip .vm-tr>span:first-child{flex:1;min-width:0}
+.vm-hotview .vm-tip .vm-tr>span:nth-child(2){flex:none;text-align:right}
+.vm-hotview .vm-tip .vm-tr i{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--mi);box-sizing:border-box;margin-right:6px;vertical-align:-1px}
+.vm-hotview .vm-tip .vm-rule{border-top:1px solid var(--ml);padding-top:6px;margin-top:2px}
+.vm-hotview .vm-tip .vm-pc{font-size:12px}
 @property --vm-a1{syntax:'<percentage>';inherits:false;initial-value:0%}
 @property --vm-a2{syntax:'<percentage>';inherits:false;initial-value:0%}
 @property --vm-a3{syntax:'<percentage>';inherits:false;initial-value:0%}
