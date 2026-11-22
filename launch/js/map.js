@@ -215,10 +215,12 @@
     : { world: [20, 20, 62, 60], us: [340, 220, 120, 120], eu: [210, 210, 30, 105] };
   function fit() {
     const g = S.geo && S.geo[S.level]; if (!g) return;
-    const r = mapBox.getBoundingClientRect(), [l0, rt, t, b] = ROOM[S.level];
+    const r = mapBox.getBoundingClientRect();
+    // On a phone the controls sit above and below the map, not over it, so the map uses its whole box.
+    const narrow = r.width < 700, [l0, rt, t, b] = narrow ? [6, 6, 6, 6] : ROOM[S.level];
     // the firms panel takes the left of the map; the map moves over so the chosen place stays in view (if the window is wide enough)
     const open = S.view === 'hot' && S.list && S.list.step === 'firms' && r.width >= 940, l = l0 + (open ? 376 : 0);
-    const k = Math.max(0.4, Math.min((r.width - l - rt) / g.w, (r.height - t - b) / g.h));
+    const k = Math.max(narrow ? 0.2 : 0.4, Math.min((r.width - l - rt) / g.w, (r.height - t - b) / g.h));
     S.k = k; S.ox = l + (r.width - l - rt - g.w * k) / 2; S.oy = t; S.boxW = r.width; S.boxH = r.height;
     stage.style.width = g.w + 'px'; stage.style.height = g.h + 'px';
     stage.style.transform = `translate(${l + (r.width - l - rt - g.w * k) / 2}px, ${t}px) scale(${k})`;
