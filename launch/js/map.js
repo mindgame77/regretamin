@@ -35,6 +35,7 @@
   const NQ = (now.getFullYear() - 2021) * 4 + Math.floor(now.getMonth() / 3) + 1;  // quarters from 2021 Q1 to this one
   const S = { view: 'flow', days: 90, level: 'world', q0: 0, q1: NQ - 1, stages: [], sectors: [], who: 'all', unit: 'pct', pinned: null, list: null, data: null, geo: null, updates: [], playing: null };
   // "Which firms" in the Hot right now view.
+  const KEEP = 'regretamin.map.view';
   const WHO = [['all', 'All firms'], ['top', 'Top firms'], ['focused', 'Focused funds'], ['new', 'New entrants']];
   const who = () => (S.view === 'hot' ? S.who : 'all');
   // A link can carry the view in its address (view, days, zoom, sectors, stages, firms). The page never rewrites its own address.
@@ -46,7 +47,25 @@
     S.sectors = list('sectors', SECTORS); S.stages = list('stages', STAGES);
     if (WHO.some(([k]) => k === qs.get('firms'))) S.who = qs.get('firms');
     const a = num('from'), b = num('to'); if (a !== null && b !== null && a <= b && b < NQ) { S.q0 = a; S.q1 = b; }
+    // No view in the address: come back to the map as it was left in this tab (after opening a firm and closing it, say).
+    if (['view', 'days', 'zoom', 'sectors', 'stages', 'firms', 'from', 'to'].some((k) => qs.has(k))) return;
+    try {
+      const m = JSON.parse(sessionStorage.getItem(KEEP) || 'null');
+      if (!m) return;
+      if (m.view === 'hot' || m.view === 'flow') S.view = m.view;
+      if ([90, 180, 365].includes(m.days)) S.days = m.days;
+      if (['world', 'us', 'eu'].includes(m.level)) S.level = m.level;
+      if (Array.isArray(m.sectors)) S.sectors = m.sectors.filter((v) => SECTORS.includes(v));
+      if (Array.isArray(m.stages)) S.stages = m.stages.filter((v) => STAGES.includes(v));
+      if (WHO.some(([k]) => k === m.who)) S.who = m.who;
+      if (m.unit === 'pct' || m.unit === 'num') S.unit = m.unit;
+      if (Number.isInteger(m.q0) && Number.isInteger(m.q1) && m.q0 >= 0 && m.q0 <= m.q1 && m.q1 < NQ) { S.q0 = m.q0; S.q1 = m.q1; }
+    } catch (e) { /* no storage: start from the default view */ }
   })();
+  function remember() {
+    try { sessionStorage.setItem(KEEP, JSON.stringify({ view: S.view, days: S.days, level: S.level, sectors: S.sectors, stages: S.stages, who: S.who, unit: S.unit, q0: S.q0, q1: S.q1 })); } catch (e) { /* private mode */ }
+  }
+  window.addEventListener('pagehide', remember);
   const $ = (s, r) => (r || el).querySelector(s);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = (n) => Number(n || 0).toLocaleString('en-US');
@@ -522,6 +541,7 @@ ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.m
   // ---------- start
   let asked = 0;
   async function refresh() {
+    remember();
     const mine = ++asked, msg = $('#vm-msg');
     const busy = setTimeout(() => { if (mine === asked) el.classList.add('vm-busy'); }, 120);  // the scan runs only when the answer is not instant
     const d = await summary();
