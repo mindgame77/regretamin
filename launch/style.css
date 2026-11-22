@@ -1405,3 +1405,17 @@ body>nav .r a#signin:not([hidden]){color:#10201C}
 /* The free-credits counter stays in the header (founder), in the new look. */
 body>nav .left{background:#F3F5F4;color:#10201C;font:500 13px 'Geist',system-ui,sans-serif;padding:6px 12px;border-radius:99px}
 .firms-pg .fdrop-caret{font-size:13px}
+
+/* Investors list: signal icons in the Activity column, and the Signals and Deals-this-year menus. */
+.fsigw{display:inline-flex;align-items:center;margin-left:8px;cursor:default}
+.fsig{font-size:15px;line-height:1}
+.fsig.f100{font:700 10.5px/1 'Geist Mono',ui-monospace,monospace;letter-spacing:.02em;border:1.5px solid #10201C;border-radius:5px;padding:2px 4px;color:#10201C}
+.firms-pg .frow .fact{gap:0}
+#facet-signal .fmenu{width:400px}
+.firms-pg #facet-signal .fmenu label{align-items:flex-start;padding:8px;min-height:0}
+.firms-pg #facet-signal .fmenu input{margin-top:2px}
+#facet-signal .optlabel{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;white-space:normal}
+#facet-signal .optlabel .fsig{width:26px;text-align:center;flex:none}
+#facet-signal .optlabel .fsig.f100{width:auto}
+.optdesc{flex:1 1 100%;font:400 12.5px/1.35 'Geist',system-ui,sans-serif;color:#586964;margin-top:2px}
+@media (max-width:900px){#facet-signal .fmenu{width:min(400px,calc(100vw - 28px))}}

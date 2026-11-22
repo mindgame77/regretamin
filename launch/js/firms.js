@@ -194,7 +194,33 @@
   function activityHtml(f) {
     const a = activityOf(f);
     if (!a) return '<span class="fact"></span>';
-    return '<span class="fact"><span class="alab ' + a.cls + '">' + esc(a.text) + '</span></span>';
+    return '<span class="fact"><span class="alab ' + a.cls + '">' + esc(a.text) + '</span>' + signalsHtml(f) + '</span>';
+  }
+  // Signals shown as icons in the Activity column. Rules: project doc claude/plans/investors-list.md.
+  // The numbers come from v2_firm_signals, refreshed once a day.
+  const SIGNALS = [
+    ['up', '🚀', 'Speeding up', 'At least 10 more deals in the last 12 months than in the 12 months before.'],
+    ['down', '📉', 'Slowing down', 'At least 10 fewer deals in the last 12 months than in the 12 months before.'],
+    ['top', '', 'Top 100', 'On the Regretamin Top Firms list for the year.'],
+    ['chain', '🔗', 'Top firms follow it', 'Five or more top-100 firms invested after it, at least twice each.'],
+    ['lead', '🏆', 'Leads rounds', 'Led at least half of its deals in the last 12 months (10 deals or more).'],
+    ['spec', '🎯', 'Specialist', 'More than half of its deals are in one sector.'],
+    ['fund', '💰', 'Fresh fund', 'Closed a new fund in the last 12 months.']
+  ];
+  const DEALS_YEAR = [['lt5', 'Fewer than 5 deals this year'], ['5', '5 or more deals this year'], ['10', '10 or more deals this year'], ['25', '25 or more deals this year']];
+  function signalIcon(key) {
+    const g = SIGNALS.filter(function (x) { return x[0] === key; })[0];
+    if (!g) return '';
+    return g[1] ? '<span class="fsig" aria-hidden="true">' + g[1] + '</span>' : '<span class="fsig f100" aria-hidden="true">100</span>';
+  }
+  function signalsHtml(f) {
+    const have = Array.isArray(f && f.signals) ? f.signals : [];
+    return SIGNALS.filter(function (g) { return have.indexOf(g[0]) !== -1; }).map(function (g) {
+      let tip = g[2] + '. ' + g[3];
+      if ((g[0] === 'up' || g[0] === 'down') && f.deals_now != null) tip = g[2] + ': ' + f.deals_now + ' deals in the last 12 months, ' + f.deals_prev + ' in the 12 before.';
+      if (g[0] === 'lead' && f.deals_now != null) tip = g[2] + ': led ' + f.led_now + ' of its ' + f.deals_now + ' deals in the last 12 months.';
+      return '<span class="fsigw" role="img" aria-label="' + esc(g[2]) + '" title="' + esc(tip) + '">' + signalIcon(g[0]) + '</span>';
+    }).join('');
   }
   // Country flag from the two-letter country code. No flag when the country is unknown.
   function flagOf(f) {
@@ -293,7 +319,7 @@
       let panelKey = null;
       let menuKey = null;
       let draft = [];
-      const active = { region: [], industry: [], stage: [], status: [] };
+      const active = { region: [], industry: [], stage: [], status: [], signal: [], dealsyear: [] };
 
       // Older links put legal, info, or firm_status in the query string.
       // Those groups are gone. Ignore the params so the page still loads.
@@ -337,7 +363,15 @@
         region: { title: 'Region', singular: 'regions', options: regionOpts },
         industry: { title: 'Industries', singular: 'industries', options: industryOpts },
         stage: { title: 'Investment stages', singular: 'stages', options: stageOpts },
-        status: { title: pageCopy.filter_status || 'Investor status', singular: 'statuses', options: statusOpts }
+        status: { title: pageCopy.filter_status || 'Investor status', singular: 'statuses', options: statusOpts },
+        // Signals is the filter and the explanation: every icon with its rule. Ticking several keeps firms that have all of them.
+        signal: { title: 'Signals', singular: 'signals', all: true, options: SIGNALS.map(function (g) {
+          return { value: g[0], label: g[2], icon: signalIcon(g[0]), desc: g[3], tag: (g[1] ? g[1] + ' ' : '') + g[2], count: 0 };
+        }) },
+        // One choice at a time. Counted over the same 12 months the icons use.
+        dealsyear: { title: 'Deals this year', singular: 'choices', all: true, single: true, options: DEALS_YEAR.map(function (d) {
+          return { value: d[0], label: d[1].replace(' deals this year', ''), tag: d[1], count: 0 };
+        }) }
       };
       const INLINE_OPTIONS = 5;
 
@@ -349,7 +383,8 @@
         const color = key === 'industry' ? sectorColor(o.label) : '';
         return '<label class="' + (checked ? 'checked' : '') + '" data-facet="' + esc(key) + '" data-value="' + esc(o.value) + '">'
           + '<input type="checkbox"' + (checked ? ' checked' : '') + (inPanel ? ' data-draft="1"' : '') + '>'
-          + '<span class="optlabel"' + (color ? ' style="color:' + color + '"' : '') + ' title="' + esc(o.label) + '">' + esc(o.label) + '</span>'
+          + '<span class="optlabel"' + (color ? ' style="color:' + color + '"' : '') + ' title="' + esc(o.desc || o.label) + '">' + (o.icon || '') + esc(o.label)
+          + (o.desc ? '<small class="optdesc">' + esc(o.desc) + '</small>' : '') + '</span>'
           + '<span class="optcount">' + o.count + '</span></label>';
       }
       // One drop-down per filter group, in a row under the search bar. The menu lists the five biggest options;
@@ -358,7 +393,7 @@
         groupsEl.innerHTML = Object.keys(GROUPS).map(function (key) {
           const g = GROUPS[key];
           const open = panel && !panel.hidden && key === panelKey;
-          const shown = g.options.slice(0, INLINE_OPTIONS);
+          const shown = g.all ? g.options : g.options.slice(0, INLINE_OPTIONS);
           const more = g.options.length > shown.length;
           const n = active[key].length;
           const menuOpen = menuKey === key;
@@ -392,6 +427,11 @@
         if (active.industry.length && !active.industry.some(function (x) { return optionMatch(f.industries, x); })) return false;
         if (active.stage.length && !active.stage.some(function (x) { return optionMatch(f.stages, x); })) return false;
         if (active.status.length && active.status.indexOf(activityValue(f)) === -1) return false;
+        if (active.signal.length && !active.signal.every(function (x) { return (f.signals || []).indexOf(x) !== -1; })) return false;
+        if (active.dealsyear.length) {
+          const n = Number(f.deals_now) || 0, want = active.dealsyear[0];
+          if (want === 'lt5' ? n >= 5 : n < Number(want)) return false;
+        }
         return true;
       }
       function cmpBlankLast(av, bv) {
@@ -605,7 +645,7 @@
       }
       function filterLabel(key, val) {
         const o = (GROUPS[key].options || []).filter(function (x) { return x.value === val; })[0];
-        return (o && o.label) || val;
+        return (o && (o.tag || o.label)) || val;
       }
       function renderChips() {
         const el = document.getElementById('firms-chips');
@@ -727,6 +767,11 @@
           if (v === '0' || v === '1' || v === '2' || v === '3') statusCounts[v] = Number(o.count) || 0;
         });
         GROUPS.status.options = activityOptions(statusCounts);
+        [['signal', facets.signals], ['dealsyear', facets.deals_year]].forEach(function (pair) {
+          const counts = {};
+          (pair[1] || []).forEach(function (o) { counts[String(o.value)] = Number(o.count) || 0; });
+          GROUPS[pair[0]].options.forEach(function (o) { o.count = counts[o.value] || 0; });
+        });
         renderFacets();
         if (panel && !panel.hidden && panelKey) renderPanel();
       }
@@ -744,11 +789,13 @@
           p_stage: active.stage,
           p_legal: [],
           p_info: [],
-          p_status: active.status
+          p_status: active.status,
+          p_signals: active.signal,
+          p_deals_year: active.dealsyear[0] || null
         };
         loading = true;
         showStatus();
-        fetch(C.url + '/rest/v1/rpc/firm_directory_page_v2', {
+        fetch(C.url + '/rest/v1/rpc/firm_directory_page_v3', {
           method: 'POST',
           headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
@@ -828,9 +875,11 @@
         io.observe(el);
       }
       function toggleFacet(key, val, on) {
-        active[key] = on
-          ? Array.from(new Set(active[key].concat([val])))
-          : active[key].filter(function (x) { return x !== val; });
+        active[key] = GROUPS[key].single
+          ? (on ? [val] : [])
+          : on
+            ? Array.from(new Set(active[key].concat([val])))
+            : active[key].filter(function (x) { return x !== val; });
         renderFacets();
         updateBadge();
         draw();
