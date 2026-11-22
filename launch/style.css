@@ -1470,3 +1470,11 @@ main.prof .htag .hp[style],main.prof .arty[style]{-webkit-text-fill-color:#10201
 main.prof .htag .hp[style]:before,main.prof .arty[style]:before{content:'';width:9px;height:9px;flex:none;border-radius:50%;background:currentColor;box-shadow:0 0 0 1.5px #10201C}
 main.prof .arty{border:0;background:none;padding:0;font-size:14px;font-weight:400}
 .find i{border:0;box-shadow:0 0 0 1.5px #10201C}
+/* Average check reads as its own group beside Stages: its label sits on the label line, above its tag. */
+main.prof .htag-rule{display:none}
+main.prof .htag-k{position:relative;top:-28px;width:0;margin-left:28px;white-space:nowrap;overflow:visible;font:400 13px 'Geist Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#586964}
+main.prof .htag-k+.hp{margin-left:0}
+main.prof .htag .hp[hidden]{display:none}
+main.prof .hp.hmore{background:#fff;border:1.5px solid #10201C;border-radius:9px;padding:5px 11px;font-size:14px;font-weight:600;cursor:pointer}
+main.prof .socp .hp.hmail{cursor:pointer}
+main.prof .socp .hp.hmail[data-reveal]:before{content:'';width:17px;height:13px;flex:none;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 13' fill='none' stroke='%2310201C' stroke-width='1.6' stroke-linejoin='round'%3E%3Crect x='.8' y='.8' width='15.4' height='11.4' rx='2'/%3E%3Cpath d='M1.5 2l7 5.2 7-5.2'/%3E%3C/svg%3E")}

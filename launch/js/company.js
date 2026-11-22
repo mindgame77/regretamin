@@ -93,9 +93,9 @@
   }
   function metaLine(P) {
     const firm = P.firm || {};
-    // The flag sits after the HQ city. US stays "City, ST". No country name. No city: no flag.
+    // The flag sits before the HQ city, as on the Investors list. US stays "City, ST". No country name. No city: no flag.
     const flag = firm.hq ? countryFlag(firm.hq_country) : '';
-    const hq = firm.hq ? esc(nice(firm.hq)) + (flag ? ' ' + flag : '') : '';
+    const hq = firm.hq ? (flag ? flag + ' ' : '') + esc(nice(firm.hq)) : '';
     const link = siteLink(P);
     const y = Number(firm.founded_year);
     const fy = Number.isInteger(y) && y > 1000 && y <= new Date().getFullYear() ? esc((HCOPY.founded || 'Founded {y}').replace('{y}', String(y))) : '';
@@ -143,7 +143,8 @@
     const firm = (P && P.firm) || {};
     const email = String(firm.contact_email || '').trim();
     let h = '';
-    if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) h += '<button type="button" class="hp" data-copy="' + esc(email) + '">' + esc(email) + '</button>';
+    // The address stays hidden until the button is pressed; pressing shows it and copies it.
+    if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) h += '<button type="button" class="hp hmail" data-copy="' + esc(email) + '" data-reveal aria-label="' + esc(HCOPY.email_show || 'Show the contact email') + '">' + esc(HCOPY.email || 'Email') + '</button>';
     return h + secPills(P);
   }
   function paintSocial(main, P) {
@@ -252,7 +253,7 @@
     const stageBlock = (stagePills || check)
       ? '<div class="htag">' + (stagePills ? '<span class="htag-l">' + esc(HCOPY.stages || 'Stages') + '</span>' : '') + '<div class="secp">' + stagePills + check + '</div></div>'
       : '';
-    return focus + stageBlock;
+    return focus.replace('<div class="htag">', '<div class="htag hsec">') + stageBlock;
   }
   function paintTags(main, P) {
     if (!main || !main.querySelector) return;
@@ -268,6 +269,32 @@
       anchor.insertAdjacentElement(act ? 'beforebegin' : 'afterend', box);
     }
     box.innerHTML = html;
+    fitOneLine(box.querySelector('.hsec .secp'), 'hp hmore');
+  }
+  // Keep a row of tags on one line. What does not fit collapses into a last "+N" tag; pressing it shows them all
+  // in place and it turns into "Show less". Does nothing where the layout cannot be measured.
+  function fitOneLine(row, cls) {
+    if (!row || !row.children || !row.appendChild) return;
+    const kids = Array.prototype.slice.call(row.children);
+    if (kids.length < 2 || typeof kids[0].offsetTop !== 'number') return;
+    const top = kids[0].offsetTop;
+    if (!kids.some(k => k.offsetTop > top)) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = cls;
+    btn.setAttribute('aria-expanded', 'false');
+    row.appendChild(btn);
+    let keep = kids.length;
+    btn.textContent = '+0';
+    while (keep > 1 && btn.offsetTop > top) { keep--; kids[keep].hidden = true; btn.textContent = '+' + (kids.length - keep); }
+    const more = '+' + (kids.length - keep);
+    btn.setAttribute('aria-label', 'Show ' + (kids.length - keep) + ' more');
+    btn.addEventListener('click', function () {
+      const open = btn.getAttribute('aria-expanded') === 'true';
+      kids.forEach((k, n) => { k.hidden = open && n >= keep; });
+      btn.textContent = open ? more : 'Show less';
+      btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    });
   }
   function setFirmName(main, name) {
     if (!name) return;
@@ -1872,6 +1899,13 @@
     const b = e.target && e.target.closest && e.target.closest('.hp[data-copy]');
     if (!b) return;
     const v = b.getAttribute('data-copy') || '';
+    if (b.hasAttribute && b.hasAttribute('data-reveal')) {
+      b.removeAttribute('data-reveal');
+      b.removeAttribute('aria-label');
+      b.textContent = v;
+      try { if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(function () {}, function () {}); } catch (err) {}
+      return;
+    }
     const show = () => { const old = b.textContent; b.textContent = AC.copied || 'Copied'; setTimeout(() => { if (b.textContent === (AC.copied || 'Copied')) b.textContent = old; }, 1400); };
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(show, function () {});
