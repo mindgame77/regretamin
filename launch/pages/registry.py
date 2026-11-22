@@ -22,7 +22,7 @@ class Page:
     redirect: str = ''
 
 PAGES = (
-    Page('', home.render, sitemap=True),
+    Page('', map_page.render_home, sitemap=True),
     Page('pending', pending.render, noindex=True),
     Page('investors', firms.render, nav='main', sitemap=True, active='investors'),
     Page('how-we-check', how_we_check.render, nav='main', sitemap=True, active='hwc'),

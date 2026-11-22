@@ -1297,12 +1297,12 @@ main.wrap.firms-pg{max-width:1320px}
    filters as tags inside it, drop-down buttons under it. Scoped to .firms-pg; the header takes the new look on this page only
    until the shared base is lifted out for every page. Plan: project doc claude/plans/investors-list.md. */
 body:has(main.firms-pg){background:#fff}
-body:has(main.firms-pg)>nav{height:64px;padding:0 32px;border-bottom:1px solid #E2E7E5;font-family:'Geist',system-ui,sans-serif;font-size:15px}
-body:has(main.firms-pg)>nav .logo{font:600 21px/1 'Geist',system-ui,sans-serif;letter-spacing:-.04em;color:#10201C;text-transform:lowercase;gap:10px}
-body:has(main.firms-pg)>nav .logo img{display:none}
-body:has(main.firms-pg)>nav .logo:before{content:'';width:28px;height:18px;flex:none;border-radius:99px;border:2px solid #10201C;background:linear-gradient(90deg,#F0861E 50%,#fff 50%);transform:rotate(35deg)}
-body:has(main.firms-pg)>nav .r{color:#10201C;font-weight:400;gap:28px}
-body:has(main.firms-pg)>nav .r a.on{color:#10201C;font-weight:600}
+body>nav{height:64px;padding:0 32px;border-bottom:1px solid #E2E7E5;font-family:'Geist',system-ui,sans-serif;font-size:15px}
+body>nav .logo{font:600 21px/1 'Geist',system-ui,sans-serif;letter-spacing:-.04em;color:#10201C;text-transform:lowercase;gap:10px}
+body>nav .logo img{display:none}
+body>nav .logo:before{content:'';width:28px;height:18px;flex:none;border-radius:99px;border:2px solid #10201C;background:linear-gradient(90deg,#F0861E 50%,#fff 50%);transform:rotate(35deg)}
+body>nav .r{color:#10201C;font-weight:400;gap:28px}
+body>nav .r a.on{color:#10201C;font-weight:600}
 .firms-pg,.firms-pg .facet-panel{--mi:#10201C;--mm:#586964;--ml:#E2E7E5;--ms:#F3F5F4;--ma:#F0861E;--vio:#10201C;--viobg:#F3F5F4;--ink:#10201C;--ink2:#3B4A45;--mute:#586964;--line:#E2E7E5;font-family:'Geist',system-ui,sans-serif;color:var(--mi)}
 main.wrap.firms-pg{max-width:none;padding:20px 32px 80px}
 .firms-pg .firms-search-hero{margin:0 0 10px}
@@ -1385,13 +1385,22 @@ main.wrap.firms-pg{max-width:none;padding:20px 32px 80px}
   .fcount{margin-left:0}
 }
 @media (max-width:640px){
-  body:has(main.firms-pg)>nav{padding:0 14px;height:56px}
+  body>nav{padding:0 14px;height:56px}
   .firms-pg .flist{border:0;border-radius:0}
   .firms-pg .flist .frow.h,.firms-pg .flist.has-activity .frow.h{display:none}
-  body:has(main.firms-pg)>nav .r a#signin:not([hidden]){color:#10201C;font-weight:600}
+  body>nav .r a#signin:not([hidden]){color:#10201C;font-weight:600}
   .firms-pg .frow,.firms-pg .flist.has-activity .frow,.firms-pg .flist:not(.has-activity) .frow{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:14px;margin:0 0 10px;min-height:0;border:1px solid var(--ml);border-radius:14px}
   .firms-pg .frow>*{padding:0;border-left:0;white-space:normal}
   .firms-pg .frow .fdeal:empty:before,.firms-pg .frow .fcity:empty:before,.firms-pg .frow .finds:empty:before,.firms-pg a.frow .finv:empty:before{content:none}
   .firms-pg .frow .finds{flex-wrap:wrap;gap:4px 12px}
   .firms-pg a.frow .finv:not(:empty):after{content:' deals';font-family:'Geist',system-ui,sans-serif;color:var(--mm);white-space:pre}
 }
+
+/* ---------- Shared base of the new look, on every page: header and footer (white, ink, Geist, the pill logo). */
+body>nav .r a{color:#10201C}
+body>nav .r a.on{color:#10201C;font-weight:600}
+body>nav .r a#signin:not([hidden]){color:#10201C}
+.ft{font-family:'Geist',system-ui,sans-serif;color:#586964;border-top:1px solid #E2E7E5}
+.ft a{color:#10201C}
+/* Pricing is parked while there is nothing to pay for (founder, 2026-11-22): the links stay in the page, hidden. */
+body>nav a[data-open="paywall"]{display:none!important}
