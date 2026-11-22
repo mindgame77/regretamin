@@ -178,7 +178,7 @@
     const raw = (f && f.investments != null && f.investments !== '') ? f.investments : (f && f.deals);
     const n = Number(raw);
     if (!Number.isFinite(n) || n <= 0) return '';
-    return String(Math.trunc(n));
+    return Math.trunc(n).toLocaleString('en-US');
   }
   function activityOf(f) {
     const rule = window.RegretActivity;

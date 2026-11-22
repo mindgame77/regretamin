@@ -2539,6 +2539,11 @@
       evenCards(root);
     }).catch(function () { /* no card is fine */ });
   }
+  // The middle circle: two short words fit on two lines ("500 Global"); otherwise the first word.
+  function centreName(name) {
+    const w = String(name || '').trim().split(/\s+/);
+    return w.length > 1 && w[0].length <= 8 && w[1].length <= 8 ? esc(w[0]) + '<br>' + esc(w[1]) : esc(w[0] || '');
+  }
   function drawAround(root, d) {
     const grid = root.querySelector('.bento');
     const total = ['before', 'with', 'after'].reduce((n, k) => n + ((d[k] && d[k].firms) || 0), 0);
@@ -2568,7 +2573,7 @@
     const key = (k, t) => (d[k] && d[k].firms) ? '<span><i style="background:' + AROUND_COL[k] + '"></i>' + t + ' ' + d[k].firms + '</span>' : '';
     card.innerHTML = '<div class="mh"><h3>Who invests around them</h3></div><p class="arsub">' + key('before', 'Before') + key('with', 'With') + key('after', 'After') + '<em>number = startups in common</em></p>'
       + '<div class="arbox"><div class="arstage"><svg aria-hidden="true" width="' + W + '" height="' + H + '">' + svg + '</svg>' + html
-      + '<span class="arme" style="left:' + (CX - 30) + 'px;top:' + (CY - 30) + 'px">' + esc(name.split(' ')[0]) + '</span></div></div>'
+      + '<span class="arme" style="left:' + (CX - 30) + 'px;top:' + (CY - 30) + 'px">' + centreName(name) + '</span></div></div>'
       + '<button type="button" class="ash" data-around>Show all ' + total + ' firms</button>';
     grid.insertBefore(card, grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
     card.querySelector('[data-around]').addEventListener('click', function () { openAround(name, d); });

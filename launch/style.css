@@ -1718,3 +1718,6 @@ main.prof #around .arstage{transform:scale(.78)}
   main.prof #around .arsub em{margin-left:0;flex:1 1 100%}
   main.prof .mod.filler .fmap{min-height:190px}
 }
+
+/* Bubbles card: the firm's name in the middle may take two lines. */
+.arme{text-align:center;line-height:1.15;padding:0 3px;box-sizing:border-box}
