@@ -2511,8 +2511,78 @@
       root.querySelectorAll('[data-fill]').forEach(fillCard);
     }
     fitTeam(root);
+    aroundCard(root);
     evenCards(root);
     fitPortfolio(root);
+  }
+  // "Who invests around them": firms that keep appearing in the same startups, before, together with, or after this
+  // firm (v2_firm_around; docs/investors_list_signals.md). The card appears only when there is something to show.
+  const AROUND_COL = { before: '#F3E3A3', with: '#BFD9F2', after: '#A8D8B4' };
+  let AROUND = null;
+  function aroundCard(root) {
+    const C = window.REGRET || {};
+    const main = root && root.closest ? (root.closest('main') || root) : root;
+    const slug = main && main.dataset && main.dataset.firm;
+    const grid = root.querySelector && root.querySelector('.bento');
+    if (!slug || !grid || !C.url || !C.key || typeof fetch !== 'function') return;
+    if (AROUND && AROUND.slug === slug) { if (AROUND.data) drawAround(root, AROUND.data); return; }
+    AROUND = { slug: slug, data: null };
+    fetch(C.url + '/rest/v1/rpc/v2_firm_around', {
+      method: 'POST',
+      headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_slug: slug })
+    }).then(r => (r.ok ? r.json() : null)).then(d => {
+      if (!d || !AROUND || AROUND.slug !== slug) return;
+      AROUND.data = d;
+      drawAround(root, d);
+      evenCards(root);
+    }).catch(function () { /* no card is fine */ });
+  }
+  function drawAround(root, d) {
+    const grid = root.querySelector('.bento');
+    const total = ['before', 'with', 'after'].reduce((n, k) => n + ((d[k] && d[k].firms) || 0), 0);
+    if (!grid || !total || grid.querySelector('#around')) return;
+    const W = 509, H = 208, CX = W / 2, CY = H / 2, ys = [36, 104, 172];
+    const rad = n => Math.round(13 + 4.2 * Math.sqrt(n));
+    const bub = (x, y, f, col) => { const r = rad(f.n); return '<span class="arb" style="left:' + (x - r) + 'px;top:' + (y - r) + 'px;width:' + (2 * r) + 'px;height:' + (2 * r) + 'px;background:' + col + '">' + f.n + '</span>'; };
+    const lab = (x, y, w, al, f) => '<a class="arl" href="' + (window.REGRET_VC_BASE || (window.REGRET_ROOT || '') + 'vc/') + encodeURIComponent(f.slug) + '/" style="left:' + x + 'px;top:' + (y - 9) + 'px;width:' + w + 'px;text-align:' + al + '">' + esc(f.name) + '</a>';
+    const B = (d.before.list || []).slice(0, 3), A = (d.after.list || []).slice(0, 3), Wd = (d.with.list || []).slice(0, 2);
+    let svg = '', html = '';
+    B.forEach((f, i) => { svg += '<path d="M150 ' + ys[i] + ' C205 ' + ys[i] + ' 205 ' + CY + ' ' + CX + ' ' + CY + '" fill="none" stroke="' + AROUND_COL.before + '" stroke-width="' + (2 + Math.min(f.n, 14) * 0.9).toFixed(1) + '" stroke-linecap="round"/>'; html += bub(150, ys[i], f, AROUND_COL.before) + lab(0, ys[i], 112, 'right', f); });
+    A.forEach((f, i) => { svg += '<path d="M' + (W - 150) + ' ' + ys[i] + ' C' + (W - 205) + ' ' + ys[i] + ' ' + (W - 205) + ' ' + CY + ' ' + CX + ' ' + CY + '" fill="none" stroke="' + AROUND_COL.after + '" stroke-width="' + (2 + Math.min(f.n, 14) * 0.9).toFixed(1) + '" stroke-linecap="round"/>'; html += bub(W - 150, ys[i], f, AROUND_COL.after) + lab(W - 112, ys[i], 112, 'left', f); });
+    if (Wd.length) svg += '<path d="M' + CX + ' ' + (Wd[1] ? 20 : 20) + ' V' + (Wd[1] ? H - 20 : CY) + '" stroke="' + AROUND_COL.with + '" stroke-width="7" stroke-linecap="round"/>';
+    Wd.forEach((f, i) => { const y = i ? H - 20 : 20; html += bub(CX, y, f, AROUND_COL.with) + '<span class="arw" style="left:' + (CX - 70) + 'px;top:' + (i ? H - 64 : 48) + 'px"><span>' + esc(f.name) + '</span></span>'; });
+    const name = ((root.closest && root.closest('main') || root).querySelector('.ph h1') || {}).textContent || '';
+    const card = document.createElement('article');
+    card.className = 'mod';
+    card.id = 'around';
+    card.innerHTML = '<div class="mh"><h3>Who invests around them</h3></div><p class="arsub">Before, with and after. Number = startups in common.</p>'
+      + '<div class="arbox"><div class="arstage"><svg aria-hidden="true" width="' + W + '" height="' + H + '">' + svg + '</svg>' + html
+      + '<span class="arme" style="left:' + (CX - 34) + 'px;top:' + (CY - 34) + 'px">' + esc(name.split(' ')[0]) + '</span></div></div>'
+      + '<button type="button" class="ash" data-around>Show all ' + total + ' firms</button>';
+    grid.insertBefore(card, grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
+    card.querySelector('[data-around]').addEventListener('click', function () { openAround(name, d); });
+  }
+  function openAround(name, d) {
+    const old = document.getElementById('aroundbox');
+    if (old) old.remove();
+    const base = window.REGRET_VC_BASE || (window.REGRET_ROOT || '') + 'vc/';
+    const col = (k, title) => '<div class="arcol"><h3 style="border-color:' + AROUND_COL[k] + '">' + title + ' <span>' + ((d[k] && d[k].firms) || 0) + ' firms</span></h3>'
+      + ((d[k] && d[k].list) || []).map(f => '<a href="' + base + encodeURIComponent(f.slug) + '/"><span>' + esc(f.name) + '</span><b>' + f.n + '</b></a>').join('') + '</div>';
+    const box = document.createElement('div');
+    box.id = 'aroundbox';
+    box.className = 'readybox';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.innerHTML = '<div class="readycard arcard"><button type="button" class="readyx" aria-label="Close">×</button><h2>Who invests around ' + esc(name) + '</h2>'
+      + '<p>Firms that keep turning up in the same startups, and whether they got there before, together, or after. The number is how many startups they share.</p>'
+      + '<div class="arcols">' + col('before', 'Before') + col('with', 'With') + col('after', 'After') + '</div></div>';
+    document.body.appendChild(box);
+    const close = function () { box.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = function (e) { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    box.addEventListener('click', function (e) { if (e.target === box) close(); });
+    box.querySelector('.readyx').addEventListener('click', close);
   }
   // "Also in the portfolio" stays on one line in the card; a last "+N" tag opens the full list (the card's Show all).
   function fitPortfolio(root) {

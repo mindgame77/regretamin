@@ -41,3 +41,14 @@ The firm page calls it to draw the icons in the status tile. Timed as `anon`: 8 
 For the "Am I ready for this firm?" button, which opens a "coming soon, leave your email" box until the feature is built.
 - Table `v2_ready_interest` (`id`, `email`, `firm_slug`, `created_at`; unique on email + firm). Row level security on; no access for `anon` or `authenticated`.
 - Function `v2_ready_interest_add(p_email text, p_slug text)`: checks the email's shape, stops at 300 new rows an hour, stores the row, returns `{"status": "ok" | "bad_email" | "rate_limited"}`. Security definer, 3 s timeout, execute granted to `anon` and `authenticated`.
+
+## Migration `firm_page_who_invests_around` (2026-11-22)
+`v2_firm_around(p_slug text)` feeds the "Who invests around them" card on the firm page. Read-only, security definer, 4 s timeout,
+execute granted to `anon` and `authenticated`. Returns `{startups, before, with, after}`, each group as `{firms, list:[{name, slug, n}]}`.
+- For each startup the firm backed, every other listed firm's first deal there is compared with this firm's first deal:
+  earlier = before, same day = with, later = after. A firm goes in the group where most of its shared startups fall.
+- Deals counted: `is_current and shown`, dated, not in the future, `deal_date_precision <> 'year'`.
+- A firm is kept when it shares 3 or more startups, or 2 or more and at least 10% of this firm's startups, or it is a
+  top-100 firm that came in after at least twice.
+- Not done: hiding pairs that are really the same firm under two names (claude/duplicate-firm-candidates.md in the project).
+Timed: about 45 ms for Sequoia, a16z and 500 Global.
