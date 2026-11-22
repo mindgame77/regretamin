@@ -283,23 +283,36 @@
     a.innerHTML = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>';
     bar.appendChild(a);    nameTag(bar);
   }
-  // The search bar works like the one on the Investors list: the firm is a tag with an x, so one press clears it,
-  // and the field is free to type another VC's name.
+  // The search bar is the Investors list's bar: the firm is a tag with an x, and typing a name opens the Investors
+  // list narrowed to it. The x on the tag is the only control (founder); it opens the full list.
   function nameTag(bar) {
     const input = bar.querySelector('input[name="q"]');
     if (!input || !input.insertAdjacentElement || bar.querySelector('.sbtag')) return;
     const name = String(input.value || '').trim();
     if (!name) return;
+    const list = (window.REGRET_ROOT || '') + 'investors/';
+    const go = function (text) { location.href = list + (text ? '?q=' + encodeURIComponent(text) : ''); };
     const tag = document.createElement('span');
     tag.className = 'sbtag';
     tag.innerHTML = '<span>' + esc(name) + '</span><button type="button" aria-label="Remove ' + esc(name) + '">×</button>';
     input.insertAdjacentElement('beforebegin', tag);
     input.value = '';
-    input.placeholder = 'Search a VC by name';
+    input.placeholder = '';
     input.removeAttribute('onfocus');
-    const drop = function () { tag.remove(); input.focus(); };
-    tag.querySelector('button').addEventListener('click', drop);
-    input.addEventListener('keydown', function (e) { if (e.key === 'Backspace' && !input.value && tag.parentNode) { e.preventDefault(); drop(); } });
+    tag.querySelector('button').addEventListener('click', function () { go(''); });
+    let timer = 0;
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      const text = input.value.trim();
+      if (text.length >= 2) timer = setTimeout(function () { go(text); }, 350);
+    });
+    input.addEventListener('keydown', function (e) { if (e.key === 'Backspace' && !input.value) { e.preventDefault(); go(''); } });
+    bar.addEventListener('submit', function (e) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      clearTimeout(timer);
+      go(input.value.trim());
+    }, true);
   }
   // Keep a row of tags on one line. What does not fit collapses into a last "+N" tag; pressing it shows them all
   // in place and it turns into "Show less". Does nothing where the layout cannot be measured.

@@ -1156,6 +1156,15 @@
         });
       }
 
+      // A firm page's search bar sends the typed name here as ?q=, so typing carries on in this bar.
+      try {
+        const typed = new URLSearchParams(location.search).get('q');
+        if (typed && q) {
+          q.value = typed.slice(0, 80);
+          if (q.focus) q.focus();
+          if (q.setSelectionRange) q.setSelectionRange(q.value.length, q.value.length);
+        }
+      } catch (e) { /* no address to read: start with an empty bar */ }
       renderFacets();
       updateBadge();
       watchScroll();

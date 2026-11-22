@@ -1601,3 +1601,6 @@ main.prof .sb.big .sbx{width:36px;height:36px;margin-left:0;border-radius:9px}
 .sbtag{display:inline-flex;align-items:center;gap:4px;flex:none;background:#F3F5F4;border:1.5px solid #10201C;border-radius:8px;padding:4px 4px 4px 10px;font-size:14px;line-height:1.2;color:#10201C}
 .sbtag button{width:22px;height:22px;border:0;border-radius:6px;background:none;color:#10201C;font-size:16px;line-height:1;cursor:pointer;padding:0}
 .sbtag button:hover{background:#E2E7E5}
+main.prof .sb.big .btn,main.prof .sb.big .sbx{display:none}
+main.prof .sb.big{padding:6px 12px}
+main.prof .sb.big .firms-clear{margin-left:auto}
