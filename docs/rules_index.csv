@@ -409,3 +409,12 @@ N.3,N Next firms what does not fit,Record firm slug section and what does not fi
 N.4,N Next firms what does not fit,This is not a permanent ignore rule. The temporary ignore default is revoked.,on main
 B4.6,B4 SEC fact pills,Staff and Investment staff are refused. Private funds stays when the SEC source states a non-zero count.,on main
 B9.9,B9 Limited partners,Do not store or print a commitment count. B9.1's fund-count line is not collected.,on main
+A16.1,A16 2021 cutoff,"Hidden deals. Every deal dated before 2021-01-01 is hidden: v2_deals.shown = false. Nothing is deleted. A hidden deal is not on firm pages, in “Show all”, in...","on main (Alex, 2026-11-22)"
+A16.2,A16 2021 cutoff,What counts as dated. Undated means the year is not known (deal_date is empty). A year-only or year+month date counts as dated. It is stored as January 1 (or...,"on main (Alex, 2026-11-22)"
+A16.3,A16 2021 cutoff,"Parked startups. A startup with deals but no deal dated 2021 or later is parked on founderlist.startups: old deals only, undated deals only, or old plus unda...","on main (Alex, 2026-11-22)"
+A16.4,A16 2021 cutoff,"What is kept. A firm’s or startup’s founded year, legal cases, reviews and feedback, and owner comments stay, even when they are from before 2021. The cutoff...","on main (Alex, 2026-11-22)"
+A16.5,A16 2021 cutoff,"Automatic rules (database triggers on v2_deals and founderlist.startups). A new or updated deal dated before 2021 is always saved hidden, whatever path write...","on main (Alex, 2026-11-22)"
+A16.6,A16 2021 cutoff,Founders and startups pages. Startup founders are not shown on the site today. A future founders or startups page shows only startups with a deal dated 2021 ...,"on main (Alex, 2026-11-22)"
+A16.7,A16 2021 cutoff,"Applied 2026-11-22, 8:56–9:03 AM PT. 17,989 deals across 1,628 firms hidden. 29,339 open founder rows and 41 open location rows parked. 1,282 done founder ro...","on main (Alex, 2026-11-22)"
+A16.8,A16 2021 cutoff,"Known side effect. 45 startups now show as undated portfolio companies on a firm page. Each had an undated record that was covered by a pre-2021 deal, which ...","on main (Alex, 2026-11-22)"
+A16.9,A16 2021 cutoff,Rollback. rollback.sql (everything) and rollback_founders.sql (only the done-row parking) are kept with the lists of affected rows in /workspace/rollback-202...,"on main (Alex, 2026-11-22)"
