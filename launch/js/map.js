@@ -243,6 +243,11 @@
       p.r = p.kind === 'dot' ? 6 : S.level === 'world' ? Math.round(18 + 20 * Math.pow(p.d / max, 0.6)) : sector ? Math.round(7 + 30 * Math.sqrt(p.d / max)) : S.level === 'eu' ? Math.round(11 + 27 * Math.sqrt(p.d / max)) : Math.round(14 + 26 * Math.sqrt(p.d / max));
       p.ax = p.x; p.ay = p.y;
     });
+    // On the US and Europe maps the smallest places are left out so the map stays readable. With narrow filters that
+    // could leave it empty while the sector list still shows deals, so when few circles remain the next largest come back.
+    if (hot && S.level !== 'world' && rows.filter((p) => p.kind).length < 8) {
+      rows.filter((p) => !p.kind && p.d + p.pv > 0).sort((a, b) => (b.d + b.pv) - (a.d + a.pv)).slice(0, 15 - rows.filter((p) => p.kind).length).forEach((p) => { p.kind = 'hot'; });
+    }
     const out = rows.filter((p) => p.kind), big = out.filter((p) => p.kind !== 'dot');
     for (let it = 0; it < 80; it++) {  // nudge overlapping circles apart, keeping each close to its true spot
       for (let i = 0; i < big.length; i++) for (let j = i + 1; j < big.length; j++) {

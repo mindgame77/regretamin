@@ -1252,8 +1252,8 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-keys{display:block}
 .vm-keys i,.vm-sec i{display:inline-block;width:11px;height:11px;border-radius:50%;border:1.5px solid var(--mi);box-sizing:border-box;vertical-align:-1px;margin:0 4px 0 8px}
 .vm-keys i:first-child{margin-left:0}
-.vm-pl.vm-up.vm-lt,i.vm-up.vm-lt{background:#DDF0E2}
-.vm-pl.vm-down.vm-lt,i.vm-down.vm-lt{background:#FADAD6}
+.vm-pl.vm-up.vm-lt,i.vm-up.vm-lt{background:#CFEAD6}
+.vm-pl.vm-down.vm-lt,i.vm-down.vm-lt{background:#F8CFCA}
 .vm-spark{flex:none;width:72px;height:22px;display:block}
 .vm-secp .vm-spark{width:58px}
 .vm-sec span:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
