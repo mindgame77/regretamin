@@ -399,7 +399,7 @@
         const color = key === 'industry' ? sectorColor(o.label) : '';
         return '<label class="' + (checked ? 'checked' : '') + '" data-facet="' + esc(key) + '" data-value="' + esc(o.value) + '">'
           + '<input type="checkbox"' + (checked ? ' checked' : '') + (inPanel ? ' data-draft="1"' : '') + '>'
-          + '<span class="optlabel"' + (color ? ' style="color:' + color + '"' : '') + ' title="' + esc(o.desc || o.label) + '">' + (o.icon || '') + esc(o.label)
+          + '<span class="optlabel"' + (color ? ' style="color:' + color + '"' : '') + (o.desc ? '' : ' title="' + esc(o.label) + '"') + '>' + (o.icon || '') + esc(o.label)
           + (o.desc ? '<small class="optdesc">' + esc(o.desc) + '</small>' : '') + '</span>'
           + '<span class="optcount">' + o.count + '</span></label>';
       }
