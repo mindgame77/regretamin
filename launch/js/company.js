@@ -2543,24 +2543,32 @@
     const grid = root.querySelector('.bento');
     const total = ['before', 'with', 'after'].reduce((n, k) => n + ((d[k] && d[k].firms) || 0), 0);
     if (!grid || !total || grid.querySelector('#around')) return;
-    const W = 509, H = 208, CX = W / 2, CY = H / 2, ys = [36, 104, 172];
-    const rad = n => Math.round(13 + 4.2 * Math.sqrt(n));
-    const bub = (x, y, f, col) => { const r = rad(f.n); return '<span class="arb" style="left:' + (x - r) + 'px;top:' + (y - r) + 'px;width:' + (2 * r) + 'px;height:' + (2 * r) + 'px;border-color:' + col + ';border-width:' + Math.max(5, Math.round(r * 0.32)) + 'px">' + f.n + '</span>'; };
-    const lab = (x, y, w, al, f) => '<a class="arl" href="' + (window.REGRET_VC_BASE || (window.REGRET_ROOT || '') + 'vc/') + encodeURIComponent(f.slug) + '/" style="left:' + x + 'px;top:' + (y - 9) + 'px;width:' + w + 'px;text-align:' + al + '">' + esc(f.name) + '</a>';
+    const W = 509, H = 208, CY = H / 2, ys = [36, 104, 172], SIDE = 168, LW = 132;
     const B = (d.before.list || []).slice(0, 3), A = (d.after.list || []).slice(0, 3), Wd = (d.with.list || []).slice(0, 2);
+    // With one side empty the firm moves to that side, so the picture stays balanced.
+    const CX = !B.length && A.length ? SIDE - 40 : !A.length && B.length ? W - SIDE + 40 : W / 2;
+    const rad = n => Math.min(25, Math.round(12 + 3 * Math.sqrt(n)));
+    const base = window.REGRET_VC_BASE || (window.REGRET_ROOT || '') + 'vc/';
+    const bub = (x, y, f, col) => { const r = rad(f.n); return '<a class="arb" href="' + base + encodeURIComponent(f.slug) + '/" aria-label="' + esc(f.name) + ', ' + f.n + ' startups in common" style="left:' + (x - r) + 'px;top:' + (y - r) + 'px;width:' + (2 * r) + 'px;height:' + (2 * r) + 'px;border-color:' + col + ';border-width:' + Math.max(5, Math.round(r * 0.32)) + 'px">' + f.n + '</a>'; };
+    const lab = (x, y, w, al, f) => '<a class="arl" href="' + base + encodeURIComponent(f.slug) + '/" title="' + esc(f.name) + '" style="left:' + x + 'px;top:' + (y - 9) + 'px;' + (al === 'right' ? 'max-width:' + w + 'px;transform:translateX(-100%)' : 'max-width:' + w + 'px') + '">' + esc(f.name) + '</a>';
+    const arc = (x, y) => '<path d="M' + x + ' ' + y + ' C' + ((x + CX) / 2) + ' ' + y + ' ' + ((x + CX) / 2) + ' ' + CY + ' ' + CX + ' ' + CY + '" fill="none" stroke="#10201C" stroke-opacity=".55" stroke-width="1.5" stroke-linecap="round"/>';
     let svg = '', html = '';
-    B.forEach((f, i) => { svg += '<path d="M150 ' + ys[i] + ' C205 ' + ys[i] + ' 205 ' + CY + ' ' + CX + ' ' + CY + '" fill="none" stroke="#10201C" stroke-opacity=".55" stroke-width="1.5" stroke-linecap="round"/>'; html += bub(150, ys[i], f, AROUND_COL.before) + lab(0, ys[i], 112, 'right', f); });
-    A.forEach((f, i) => { svg += '<path d="M' + (W - 150) + ' ' + ys[i] + ' C' + (W - 205) + ' ' + ys[i] + ' ' + (W - 205) + ' ' + CY + ' ' + CX + ' ' + CY + '" fill="none" stroke="#10201C" stroke-opacity=".55" stroke-width="1.5" stroke-linecap="round"/>'; html += bub(W - 150, ys[i], f, AROUND_COL.after) + lab(W - 112, ys[i], 112, 'left', f); });
-    if (Wd.length) svg += '<path d="M' + CX + ' ' + (Wd[1] ? 20 : 20) + ' V' + (Wd[1] ? H - 20 : CY) + '" stroke="#10201C" stroke-opacity=".55" stroke-width="1.5" stroke-dasharray="2 4" stroke-linecap="round"/>';
-    Wd.forEach((f, i) => { const y = i ? H - 20 : 20; html += bub(CX, y, f, AROUND_COL.with) + '<span class="arw" style="left:' + (CX - 70) + 'px;top:' + (i ? H - 64 : 48) + 'px"><span>' + esc(f.name) + '</span></span>'; });
+    B.forEach((f, i) => { svg += arc(SIDE, ys[i]); html += bub(SIDE, ys[i], f, AROUND_COL.before) + lab(SIDE - rad(f.n) - 10, ys[i], LW, 'right', f); });
+    A.forEach((f, i) => { svg += arc(W - SIDE, ys[i]); html += bub(W - SIDE, ys[i], f, AROUND_COL.after) + lab(W - SIDE + rad(f.n) + 10, ys[i], LW, 'left', f); });
+    if (Wd.length) svg += '<path d="M' + CX + ' 22 V' + (Wd[1] ? H - 22 : CY) + '" stroke="#10201C" stroke-opacity=".55" stroke-width="1.5" stroke-dasharray="2 4" stroke-linecap="round"/>';
+    // The "with" firms sit above and below the firm; their names go on the free side.
+    const wSide = !A.length && B.length ? 'right' : 'left';
+    Wd.forEach((f, i) => { const y = i ? H - 20 : 20, r = rad(f.n); html += bub(CX, y, f, AROUND_COL.with) + (wSide === 'left' && A.length && B.length
+      ? '<a class="arl arlw" href="' + base + encodeURIComponent(f.slug) + '/" title="' + esc(f.name) + '" style="left:' + CX + 'px;top:' + (i ? y - r - 19 : y + r + 2) + 'px;max-width:150px;transform:translateX(-50%)">' + esc(f.name) + '</a>'
+      : lab(wSide === 'right' ? CX + r + 10 : CX - r - 10, y, LW, wSide === 'right' ? 'left' : 'right', f)); });
     const name = ((root.closest && root.closest('main') || root).querySelector('.ph h1') || {}).textContent || '';
     const card = document.createElement('article');
     card.className = 'mod';
     card.id = 'around';
-    const key = (k, t) => '<span><i style="background:' + AROUND_COL[k] + '"></i>' + t + ' ' + ((d[k] && d[k].firms) || 0) + '</span>';
+    const key = (k, t) => (d[k] && d[k].firms) ? '<span><i style="background:' + AROUND_COL[k] + '"></i>' + t + ' ' + d[k].firms + '</span>' : '';
     card.innerHTML = '<div class="mh"><h3>Who invests around them</h3></div><p class="arsub">' + key('before', 'Before') + key('with', 'With') + key('after', 'After') + '<em>number = startups in common</em></p>'
       + '<div class="arbox"><div class="arstage"><svg aria-hidden="true" width="' + W + '" height="' + H + '">' + svg + '</svg>' + html
-      + '<span class="arme" style="left:' + (CX - 34) + 'px;top:' + (CY - 34) + 'px">' + esc(name.split(' ')[0]) + '</span></div></div>'
+      + '<span class="arme" style="left:' + (CX - 30) + 'px;top:' + (CY - 30) + 'px">' + esc(name.split(' ')[0]) + '</span></div></div>'
       + '<button type="button" class="ash" data-around>Show all ' + total + ' firms</button>';
     grid.insertBefore(card, grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
     card.querySelector('[data-around]').addEventListener('click', function () { openAround(name, d); });

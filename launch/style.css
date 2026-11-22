@@ -1664,3 +1664,8 @@ main.prof #around .arsub i{width:10px;height:10px;border-radius:50%;box-shadow:0
 .arl{font-weight:500;background:#fff;border-radius:4px;padding:0 4px}
 .arw span{background:#fff;border-radius:4px}
 main.prof #around .arstage{transform:scale(.78)}
+.arl{max-width:132px}
+.arw{display:none}
+.arme{width:60px;height:60px;font-size:11px;box-shadow:0 0 0 3px #fff,0 0 0 5px #F0861E,0 0 0 10px rgba(240,134,30,.22)}
+.arl.arlw{font-size:12px;line-height:16px}
+.arb{text-decoration:none}.arb:hover{box-shadow:0 0 0 1.5px #10201C,inset 0 0 0 1.5px #10201C,0 0 0 5px rgba(16,32,28,.12)}
