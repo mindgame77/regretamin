@@ -1464,3 +1464,9 @@ main.prof .ad{border-color:#D5DCD9}
 main.prof .ad a{text-decoration:none;font-weight:600}
 main.prof .ad a:hover{text-decoration:underline}
 main.prof #reviews>.ash,main.prof #investors>.ash{background:#F3F5F4}
+/* Sector marks: a dot in the industry colour (the map's colours) and ink text. The colour arrives as the element's
+   inline `color`; the text is painted ink with -webkit-text-fill-color so the dot can still read currentColor. */
+main.prof .htag .hp[style],main.prof .arty[style]{-webkit-text-fill-color:#10201C;display:inline-flex;align-items:center;gap:7px}
+main.prof .htag .hp[style]:before,main.prof .arty[style]:before{content:'';width:9px;height:9px;flex:none;border-radius:50%;background:currentColor;box-shadow:0 0 0 1.5px #10201C}
+main.prof .arty{border:0;background:none;padding:0;font-size:14px;font-weight:400}
+.find i{border:0;box-shadow:0 0 0 1.5px #10201C}

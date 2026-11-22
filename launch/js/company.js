@@ -1690,29 +1690,30 @@
   // One hue per parent industry (21: the original 18 plus Defense, Space, Govtech). A sub-industry uses its parent's hue.
   // The same hue on every firm, range, chart, popup and deal row. Other is always slate.
   // A future name uses a hash of that name only, into the original 17 hues, so it does not depend on rank or firm.
-  const SECTOR_PALETTE = ['#4B2BD6', '#14D9A5', '#FFB020', '#FF5C8A', '#2EA8FF', '#8A63F5', '#18BBD4', '#FF9566', '#9EDB51', '#788BFF', '#F26C68', '#42CFC3', '#D781EF', '#E6BE45', '#3773DB', '#EC7DA8', '#77C9A1', '#A7A2C2'];
+  const SECTOR_PALETTE = ['#A9C4E8', '#F2A7A0', '#F3D98B', '#9FD4C3', '#D9B5E0', '#BFDCA0', '#C59AC7', '#8E9BE0', '#C4CCF2', '#A8BDB5', '#F7E6B5', '#F5C19A', '#D5E0A3', '#9CC9D9', '#EFC4D0', '#B9E0E6', '#E6C9B0'];
   const SECTOR_COLORS = {
-    'AI agents': '#4B2BD6',
-    'AI models': '#14D9A5',
-    'Bio': '#FFB020',
-    'Climate & Energy': '#FF5C8A',
-    'Consumer': '#2EA8FF',
-    'Crypto': '#8A63F5',
-    'Developer tools': '#18BBD4',
-    'Education': '#FF9566',
-    'Enterprise software': '#9EDB51',
-    'Fintech': '#788BFF',
-    'Food & Agriculture': '#F26C68',
-    'Hardware & Robotics': '#42CFC3',
-    'Health': '#D781EF',
-    'Media & Gaming': '#E6BE45',
-    'Mobility': '#3773DB',
-    'Real estate': '#EC7DA8',
-    'Security': '#77C9A1',
-    'Other': '#A7A2C2',
-    'Defense': '#C4622D',
-    'Space': '#3A4FBF',
-    'Govtech': '#0E8A6A'
+    // One colour per industry, the same as on the map (launch/js/map.js COLORS). A sub-industry shows in its parent's colour.
+    'Enterprise software': '#A9C4E8',
+    'Health': '#F2A7A0',
+    'Fintech': '#F3D98B',
+    'Hardware & Robotics': '#9FD4C3',
+    'Consumer': '#D9B5E0',
+    'Climate & Energy': '#BFDCA0',
+    'Bio': '#C59AC7',
+    'AI agents': '#8E9BE0',
+    'AI models': '#C4CCF2',
+    'Security': '#A8BDB5',
+    'Crypto': '#F7E6B5',
+    'Media & Gaming': '#F5C19A',
+    'Food & Agriculture': '#D5E0A3',
+    'Defense': '#B5B5BD',
+    'Space': '#9AA5D1',
+    'Mobility': '#9CC9D9',
+    'Education': '#EFC4D0',
+    'Developer tools': '#B9E0E6',
+    'Real estate': '#E6C9B0',
+    'Govtech': '#C2D6C8',
+    'Other': '#DADFDD'
   };
   // Sub-industry name -> parent. Names that are themselves parents are not listed.
   const SUB_PARENT = {

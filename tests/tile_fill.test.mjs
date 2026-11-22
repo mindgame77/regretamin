@@ -55,24 +55,24 @@ test('legal case titles are not ellipsized', () => {
 
 test('industry color comes from the name, and the donut is a filled ring', () => {
   const { sectorColor } = sandbox.window.RegretCompany;
-  const palette = ['#4B2BD6', '#14D9A5', '#FFB020', '#FF5C8A', '#2EA8FF', '#8A63F5', '#18BBD4', '#FF9566', '#9EDB51', '#788BFF', '#F26C68', '#42CFC3', '#D781EF', '#E6BE45', '#3773DB', '#EC7DA8', '#77C9A1', '#A7A2C2'];
+  const palette = ['#A9C4E8', '#F2A7A0', '#F3D98B', '#9FD4C3', '#D9B5E0', '#BFDCA0', '#C59AC7', '#8E9BE0', '#C4CCF2', '#A8BDB5', '#F7E6B5', '#F5C19A', '#D5E0A3', '#9CC9D9', '#EFC4D0', '#B9E0E6', '#E6C9B0'];
   const js = fs.readFileSync(new URL('launch/js/company.js', root), 'utf8');
   palette.forEach(hex => assert.match(js, new RegExp(hex, 'i')));
-  assert.equal(sectorColor('AI agents'), '#4B2BD6');
-  assert.equal(sectorColor('Enterprise software'), '#9EDB51');
-  assert.equal(sectorColor('Health'), '#D781EF');
-  assert.equal(sectorColor('Security'), '#77C9A1');
-  assert.equal(sectorColor('Other'), '#A7A2C2');
-  assert.equal(sectorColor('other'), '#A7A2C2');
+  assert.equal(sectorColor('AI agents'), '#8E9BE0');
+  assert.equal(sectorColor('Enterprise software'), '#A9C4E8');
+  assert.equal(sectorColor('Health'), '#F2A7A0');
+  assert.equal(sectorColor('Security'), '#A8BDB5');
+  assert.equal(sectorColor('Other'), '#DADFDD');
+  assert.equal(sectorColor('other'), '#DADFDD');
   assert.equal(sectorColor('Health'), sectorColor('health'));
   assert.equal(sectorColor('Cloud & Data'), sectorColor('Developer tools'));
   assert.equal(sectorColor('Cybersecurity'), sectorColor('Security'));
   assert.equal(sectorColor('Biotech'), sectorColor('Bio'));
   assert.equal(sectorColor('Payments'), sectorColor('Fintech'));
-  assert.equal(sectorColor('Robotics'), '#42CFC3');
-  assert.equal(sectorColor('Defense'), '#C4622D');
-  assert.equal(sectorColor('Space'), '#3A4FBF');
-  assert.equal(sectorColor('Govtech'), '#0E8A6A');
+  assert.equal(sectorColor('Robotics'), '#9FD4C3');
+  assert.equal(sectorColor('Defense'), '#B5B5BD');
+  assert.equal(sectorColor('Space'), '#9AA5D1');
+  assert.equal(sectorColor('Govtech'), '#C2D6C8');
   assert.equal(sectorColor('Defense'), sectorColor('defense'));
   const { parentIndustry, dealLabel, dealParent } = sandbox.window.RegretCompany;
   assert.equal(parentIndustry('Gaming'), 'Media & Gaming');
@@ -87,7 +87,7 @@ test('industry color comes from the name, and the donut is a filled ring', () =>
   assert.equal(future, sectorColor('Quantum widgets'));
   assert.notEqual(future, '#A7A2C2');
   assert.ok(palette.slice(0, 17).includes(future));
-  assert.ok(!palette.includes('#C4622D'));
+  assert.ok(!palette.includes('#B5B5BD'));
   sandbox.addEventListener = function () {};
   vm.runInContext(fs.readFileSync(new URL('launch/js/firms.js', root), 'utf8'), sandbox, { filename: 'firms.js' });
   const dir = sandbox.window.RegretSectors;
