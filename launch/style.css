@@ -1591,3 +1591,13 @@ main.hp.lg .toc a:hover{text-decoration:underline}
 .sgi input,.sgi .in{background:#fff!important;border:1.5px solid #10201C!important;border-radius:12px}
 .sgi input::placeholder{color:#586964!important}
 .sgi .sudiv,.sgi hr{background:#E2E7E5;border-color:#E2E7E5}
+/* The firm page's search bar matches the Investors list: same height, the firm as a tag, x to clear. */
+main.prof .sb.big{min-height:48px;border-width:1.5px;border-radius:12px;padding:6px 6px 6px 12px;gap:8px;align-items:center}
+main.prof .sb.big .mg{width:18px;height:18px;flex:none}
+main.prof .ps0 input{font-size:15px;font-weight:400;letter-spacing:0;padding:6px 0;min-width:120px}
+main.prof .ps0 input::placeholder{color:#586964}
+main.prof .sb.big .btn{height:36px;padding:0 16px;font-size:14px;border-radius:9px}
+main.prof .sb.big .sbx{width:36px;height:36px;margin-left:0;border-radius:9px}
+.sbtag{display:inline-flex;align-items:center;gap:4px;flex:none;background:#F3F5F4;border:1.5px solid #10201C;border-radius:8px;padding:4px 4px 4px 10px;font-size:14px;line-height:1.2;color:#10201C}
+.sbtag button{width:22px;height:22px;border:0;border-radius:6px;background:none;color:#10201C;font-size:16px;line-height:1;cursor:pointer;padding:0}
+.sbtag button:hover{background:#E2E7E5}

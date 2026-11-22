@@ -281,7 +281,25 @@
     a.href = (window.REGRET_ROOT || '') || './';
     a.setAttribute('aria-label', 'Close and go back to the map');
     a.innerHTML = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>';
-    bar.appendChild(a);
+    bar.appendChild(a);    nameTag(bar);
+  }
+  // The search bar works like the one on the Investors list: the firm is a tag with an x, so one press clears it,
+  // and the field is free to type another VC's name.
+  function nameTag(bar) {
+    const input = bar.querySelector('input[name="q"]');
+    if (!input || !input.insertAdjacentElement || bar.querySelector('.sbtag')) return;
+    const name = String(input.value || '').trim();
+    if (!name) return;
+    const tag = document.createElement('span');
+    tag.className = 'sbtag';
+    tag.innerHTML = '<span>' + esc(name) + '</span><button type="button" aria-label="Remove ' + esc(name) + '">×</button>';
+    input.insertAdjacentElement('beforebegin', tag);
+    input.value = '';
+    input.placeholder = 'Search a VC by name';
+    input.removeAttribute('onfocus');
+    const drop = function () { tag.remove(); input.focus(); };
+    tag.querySelector('button').addEventListener('click', drop);
+    input.addEventListener('keydown', function (e) { if (e.key === 'Backspace' && !input.value && tag.parentNode) { e.preventDefault(); drop(); } });
   }
   // Keep a row of tags on one line. What does not fit collapses into a last "+N" tag; pressing it shows them all
   // in place and it turns into "Show less". Does nothing where the layout cannot be measured.
