@@ -2311,7 +2311,7 @@
     if (!body || !card.clientHeight) return;
     const rows = Array.from(body.children).filter(el => !el.classList.contains('ash'));
     const show = card.querySelector('.ash');
-    rows.forEach(row => { row.hidden = true; });
+    rows.forEach(row => { row.hidden = true; if (row.classList) row.classList.remove('peek'); if (row.style) row.style.maxHeight = ''; });
     if (show) show.hidden = false;
     const budget = card.clientHeight;
     let shown = 0;
@@ -2331,9 +2331,30 @@
       shown++;
     }
     const more = rows.some(row => row.hidden);
-    // Legal, What investors look for, and What founders say keep Show all even when the one row fits.
-    const keepShow = card.id === 'legal' || card.id === 'investors' || card.id === 'reviews';
-    if (show) show.hidden = keepShow ? false : !more;
+    // Show all appears only when there is more than fits, and says how many there are in all.
+    if (show) {
+      show.hidden = !more;
+      if (more && !show.querySelector('*')) show.textContent = (AC.show_all || 'Show all') + ' ' + rows.length;
+    }
+    // When there is more, the next row peeks in, cut off and faded, so the list visibly continues.
+    const next = more && rows.find(row => row.hidden);
+    if (next && next.classList && next.style && typeof next.getBoundingClientRect === 'function') {
+      // Measure the free space before the row is shown, so showing it cannot push Show all out of the card.
+      const shownRows = rows.filter(row => !row.hidden);
+      const last = shownRows[shownRows.length - 1];
+      const foot = show && !show.hidden ? show.getBoundingClientRect().top : card.getBoundingClientRect().bottom - 14;
+      const room = last ? Math.floor(foot - last.getBoundingClientRect().bottom - 8) : 0;
+      const peek = (row, h) => { row.style.maxHeight = h + 'px'; row.classList.add('peek'); row.hidden = false; };
+      if (room >= 18) peek(next, room);
+      else if (shownRows.length > 1) {
+        // No room under the last full row: that row becomes the cut-off one, so the list still visibly continues.
+        const h = last.getBoundingClientRect().height;
+        const prev = shownRows[shownRows.length - 2];
+        const room2 = Math.floor(foot - prev.getBoundingClientRect().bottom - 8);
+        last.hidden = true;
+        if (room2 >= 24) peek(last, Math.min(room2, Math.max(28, Math.round(h * 0.75))));
+      }
+    }
   }
   // Team keeps the shared row fitter. On a phone the card grows, so every person shows and Show all stays off.
   function fitTeam(root) {
@@ -2355,6 +2376,22 @@
       root.querySelectorAll('[data-fill]').forEach(fillCard);
     }
     fitTeam(root);
+    evenCards(root);
+  }
+  // The grid keeps an even number of cards. When the firm's own cards leave a hole, a map card fills it.
+  function evenCards(root) {
+    const grid = root.querySelector && root.querySelector('.bento');
+    if (!grid || !grid.querySelectorAll || !grid.insertBefore) return;
+    const old = grid.querySelector('.mod.filler');
+    const n = Array.from(grid.children).filter(el => el.classList && el.classList.contains('mod') && !el.classList.contains('span2') && !el.classList.contains('filler') && !el.hidden).length;
+    if (n % 2 === 0) { if (old) old.remove(); return; }
+    if (old) return;
+    const ROOT = window.REGRET_ROOT || '';
+    const card = document.createElement('article');
+    card.className = 'mod filler';
+    card.id = 'onmap';
+    card.innerHTML = '<div class="mh"><h3>On the map</h3></div><a class="fmap" href="' + ROOT + 'map/" aria-label="Open the map"><img src="' + ROOT + 'assets/map/world.svg" alt="" loading="lazy"></a><a class="ash" href="' + ROOT + 'map/">Open the map</a>';
+    grid.insertBefore(card, grid.querySelector('.mod.span2'));
   }
   if (window.addEventListener) window.addEventListener('resize', () => {
     const main = document.querySelector && document.querySelector('main.prof');

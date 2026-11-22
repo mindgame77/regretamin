@@ -123,10 +123,11 @@ test('one investor row and one legal case get Show all on a non-Sequoia firm', (
   assert.ok(made.actinvestors && made.actlegal);
 });
 
-test('the row fitter does not hide Show all on those three tiles', () => {
+// Founder, 2026-11-22: Show all appears only when there is more than fits (the tile itself opens the popup).
+test('the row fitter shows Show all only when a tile has more than fits', () => {
   const fn = src.slice(src.indexOf('function fillCard'), src.indexOf('function fitTeam'));
-  assert.match(fn, /card\.id === 'legal' && card\.id === 'investors' && card\.id === 'reviews'|card\.id === 'legal' \|\| card\.id === 'investors' \|\| card\.id === 'reviews'/);
-  assert.match(fn, /keepShow \? false : !more/);
+  assert.match(fn, /show\.hidden = !more/);
+  assert.doesNotMatch(fn, /keepShow/);
   assert.doesNotMatch(fn, /=== 'team'/);
 });
 
