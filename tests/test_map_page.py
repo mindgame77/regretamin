@@ -62,3 +62,15 @@ def test_which_firms_filter():
     assert "v2_top_firms" in sql and (ROOT / "docs/top-firms.md").exists()
     # a link can carry the view, but the page never rewrites its own address
     assert "qs.get('firms')" in js and "history.pushState" not in js and "history.replaceState" not in js
+
+
+def test_hot_view_sectors_first_switch_and_lines():
+    js = (ROOT / "launch/js/map.js").read_text()
+    sql = (ROOT / "docs/map_hot_detail.sql").read_text()
+    assert "sb.rpc('v2_map_hot_detail'" in js and "v2_map_hot_detail(text, text, text, int, text[], text[])" in sql
+    # one floor for places and sectors, and a lighter shade for small moves
+    assert "const HOT_MIN = 10;" in js and "const HOT_FAINT = 10;" in js and "vm-lt" in js
+    # year-only deals stay out of the lines too
+    assert "deal_date_precision::text <> 'year'" in sql
+    fx = json.loads((ROOT / "tests/fixtures/map_hot_detail.json").read_text())
+    assert all(len(r) == 5 and len(r[4]) == 8 for r in fx["sectors"])

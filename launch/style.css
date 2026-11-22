@@ -1252,6 +1252,22 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-keys{display:block}
 .vm-keys i,.vm-sec i{display:inline-block;width:11px;height:11px;border-radius:50%;border:1.5px solid var(--mi);box-sizing:border-box;vertical-align:-1px;margin:0 4px 0 8px}
 .vm-keys i:first-child{margin-left:0}
+.vm-pl.vm-up.vm-lt,i.vm-up.vm-lt{background:#DDF0E2}
+.vm-pl.vm-down.vm-lt,i.vm-down.vm-lt{background:#FADAD6}
+.vm-spark{flex:none;width:72px;height:22px;display:block}
+.vm-secp .vm-spark{width:58px}
+.vm-sec span:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vm-unit{display:inline-flex;border:1px solid #8A9893;border-radius:8px;overflow:hidden;flex:none}
+.vm-unit button{width:32px;height:28px;border:0;background:#fff;color:var(--mi);font:inherit;font-size:13px;cursor:pointer}
+.vm-unit button[aria-pressed="true"]{background:var(--mi);color:#fff;font-weight:600}
+.vm-unit button:focus-visible{outline:2px solid var(--mi);outline-offset:-2px}
+.vm-lh2{margin-top:14px}
+.vm-lh2 h3{margin:0;font-size:16px;font-weight:600}
+.vm-srows{margin-top:6px}
+.vm-secp{min-height:44px}
+.vm-sec .vm-pc{min-width:44px;text-align:right}
+.vm-fl{flex:none;min-width:56px;text-align:right;font-size:13px;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.vm-back{display:block;margin:0 0 10px;padding:0;text-align:left}
 .vm-sec{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;padding:0 6px;margin:0 -6px;border:0;border-top:1px solid var(--ml);background:none;font-size:14px;text-align:left;border-radius:0}
 .vm-sec i{margin:0;flex:none}
 .vm-sec span:nth-child(2){flex:1}

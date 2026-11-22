@@ -12,7 +12,7 @@
   // Ignored on any real host.
   const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const FIXTURE = LOCAL ? qs.get('fixture') : null;
-  const FX_FIRMS = FIXTURE && qs.get('fx_firms'), FX_UPDATES = FIXTURE && qs.get('fx_updates'), FX_HOT = FIXTURE && qs.get('fx_hot');
+  const FX_FIRMS = FIXTURE && qs.get('fx_firms'), FX_UPDATES = FIXTURE && qs.get('fx_updates'), FX_HOT = FIXTURE && qs.get('fx_hot'), FX_DETAIL = FIXTURE && qs.get('fx_detail');
 
   // Layout (founder's choice): a grey rail on the left holds two cards, controls and news; nothing covers the map.
   // ?layout=float brings back the first layout (cards floating over the map) for comparison.
@@ -26,13 +26,14 @@
   const STAGES = ['Pre-seed', 'Seed', 'Series A', 'Series B', 'Series C+', 'Growth'];
   const LEVELS = [['world', 'World'], ['us', 'United States'], ['eu', 'Europe']];
   const ZOOM = { 'US West': 'us', 'US Central': 'us', 'US East': 'us', 'Europe': 'eu' };
-  const HOT_MIN = 40;  // 'Hot right now': a place needs this many deals across both periods before it gets a colour
+  const HOT_MIN = 10;  // 'Hot right now': a place or a sector needs this many deals across both periods before it gets a colour
+  const HOT_FAINT = 10;  // ...and a rise or fall of fewer deals than this is drawn in the lighter green or red
   const RING_DEALS = 150, RING_FIRMS = 5, DOT_DEALS = 30;  // zoomed views only; the world view always draws rings
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   const now = new Date();
   const NQ = (now.getFullYear() - 2021) * 4 + Math.floor(now.getMonth() / 3) + 1;  // quarters from 2021 Q1 to this one
-  const S = { view: 'flow', days: 90, level: 'world', q0: 0, q1: NQ - 1, stages: [], sectors: [], who: 'all', pinned: null, list: null, data: null, geo: null, updates: [], playing: null };
+  const S = { view: 'flow', days: 90, level: 'world', q0: 0, q1: NQ - 1, stages: [], sectors: [], who: 'all', unit: 'pct', pinned: null, list: null, data: null, geo: null, updates: [], playing: null };
   // "Which firms" in the Hot right now view.
   const WHO = [['all', 'All firms'], ['top', 'Top firms'], ['focused', 'Focused funds'], ['new', 'New entrants']];
   const who = () => (S.view === 'hot' ? S.who : 'all');
@@ -68,13 +69,24 @@
     if (out) cache.set(key, out);
     return out;
   }
-  async function firms(place) {
+  async function firms(place, sector) {
     if (FX_FIRMS) return fetch(FX_FIRMS).then((r) => r.json());
     if (FIXTURE || !sb) return null;
     // in the 'Hot right now' view the list covers the same recent period the map is showing
-    const win = S.view === 'hot' ? { p_from: iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - S.days + 1)), p_to: iso(now), p_stages: S.stages.length ? S.stages : null, p_sectors: S.sectors.length ? S.sectors : null } : args();
+    const win = S.view === 'hot' ? { p_from: iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - S.days + 1)), p_to: iso(now), p_stages: S.stages.length ? S.stages : null, p_sectors: sector ? [sector] : S.sectors.length ? S.sectors : null } : args();
     const { data, error } = await sb.rpc('v2_map_firms', Object.assign({ p_level: S.level, p_place: place.p }, win, who() !== 'all' ? { p_firms: who() } : {}));
     return error ? null : data;
+  }
+  // Every sector of the zoom level (place null) or of one clicked place: deals now and before, firms, and a line of the last two years.
+  const detCache = new Map();
+  async function detail(place) {
+    if (FX_DETAIL) return fetch(FX_DETAIL).then((r) => r.json());
+    if (FIXTURE || !sb) return null;
+    const a = { p_firms: who(), p_level: S.level, p_place: place ? place.p : null, p_days: S.days, p_stages: S.stages.length ? S.stages : null, p_sectors: S.sectors.length ? S.sectors : null }, key = JSON.stringify(a);
+    if (detCache.has(key)) return detCache.get(key);
+    const { data, error } = await sb.rpc('v2_map_hot_detail', a);
+    if (error) return null;
+    detCache.set(key, data); return data;
   }
   async function loadUpdates() {
     let data = null;
@@ -125,6 +137,7 @@
     closeList(); drawPicks(); refresh().then(() => { if (!S.list) drawSide(); });
   });
 
+  $('#vm-cta').addEventListener('click', (e) => { if (S.view === 'hot' && S.list) { e.preventDefault(); showFirms(null); } });
   // ---------- time line
   const q0 = $('#vm-q0'), q1 = $('#vm-q1');
   function drawTime() {
@@ -192,8 +205,28 @@
   // Guernsey, Jersey and the Isle of Man are registration addresses, not places a founder would look for: they get no dot
   // of their own (their deals stay in Europe's totals), and an update from one lights up the United Kingdom.
   const FOLD = { GG: 'GB', JE: 'GB', IM: 'GB' };
+  // One rule for places and sectors: under HOT_MIN deals across both periods there is no colour; within 10% either way is steady;
+  // otherwise up or down, in the lighter shade when the difference is under HOT_FAINT deals.
+  const toneOf = (n, p) => {
+    const pct = p ? Math.round((n - p) / p * 100) : null, few = n + p < HOT_MIN;
+    const tone = few ? 'few' : pct == null ? 'up' : pct >= 10 ? 'up' : pct <= -10 ? 'down' : 'flat';
+    return { pct, few, tone, lt: (tone === 'up' || tone === 'down') && Math.abs(n - p) < HOT_FAINT, diff: n - p };
+  };
+  const toneCls = (o) => 'vm-' + o.tone + (o.lt ? ' vm-lt' : '');
+  const signed = (v) => (v > 0 ? '+' : v < 0 ? '\u2212' : '') + num(Math.abs(v));
+  // the figure beside a sector, as a percentage or as a number of deals (the % / # switch)
+  const figure = (o) => o.tone === 'few' ? '' : S.unit === 'num' ? signed(o.diff) : o.pct == null ? 'new' : signed(o.pct) + '%';
   const toneHtml = (p) => p.tone === 'up' ? `<span class="vm-tu">${toneText(p)}</span>` : p.tone === 'down' ? `<span class="vm-td">${toneText(p)}</span>` : toneText(p);
-  const toneText = (p) => p.tone === 'few' ? 'too few to call' : p.tone === 'up' ? 'up ' + p.pct + '%' : p.tone === 'down' ? 'down ' + (-p.pct) + '%' : 'steady';
+  const toneText = (p) => p.tone === 'few' ? 'too few to call' : p.tone === 'flat' ? 'steady' : S.unit === 'num' ? signed(p.diff) + ' deal' + (Math.abs(p.diff) === 1 ? '' : 's') : p.pct == null ? 'up from none' : (p.tone === 'up' ? 'up ' : 'down ') + Math.abs(p.pct) + '%';
+  const spark = (v, tone) => {
+    if (!v || v.length < 2) return '<span class="vm-spark"></span>';
+    const mx = Math.max.apply(null, v), mn = Math.min.apply(null, v), w = 72, h = 22;
+    const pts = v.map((y, i) => (i / (v.length - 1) * (w - 4) + 2).toFixed(1) + ',' + (h - 3 - (mx === mn ? 0.5 : (y - mn) / (mx - mn)) * (h - 6)).toFixed(1));
+    const c = tone === 'up' ? '#177A49' : tone === 'down' ? '#B93A2F' : '#5E6E69', last = pts[pts.length - 1].split(',');
+    return `<svg class="vm-spark" aria-hidden="true" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts.join(' ')}" fill="none" stroke="${c}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${last[0]}" cy="${last[1]}" r="2.4" fill="${c}"/></svg>`;
+  };
+  const unitSw = () => `<span class="vm-unit" role="group" aria-label="Show change as">${[['pct', '%', 'percent'], ['num', '#', 'number of deals']].map(([k, s, l]) => `<button type="button" data-u="${k}" aria-pressed="${S.unit === k}" aria-label="${l}">${s}</button>`).join('')}</span>`;
+  const sortRows = (rows) => rows.slice().sort((a, b) => a.few !== b.few ? (a.few ? 1 : -1) : S.unit === 'num' ? b.diff - a.diff : (b.pct == null ? 1e9 : b.pct) - (a.pct == null ? 1e9 : a.pct));
   const litPlace = () => { const u = S.updates[0]; return !u || S.view === 'hot' ? null : S.level === 'world' ? u.region : u.level === S.level ? (FOLD[u.area] || u.area) : null; };
   const placesNow = () => {
     const g = S.geo[S.level].places, sector = S.sectors.length > 0;
@@ -201,8 +234,7 @@
     const max = Math.max(1, ...rows.map((p) => p.d)), hot = S.view === 'hot';
     rows.forEach((p) => {
       if (hot) {  // one plain circle per place, coloured by whether deal-making there is speeding up or slowing down
-        p.pv = p.pv || 0; p.few = p.d + p.pv < HOT_MIN; p.pct = p.pv ? Math.round((p.d - p.pv) / p.pv * 100) : null;
-        p.tone = p.few || p.pct == null ? 'few' : p.pct >= 10 ? 'up' : p.pct <= -10 ? 'down' : 'flat';
+        p.pv = p.pv || 0; Object.assign(p, toneOf(p.d, p.pv));
         p.kind = S.level === 'world' || p.d + p.pv >= 10 ? 'hot' : null;
         p.r = S.level === 'world' ? Math.round(14 + 26 * Math.sqrt(p.d / max)) : Math.round(8 + 28 * Math.sqrt(p.d / max));
         p.ax = p.x; p.ay = p.y; return;
@@ -259,7 +291,7 @@
         b.style.left = p.x - p.r + 'px'; b.style.top = p.y - p.r + 'px'; b.style.width = b.style.height = p.r * 2 + 'px';
         b.className = 'vm-pl vm-in'; pls.appendChild(b); els.set(key, b); fresh.push([b, p]);
       }
-      b.className = `vm-pl vm-${p.kind}${p.kind === 'hot' ? ' vm-' + p.tone : ''}${lit === p.p ? ' vm-lit' : ''}${S.pinned === p.p ? ' vm-sel' : ''}${b.classList.contains('vm-in') ? ' vm-in' : ''}`;
+      b.className = `vm-pl vm-${p.kind}${p.kind === 'hot' ? ' ' + toneCls(p) : ''}${lit === p.p ? ' vm-lit' : ''}${S.pinned === p.p ? ' vm-sel' : ''}${b.classList.contains('vm-in') ? ' vm-in' : ''}`;
       b.dataset.i = i; b.setAttribute('aria-label', `${p.n}: ${num(p.d)} deals, ${num(p.f)} firms`);
       b.style.left = p.x - p.r + 'px'; b.style.top = p.y - p.r + 'px'; b.style.width = b.style.height = p.r * 2 + 'px';
       if (p.kind === 'ring') { b.style.backgroundColor = ''; setSlices(b, p); }
@@ -310,7 +342,7 @@
     if (S.view === 'hot') {
       const per = S.days === 365 ? 'year' : S.days + ' days';
       // each fact on its own line, with its numbers kept together on the right so nothing breaks mid-number
-      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-tr"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${per}</span></span><span class="vm-tr"><span>${toneHtml(p)}</span>${p.tone === 'few' ? '' : `<span class="vm-pc vm-mu">${num(p.pv)} before</span>`}</span>${p.hot ? `<span class="vm-tr vm-rule"><span><i class="vm-up"></i><b>${esc(p.hot[0])}</b></span><span class="vm-pc">${num(p.hot[1])} vs ${num(p.hot[2])}</span></span>` : ''}${p.cold ? `<span class="vm-tr${p.hot ? '' : ' vm-rule'}"><span><i class="vm-down"></i><b>${esc(p.cold[0])}</b></span><span class="vm-pc">${num(p.cold[1])} vs ${num(p.cold[2])}</span></span>` : ''}`;
+      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-tr"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${per}</span></span><span class="vm-tr"><span>${toneHtml(p)}</span>${p.tone === 'few' ? '' : `<span class="vm-pc vm-mu">${num(p.pv)} before</span>`}</span>${p.hot ? `<span class="vm-tr vm-rule"><span><i class="${toneCls(toneOf(p.hot[1], p.hot[2]))}"></i><b>${esc(p.hot[0])}</b></span><span class="vm-pc">${num(p.hot[1])} vs ${num(p.hot[2])}</span></span>` : ''}${p.cold ? `<span class="vm-tr${p.hot ? '' : ' vm-rule'}"><span><i class="${toneCls(toneOf(p.cold[1], p.cold[2]))}"></i><b>${esc(p.cold[0])}</b></span><span class="vm-pc">${num(p.cold[1])} vs ${num(p.cold[2])}</span></span>` : ''}`;
     } else {
     const tot = p.tot || 1, sector = S.sectors.length > 0, top = p.top || [], rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
     t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} ${S.sectors.length === 1 ? esc(S.sectors[0]) + ' ' : ''}deal${p.d === 1 ? '' : 's'}${S.sectors.length > 1 ? ' in the chosen sectors' : ''} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>
@@ -376,7 +408,12 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   const day = (s) => { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : MONTHS[d.getMonth()] + ' ' + d.getDate() + (d.getFullYear() === now.getFullYear() ? '' : ', ' + d.getFullYear()); };
   // The chosen place's own numbers, shown above its firms in the column layout.
   function placeFacts(p) {
-    if (S.view === 'hot') return `<div class="vm-facts"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${perText()} · ${toneHtml(p)}${p.hot ? ` · heating up: <b>${esc(p.hot[0])}</b>` : ''}</span></div>`;
+    if (S.view === 'hot') {
+      // with one sector opened, the line is about that sector in this place
+      const row = S.list && S.list.sector && S.list.det ? (S.list.det.sectors || []).find((r) => r[0] === S.list.sector) : null;
+      const o = row ? Object.assign({ d: row[1] }, toneOf(row[1], row[2])) : p;
+      return `<div class="vm-facts"><span class="vm-mu">${num(o.d)} deal${o.d === 1 ? '' : 's'} in the last ${perText()} · ${toneHtml(o)}</span></div>`;
+    }
     const tot = p.tot || 1, top = p.top || [], one = S.sectors.length === 1, sector = S.sectors.length > 0;
     if (one || !top.length) return `<div class="vm-facts"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'}</span></div>`;
     const rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
@@ -384,16 +421,31 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   }
   function drawSide() {
     const side = $('#vm-side');
-    if (S.list) {
-      const L = S.list, chips = [[L.place.n, 'place']].concat(S.sectors.map((s) => [s, 'sector']), S.stages.map((s) => [s, 'stage']));
+    const hotList = S.view === 'hot' && S.list;
+    $('#vm-cta').textContent = hotList ? `See the ${num(S.list.place.f)} investor${S.list.place.f === 1 ? '' : 's'} in ${S.list.place.n}` : 'See the investors';
+    const units = () => side.querySelectorAll('.vm-unit button').forEach((u) => u.onclick = () => { S.unit = u.dataset.u; draw(); drawSide(); });
+    if (hotList && S.list.step === 'sectors') {  // a clicked place opens on its sectors; the firms come one click later
+      const L = S.list, rows = sortRows(((L.det || {}).sectors || []).map(([name, n, p, f, line]) => Object.assign({ name, n, p, f, line }, toneOf(n, p))));
       side.className = 'vm-card vm-side vm-list';
-      side.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
+      side.innerHTML = `<div class="vm-lh"><div class="vm-chips"><button type="button" class="vm-chip" id="vm-unplace" aria-label="Remove filter ${esc(L.place.n)}">${esc(L.place.n)}<span aria-hidden="true">×</span></button></div><button type="button" class="vm-x" id="vm-close" aria-label="Close"></button></div>
+${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}</div><span class="vm-tag">last ${perText()} vs before</span>
+<div class="vm-rows vm-srows">${!L.det ? '<p class="vm-mu">Loading</p>' : rows.length ? rows.map((r) => `<button type="button" class="vm-sec vm-secp" data-s="${esc(r.name)}" title="${num(r.n)} deals, ${num(r.p)} before"><i class="${toneCls(r)}"></i><span>${esc(r.name)}</span>${spark(r.line, r.tone)}<span class="vm-pc ${r.tone === 'up' ? 'vm-tu' : r.tone === 'down' ? 'vm-td' : ''}">${figure(r)}</span><span class="vm-fl">${num(r.f)} firm${r.f === 1 ? '' : 's'}</span></button>`).join('') : '<p class="vm-mu">No deals here in this period.</p>'}</div>`;
+      $('#vm-close').onclick = closeList; $('#vm-unplace').onclick = closeList; units();
+      side.querySelectorAll('.vm-secp').forEach((b) => b.onclick = () => showFirms(b.dataset.s));
+      return;
+    }
+    if (S.list) {
+      const L = S.list, chips = [[L.place.n, 'place']].concat((L.sector ? [L.sector] : S.sectors).map((s) => [s, 'sector']), S.stages.map((s) => [s, 'stage']));
+      side.className = 'vm-card vm-side vm-list';
+      side.innerHTML = `${hotList ? `<button type="button" class="vm-link vm-back" id="vm-back">← Sectors in ${esc(L.place.n)}</button>` : ''}<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
 <div class="vm-chips">${chips.map(([t, k]) => `<button type="button" class="vm-chip" data-k="${k}" data-v="${esc(t)}" aria-label="Remove filter ${esc(t)}">${esc(t)}<span aria-hidden="true">×</span></button>`).join('')}</div>
 ${COL ? placeFacts(L.place) : ''}<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
 <a class="vm-more" href="${ROOT}investors/">Open the full investors list</a>`;
       $('#vm-close').onclick = closeList;
+      const back = $('#vm-back'); if (back) back.onclick = () => { L.step = 'sectors'; L.sector = null; L.data = null; drawSide(); };
       side.querySelectorAll('.vm-chip').forEach((c) => c.onclick = () => {
         if (c.dataset.k === 'place') return closeList();
+        if (c.dataset.k === 'sector' && L.sector) { L.step = 'sectors'; L.sector = null; L.data = null; return drawSide(); }
         const k = c.dataset.k === 'sector' ? 'sectors' : 'stages'; S[k] = S[k].filter((x) => x !== c.dataset.v);
         const place = S.list.place; drawPicks(); refresh().then(() => openList(place));
       });
@@ -404,13 +456,21 @@ ${COL ? placeFacts(L.place) : ''}<div class="vm-rows">${!L.data ? '' : L.data.fi
       // keep showing every sector while one is chosen: remember the full list from the last unfiltered answer for this period and stage
       const memo = S.days + '|' + S.level + '|' + S.stages.join(','); S.secMemo = S.secMemo || {};
       if (!S.sectors.length && S.data && S.data.sectors) S.secMemo[memo] = S.data.sectors[S.level] || [];
-      const rows = (S.secMemo[memo] || ((S.data || {}).sectors || {})[S.level] || []).filter(([, n, p]) => n + p >= 20 && p > 0).map(([name, n, p]) => ({ name, n, p, pct: Math.round((n - p) / p * 100) }));
-      // with sectors chosen, only those are listed (and a link back to all); otherwise every sector, from the strongest rise to the strongest fall
-      const mk = ([name, n, p]) => ({ name, n, p, pct: p > 0 ? Math.round((n - p) / p * 100) : null });
-      const chosen = S.sectors.length ? (((S.data || {}).sectors || {})[S.level] || []).map(mk).sort((a, b) => (b.pct || 0) - (a.pct || 0)) : [];
-      const others = S.sectors.length ? [] : rows.slice().sort((a, b) => b.pct - a.pct), rest = others.length > 12 ? others.slice(0, 6).concat(others.slice(-6)) : others;
-      const line = (r) => `<button type="button" class="vm-sec${S.sectors.includes(r.name) ? ' vm-secon' : ''}" data-s="${esc(r.name)}"><i class="${r.pct == null ? 'vm-few' : r.pct >= 10 ? 'vm-up' : r.pct <= -10 ? 'vm-down' : 'vm-flat'}"></i><span>${esc(r.name)}</span><span class="vm-pc vm-mu">${num(r.n)} vs ${num(r.p)}</span><span class="vm-pc ${r.pct == null ? '' : r.pct >= 10 ? 'vm-tu' : r.pct <= -10 ? 'vm-td' : ''}">${r.pct == null ? '' : (r.pct >= 0 ? '+' : '−') + Math.abs(r.pct) + '%'}</span></button>`;
-      side.innerHTML = `<div class="vm-lh"><h2>Sectors</h2><span class="vm-tag">last ${perText()} vs before</span></div>${chosen.map(line).join('')}${S.sectors.length ? '<button type="button" class="vm-link" id="vm-allsec">Show all sectors</button>' : ''}${rest.map(line).join('')}`;
+      const mk = ([name, n, p]) => Object.assign({ name, n, p }, toneOf(n, p));
+      const rows = (S.secMemo[memo] || ((S.data || {}).sectors || {})[S.level] || []).map(mk).filter((r) => !r.few);
+      // with sectors chosen, only those are listed (and a link back to all); otherwise every sector, strongest rise first
+      const chosen = S.sectors.length ? sortRows((((S.data || {}).sectors || {})[S.level] || []).map(mk)) : [];
+      const others = S.sectors.length ? [] : sortRows(rows), rest = others.length > 12 ? others.slice(0, 6).concat(others.slice(-6)) : others;
+      // the small lines arrive in a second, lighter request, so the map never waits for them
+      const want = JSON.stringify([S.level, S.days, S.stages, S.sectors, who()]);
+      if (S.linesKey !== want && S.linesAsked !== want) {
+        S.linesAsked = want;
+        detail(null).then((d) => { if (S.linesAsked !== want) return; S.linesKey = want; S.lines = {}; ((d || {}).sectors || []).forEach((r) => { S.lines[r[0]] = r[4]; }); if (S.view === 'hot' && !S.list) drawSide(); });
+      }
+      const lines = S.linesKey === want ? S.lines : {};
+      const line = (r) => `<button type="button" class="vm-sec${S.sectors.includes(r.name) ? ' vm-secon' : ''}" data-s="${esc(r.name)}" title="${num(r.n)} deals, ${num(r.p)} before"><i class="${toneCls(r)}"></i><span>${esc(r.name)}</span>${spark(lines[r.name], r.tone)}<span class="vm-pc ${r.tone === 'up' ? 'vm-tu' : r.tone === 'down' ? 'vm-td' : ''}">${figure(r)}</span></button>`;
+      side.innerHTML = `<div class="vm-lh"><h2>Sectors</h2>${unitSw()}</div><span class="vm-tag">last ${perText()} vs before</span>${chosen.map(line).join('')}${S.sectors.length ? '<button type="button" class="vm-link" id="vm-allsec">Show all sectors</button>' : ''}${rest.map(line).join('')}`;
+      units();
       side.querySelectorAll('.vm-sec').forEach((b) => b.onclick = () => { S.sectors = S.sectors.includes(b.dataset.s) ? S.sectors.filter((x) => x !== b.dataset.s) : [b.dataset.s]; drawPicks(); refresh().then(drawSide); });
       const all = $('#vm-allsec'); if (all) all.onclick = () => { S.sectors = []; drawPicks(); refresh().then(drawSide); };
       return;
@@ -421,7 +481,19 @@ ${COL ? placeFacts(L.place) : ''}<div class="vm-rows">${!L.data ? '' : L.data.fi
       return `<a class="${i ? '' : 'vm-first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="vm-tag">${i ? '' : '<i class="vm-new" title="Newest update: its place is lit up on the map"></i>'}${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span class="vm-line" title="${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}">${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}</span></a>`;
     }).join('') : '<p class="vm-mu">No updates to show yet.</p>'}`;
   }
+  async function showFirms(sector) {
+    const L = S.list; if (!L) return;
+    L.step = 'firms'; L.sector = sector || null; L.data = null; drawSide();
+    const d = await firms(L.place, L.sector);
+    if (S.list === L && L.step === 'firms' && L.sector === (sector || null)) { L.data = d || { count: 0, firms: [] }; drawSide(); }
+  }
   async function openList(place) {
+    if (S.view === 'hot') {  // sectors first; the firms are one click away (a sector row, or the button in the top card)
+      stop(); const L = S.list = { place, step: 'sectors', det: null, sector: null, data: null }; S.pinned = place.p; drawSide(); draw();
+      const det = await detail(place);
+      if (S.list === L) { L.det = det || { sectors: [] }; drawSide(); }
+      return;
+    }
     stop(); S.list = { place, data: null }; S.pinned = place.p; drawSide(); draw();
     const d = await firms(place);
     if (S.list && S.list.place.p === place.p) { S.list.data = d || { count: place.f, firms: [] }; drawSide(); }
