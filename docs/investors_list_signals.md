@@ -31,3 +31,8 @@ Nothing that existed was changed: `firm_directory_page_v2` is untouched and the 
 - Execute is granted to `anon` and `authenticated`, as for v2.
 
 Timed as `anon` after the change: default page 0.55 s (v2: 0.45 s), a signals filter 0.7 s, "25 or more" 0.9 s, a name search 0.9 s.
+
+## Migration `firm_page_signals_for_one_firm` (2026-11-22)
+`v2_firm_signals_for(p_slug text)` returns one listed firm's `signals`, `deals_now`, `deals_prev`, `led_now` as JSON, or null
+for an unknown slug. Read-only, security definer, 3 s timeout, execute granted to `anon` and `authenticated`.
+The firm page calls it to draw the icons in the status tile. Timed as `anon`: 8 ms.

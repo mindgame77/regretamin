@@ -271,6 +271,43 @@
     box.innerHTML = html;
     fitOneLine(box.querySelector('.hsec .secp'), 'hp hmore');
     closeButton(main);
+    paintSignals(main);
+  }
+  // The firm's signals as icons at the right end of the status tile: the same icons and rules as the Investors list
+  // (v2_firm_signals, refreshed daily; docs/investors_list_signals.md). No signals: the tile stays as it is.
+  const SIGNALS = [
+    ['up', '🚀', 'Speeding up'], ['down', '📉', 'Slowing down'], ['top', '', 'Top 100'], ['chain', '🔗', 'Top firms follow it'],
+    ['lead', '🏆', 'Leads rounds'], ['spec', '🎯', 'Specialist'], ['fund', '💰', 'Fresh fund']
+  ];
+  function signalsHtml(d) {
+    const have = Array.isArray(d && d.signals) ? d.signals : [];
+    return SIGNALS.filter(g => have.indexOf(g[0]) !== -1).map(g => {
+      let tip = g[2];
+      if (g[0] === 'up' || g[0] === 'down') tip += ': ' + d.deals_now + ' deals in the last 12 months, ' + d.deals_prev + ' in the 12 before.';
+      if (g[0] === 'lead') tip += ': led ' + d.led_now + ' of its ' + d.deals_now + ' deals in the last 12 months.';
+      return '<span class="fsigw" role="img" aria-label="' + esc(g[2]) + '" title="' + esc(tip) + '">'
+        + (g[1] ? '<span class="fsig" aria-hidden="true">' + g[1] + '</span>' : '<span class="fsig f100" aria-hidden="true">100</span>') + '</span>';
+    }).join('');
+  }
+  function paintSignals(main) {
+    const C = window.REGRET || {};
+    const slug = main && main.dataset && main.dataset.firm;
+    const tile = main.querySelector && main.querySelector('.ats .att');
+    if (!slug || !tile || !C.url || !C.key || typeof fetch !== 'function' || main.dataset.sig === slug) return;
+    main.dataset.sig = slug;
+    fetch(C.url + '/rest/v1/rpc/v2_firm_signals_for', {
+      method: 'POST',
+      headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_slug: slug })
+    }).then(r => (r.ok ? r.json() : null)).then(d => {
+      const html = d ? signalsHtml(d) : '';
+      const now = main.querySelector('.ats .att');
+      if (!html || !now || now.querySelector('.asig')) return;
+      const box = document.createElement('span');
+      box.className = 'asig';
+      box.innerHTML = html;
+      now.appendChild(box);
+    }).catch(function () { /* no icons is fine */ });
   }
   // A close button on the big search bar goes back to the map (the home page).
   function closeButton(main) {
