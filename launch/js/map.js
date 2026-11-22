@@ -102,6 +102,7 @@
   <div class="vm-picks"><div class="vm-pick" data-pick="sectors"></div><div class="vm-pick" data-pick="stages"></div><div class="vm-pick vm-who" data-pick="who"></div></div>
   <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a></section>
 <aside class="vm-card vm-side" id="vm-side"></aside></div>
+<aside class="vm-card vm-fp" id="vm-fp" aria-label="Firms" hidden></aside>
 <div class="vm-card vm-views" role="group" aria-label="View"><button type="button" data-view="flow">Money flow</button><button type="button" data-view="hot">Hot right now</button></div>
 <div class="vm-card vm-zoom" role="group" aria-label="Zoom to">${LEVELS.map(([k, t]) => `<button type="button" data-level="${k}">${t}</button>`).join('')}</div>
 <div class="vm-card vm-dock"><div class="vm-period" role="group" aria-label="Compare the last period with the same time before">${[[90, 'Last 90 days'], [180, 'Last 180 days'], [365, 'Last year']].map(([d, t]) => `<button type="button" data-days="${d}">${t}</button>`).join('')}</div><button type="button" class="vm-play" id="vm-play" aria-label="Play"></button><button type="button" class="vm-all" id="vm-all">All years</button>
@@ -195,7 +196,9 @@
     : { world: [20, 20, 62, 60], us: [340, 220, 120, 120], eu: [210, 210, 30, 105] };
   function fit() {
     const g = S.geo && S.geo[S.level]; if (!g) return;
-    const r = mapBox.getBoundingClientRect(), [l, rt, t, b] = ROOM[S.level];
+    const r = mapBox.getBoundingClientRect(), [l0, rt, t, b] = ROOM[S.level];
+    // the firms panel takes the left of the map; the map moves over so the chosen place stays in view (if the window is wide enough)
+    const open = S.view === 'hot' && S.list && S.list.step === 'firms' && r.width >= 940, l = l0 + (open ? 376 : 0);
     const k = Math.max(0.4, Math.min((r.width - l - rt) / g.w, (r.height - t - b) / g.h));
     S.k = k; S.ox = l + (r.width - l - rt - g.w * k) / 2; S.oy = t; S.boxW = r.width; S.boxH = r.height;
     stage.style.width = g.w + 'px'; stage.style.height = g.h + 'px';
@@ -375,7 +378,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     if (b) { const p = stage._rows[+b.dataset.i]; if (S.list && S.list.place.p === p.p) closeList(); else openList(p); return; }
     if (S.list) closeList();
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (S.list) closeList(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (S.view === 'hot' && S.list && S.list.step === 'firms') { S.list.step = 'sectors'; S.list.sector = null; S.list.data = null; drawSide(); } else if (S.list) closeList(); } });
 
   // ---------- headline card
   // sector names inside a sentence: lower case, except the ones that start with an abbreviation
@@ -412,10 +415,10 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   // ---------- right side: latest updates, or the firms behind a place
   const day = (s) => { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : MONTHS[d.getMonth()] + ' ' + d.getDate() + (d.getFullYear() === now.getFullYear() ? '' : ', ' + d.getFullYear()); };
   // The chosen place's own numbers, shown above its firms in the column layout.
-  function placeFacts(p) {
+  function placeFacts(p, ofSector) {
     if (S.view === 'hot') {
-      // with one sector opened, the line is about that sector in this place
-      const row = S.list && S.list.sector && S.list.det ? (S.list.det.sectors || []).find((r) => r[0] === S.list.sector) : null;
+      // in the firms panel, with one sector opened, the line is about that sector in this place
+      const row = ofSector && S.list && S.list.sector && S.list.det ? (S.list.det.sectors || []).find((r) => r[0] === S.list.sector) : null;
       const o = row ? Object.assign({ d: row[1] }, toneOf(row[1], row[2])) : p;
       return `<div class="vm-facts"><span class="vm-mu">${num(o.d)} deal${o.d === 1 ? '' : 's'} in the last ${perText()} · ${toneHtml(o)}</span></div>`;
     }
@@ -429,28 +432,27 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     const hotList = S.view === 'hot' && S.list;
     $('#vm-cta').textContent = hotList ? `See the ${num(S.list.place.f)} investor${S.list.place.f === 1 ? '' : 's'} in ${S.list.place.n}` : 'See the investors';
     const units = () => side.querySelectorAll('.vm-unit button').forEach((u) => u.onclick = () => { S.unit = u.dataset.u; draw(); drawSide(); });
-    if (hotList && S.list.step === 'sectors') {  // a clicked place opens on its sectors; the firms come one click later
+    drawFirms();
+    if (hotList) {  // a clicked place opens on its sectors; its firms open in their own panel beside the rail
       const L = S.list, rows = sortRows(((L.det || {}).sectors || []).map(([name, n, p, f, line]) => Object.assign({ name, n, p, f, line }, toneOf(n, p))));
       side.className = 'vm-card vm-side vm-list';
       side.innerHTML = `<div class="vm-lh"><div class="vm-chips"><button type="button" class="vm-chip" id="vm-unplace" aria-label="Remove filter ${esc(L.place.n)}">${esc(L.place.n)}<span aria-hidden="true">×</span></button></div><button type="button" class="vm-x" id="vm-close" aria-label="Close"></button></div>
 ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}</div><span class="vm-tag">last ${perText()} vs before</span>
-<div class="vm-rows vm-srows">${!L.det ? '<p class="vm-mu">Loading</p>' : rows.length ? rows.map((r) => `<button type="button" class="vm-sec vm-secp" data-s="${esc(r.name)}" title="${num(r.n)} deals, ${num(r.p)} before"><i class="${toneCls(r)}"></i><span>${esc(r.name)}</span>${spark(r.line, r.tone)}<span class="vm-pc ${r.tone === 'up' ? 'vm-tu' : r.tone === 'down' ? 'vm-td' : ''}">${figure(r)}</span><span class="vm-fl">${num(r.f)} firm${r.f === 1 ? '' : 's'}</span></button>`).join('') : '<p class="vm-mu">No deals here in this period.</p>'}</div>`;
+<div class="vm-rows vm-srows">${!L.det ? '<p class="vm-mu">Loading</p>' : rows.length ? rows.map((r) => `<button type="button" class="vm-sec vm-secp${L.step === 'firms' && L.sector === r.name ? ' vm-secon' : ''}" data-s="${esc(r.name)}" title="${num(r.n)} deals, ${num(r.p)} before"><i class="${toneCls(r)}"></i><span>${esc(r.name)}</span>${spark(r.line, r.tone)}<span class="vm-pc ${r.tone === 'up' ? 'vm-tu' : r.tone === 'down' ? 'vm-td' : ''}">${figure(r)}</span><span class="vm-fl">${num(r.f)} firm${r.f === 1 ? '' : 's'}</span></button>`).join('') : '<p class="vm-mu">No deals here in this period.</p>'}</div>`;
       $('#vm-close').onclick = closeList; $('#vm-unplace').onclick = closeList; units();
       side.querySelectorAll('.vm-secp').forEach((b) => b.onclick = () => showFirms(b.dataset.s));
       return;
     }
     if (S.list) {
-      const L = S.list, chips = [[L.place.n, 'place']].concat((L.sector ? [L.sector] : S.sectors).map((s) => [s, 'sector']), S.stages.map((s) => [s, 'stage']));
+      const L = S.list, chips = [[L.place.n, 'place']].concat(S.sectors.map((s) => [s, 'sector']), S.stages.map((s) => [s, 'stage']));
       side.className = 'vm-card vm-side vm-list';
-      side.innerHTML = `${hotList ? `<button type="button" class="vm-link vm-back" id="vm-back">← Sectors in ${esc(L.place.n)}</button>` : ''}<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
+      side.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
 <div class="vm-chips">${chips.map(([t, k]) => `<button type="button" class="vm-chip" data-k="${k}" data-v="${esc(t)}" aria-label="Remove filter ${esc(t)}">${esc(t)}<span aria-hidden="true">×</span></button>`).join('')}</div>
 ${COL ? placeFacts(L.place) : ''}<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
 <a class="vm-more" href="${ROOT}investors/">Open the full investors list</a>`;
       $('#vm-close').onclick = closeList;
-      const back = $('#vm-back'); if (back) back.onclick = () => { L.step = 'sectors'; L.sector = null; L.data = null; drawSide(); };
       side.querySelectorAll('.vm-chip').forEach((c) => c.onclick = () => {
         if (c.dataset.k === 'place') return closeList();
-        if (c.dataset.k === 'sector' && L.sector) { L.step = 'sectors'; L.sector = null; L.data = null; return drawSide(); }
         const k = c.dataset.k === 'sector' ? 'sectors' : 'stages'; S[k] = S[k].filter((x) => x !== c.dataset.v);
         const place = S.list.place; drawPicks(); refresh().then(() => openList(place));
       });
@@ -486,11 +488,23 @@ ${COL ? placeFacts(L.place) : ''}<div class="vm-rows">${!L.data ? '' : L.data.fi
       return `<a class="${i ? '' : 'vm-first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="vm-tag">${i ? '' : '<i class="vm-new" title="Newest update: its place is lit up on the map"></i>'}${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span class="vm-line" title="${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}">${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}</span></a>`;
     }).join('') : '<p class="vm-mu">No updates to show yet.</p>'}`;
   }
+  // 'Hot right now': the firms behind a place (or one of its sectors) open in a panel of their own, so the sectors stay in view.
+  function drawFirms() {
+    const fp = $('#vm-fp'), L = S.list;
+    if (!(S.view === 'hot' && L && L.step === 'firms')) { if (!fp.hidden) { fp.hidden = true; fp.innerHTML = ''; fit(); } return; }
+    const tags = [L.place.n].concat(L.sector ? [L.sector] : S.sectors, S.stages);
+    if (fp.hidden) { fp.hidden = false; fit(); }
+    fp.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-fpx" aria-label="Close the firms list"></button></div>
+<div class="vm-chips">${tags.map((x) => `<span class="vm-chip vm-chipst">${esc(x)}</span>`).join('')}</div>
+${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
+<a class="vm-more" href="${ROOT}investors/">Open the full investors list</a>`;
+    $('#vm-fpx').onclick = () => { L.step = 'sectors'; L.sector = null; L.data = null; drawSide(); };
+  }
   async function showFirms(sector) {
     const L = S.list; if (!L) return;
     L.step = 'firms'; L.sector = sector || null; L.data = null; drawSide();
     const d = await firms(L.place, L.sector);
-    if (S.list === L && L.step === 'firms' && L.sector === (sector || null)) { L.data = d || { count: 0, firms: [] }; drawSide(); }
+    if (S.list === L && L.step === 'firms' && L.sector === (sector || null)) { L.data = d || { count: 0, firms: [] }; drawFirms(); }
   }
   async function openList(place) {
     if (S.view === 'hot') {  // sectors first; the firms are one click away (a sector row, or the button in the top card)

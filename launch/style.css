@@ -1229,6 +1229,10 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-col .vm-zoom{top:20px;right:24px;bottom:auto;width:auto;flex-direction:row}
 .vm-col .vm-zoom button{text-align:center;padding:0 16px}
 .vm-col .vm-dock{left:calc(424px + (100% - 424px)/2);width:min(860px,calc(100% - 472px))}
+.vm-fp{left:448px;top:84px;bottom:100px;width:360px;z-index:5;padding:16px 20px 0;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.vm-fp[hidden]{display:none}
+.vm-fp>a.vm-more{margin:0 -20px;padding:0 20px}
+.vm-chipst{cursor:default;padding:0 10px}
 .vm-views{left:448px;top:20px;padding:5px;display:flex;gap:2px;border-radius:14px}
 .vm:not(.vm-col) .vm-views{left:50%;transform:translateX(-50%)}
 .vm-views button,.vm-period button{height:40px;padding:0 14px;border:0;border-radius:10px;background:none;font-size:14px}
