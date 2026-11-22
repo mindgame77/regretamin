@@ -272,6 +272,61 @@
     fitOneLine(box.querySelector('.hsec .secp'), 'hp hmore');
     closeButton(main);
     paintSignals(main);
+    readyButton(main);
+  }
+  // "Am I ready for this firm?" in the site header, on firm pages only. The check itself is not built yet, so the
+  // button opens a "coming soon" box that takes an email (stored by v2_ready_interest_add).
+  function readyButton(main) {
+    const nav = document.querySelector && document.querySelector('body > nav .r');
+    if (!nav || !nav.insertBefore || document.getElementById('readybtn')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'readybtn';
+    btn.className = 'readybtn';
+    btn.textContent = 'Am I ready for this firm?';
+    nav.insertBefore(btn, (nav.querySelector && (nav.querySelector('#left') || nav.querySelector('#signin') || nav.querySelector('#acct'))) || null);
+    btn.addEventListener('click', function () { openReady(main); });
+  }
+  function openReady(main) {
+    const C = window.REGRET || {};
+    const firm = (main.querySelector('.ph h1') || {}).textContent || 'this firm';
+    let box = document.getElementById('readybox');
+    if (box) box.remove();
+    box = document.createElement('div');
+    box.id = 'readybox';
+    box.className = 'readybox';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-labelledby', 'readyh');
+    box.innerHTML = '<div class="readycard"><button type="button" class="readyx" aria-label="Close">×</button>'
+      + '<p class="readytag">Coming soon</p><h2 id="readyh">Am I ready for ' + esc(firm) + '?</h2>'
+      + '<p>Upload your pitch deck and get a straight answer: ready, or not yet and what to fix. We are still building it. Leave your email and we will tell you when it opens.</p>'
+      + '<form class="readyform"><input type="email" name="email" required maxlength="200" placeholder="you@startup.com" aria-label="Email" autocomplete="email"><button type="submit">Tell me</button></form>'
+      + '<p class="readymsg" aria-live="polite"></p></div>';
+    document.body.appendChild(box);
+    const close = function () { box.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = function (e) { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    box.addEventListener('click', function (e) { if (e.target === box) close(); });
+    box.querySelector('.readyx').addEventListener('click', close);
+    const form = box.querySelector('form'), msg = box.querySelector('.readymsg'), input = form.querySelector('input');
+    input.focus();
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const email = input.value.trim();
+      if (!email || !C.url || !C.key) { msg.textContent = 'That did not work. Try again in a minute.'; return; }
+      form.querySelector('button').disabled = true;
+      fetch(C.url + '/rest/v1/rpc/v2_ready_interest_add', {
+        method: 'POST',
+        headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_email: email, p_slug: (main.dataset && main.dataset.firm) || null })
+      }).then(r => (r.ok ? r.json() : null)).then(d => {
+        const st = d && d.status;
+        if (st === 'ok') { form.hidden = true; msg.textContent = 'Got it. We will email you when it opens.'; return; }
+        form.querySelector('button').disabled = false;
+        msg.textContent = st === 'bad_email' ? 'That email does not look right.' : 'That did not work. Try again in a minute.';
+      }).catch(function () { form.querySelector('button').disabled = false; msg.textContent = 'That did not work. Try again in a minute.'; });
+    });
   }
   // The firm's signals as icons at the right end of the status tile: the same icons and rules as the Investors list
   // (v2_firm_signals, refreshed daily; docs/investors_list_signals.md). No signals: the tile stays as it is.

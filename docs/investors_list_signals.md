@@ -36,3 +36,8 @@ Timed as `anon` after the change: default page 0.55 s (v2: 0.45 s), a signals fi
 `v2_firm_signals_for(p_slug text)` returns one listed firm's `signals`, `deals_now`, `deals_prev`, `led_now` as JSON, or null
 for an unknown slug. Read-only, security definer, 3 s timeout, execute granted to `anon` and `authenticated`.
 The firm page calls it to draw the icons in the status tile. Timed as `anon`: 8 ms.
+
+## Migration `ready_to_pitch_interest` (2026-11-22)
+For the "Am I ready for this firm?" button, which opens a "coming soon, leave your email" box until the feature is built.
+- Table `v2_ready_interest` (`id`, `email`, `firm_slug`, `created_at`; unique on email + firm). Row level security on; no access for `anon` or `authenticated`.
+- Function `v2_ready_interest_add(p_email text, p_slug text)`: checks the email's shape, stops at 300 new rows an hour, stores the row, returns `{"status": "ok" | "bad_email" | "rate_limited"}`. Security definer, 3 s timeout, execute granted to `anon` and `authenticated`.

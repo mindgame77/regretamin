@@ -1607,3 +1607,19 @@ main.prof .sb.big .firms-clear{margin-left:auto}
 main.prof .ats .att .asig{margin-left:auto;display:inline-flex;align-items:center;gap:8px}
 main.prof .ats .att .asig .fsigw{margin-left:0}
 main.prof .ats .att:first-child{display:flex;align-items:center}
+
+/* ---------- "Am I ready for this firm?": the header button on firm pages and its coming-soon box. */
+.readybtn{height:44px;padding:0 18px;border:0;border-radius:10px;background:#10201C;color:#fff;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap}
+.readybtn:hover{background:#22332E}
+.readybox{position:fixed;inset:0;z-index:60;background:rgba(16,32,28,.4);display:flex;align-items:center;justify-content:center;padding:16px}
+.readycard{position:relative;width:480px;max-width:100%;background:#fff;border:1.5px solid #10201C;border-radius:22px;padding:32px 32px 26px;color:#10201C;box-shadow:0 24px 60px rgba(16,32,28,.18)}
+.readycard h2{margin:8px 0 10px;font-size:30px;font-weight:600;letter-spacing:-.04em;line-height:1.08}
+.readycard p{margin:0;font-size:15px;line-height:1.45;color:#3B4A45}
+.readytag{display:inline-block;font:400 11px 'Geist Mono',ui-monospace,monospace!important;letter-spacing:.06em;text-transform:uppercase;border:1.5px solid #10201C;border-radius:6px;padding:2px 7px;color:#10201C!important}
+.readyx{position:absolute;right:14px;top:14px;width:36px;height:36px;border:0;border-radius:50%;background:#F3F5F4;color:#10201C;font-size:20px;cursor:pointer}
+.readyform{display:flex;gap:8px;margin-top:20px}
+.readyform[hidden]{display:none}
+.readyform input{flex:1;min-width:0;height:52px;border:1.5px solid #10201C;border-radius:12px;padding:0 14px;font-size:15px;color:#10201C;background:#fff}
+.readyform button{height:52px;padding:0 20px;border:0;border-radius:12px;background:#10201C;color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+.readymsg{margin-top:12px!important;min-height:20px;font-weight:600;color:#10201C!important}
+@media (max-width:640px){.readybtn{height:36px;padding:0 12px;font-size:13px}.readyform{flex-direction:column}}
