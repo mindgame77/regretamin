@@ -1404,3 +1404,6 @@ body>nav .r a#signin:not([hidden]){color:#10201C}
 .ft a{color:#10201C}
 /* Pricing is parked while there is nothing to pay for (founder, 2026-11-22): the links stay in the page, hidden. */
 body>nav a[data-open="paywall"]{display:none!important}
+/* The free-credits counter in the header is hidden with Pricing. */
+body>nav .left{display:none!important}
+.firms-pg .fdrop-caret{font-size:13px}
