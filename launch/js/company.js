@@ -270,6 +270,18 @@
     }
     box.innerHTML = html;
     fitOneLine(box.querySelector('.hsec .secp'), 'hp hmore');
+    closeButton(main);
+  }
+  // A close button on the big search bar goes back to the map (the home page).
+  function closeButton(main) {
+    const bar = main.querySelector && main.querySelector('form.sb.big');
+    if (!bar || !bar.appendChild || (bar.querySelector && bar.querySelector('.sbx'))) return;
+    const a = document.createElement('a');
+    a.className = 'sbx';
+    a.href = (window.REGRET_ROOT || '') || './';
+    a.setAttribute('aria-label', 'Close and go back to the map');
+    a.innerHTML = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>';
+    bar.appendChild(a);
   }
   // Keep a row of tags on one line. What does not fit collapses into a last "+N" tag; pressing it shows them all
   // in place and it turns into "Show less". Does nothing where the layout cannot be measured.

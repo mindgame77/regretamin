@@ -1492,3 +1492,5 @@ main.prof a.ash{display:inline-block;margin-top:auto}
 main.prof .mod.filler .fmap{flex:1;min-height:0;display:block;border-radius:12px;background:#fff;overflow:hidden;margin-bottom:6px}
 main.prof .mod.filler .fmap img{width:100%;height:100%;object-fit:contain;display:block}
 main.prof .adp{border-top:2px solid #10201C;margin-top:10px;padding-top:14px;font-size:12px;text-transform:uppercase}
+main.prof .sb.big .sbx{flex:none;width:56px;height:56px;margin-left:10px;border-radius:12px;border:1px solid #8A9893;background:#fff;color:#10201C;display:flex;align-items:center;justify-content:center}
+main.prof .sb.big .sbx:hover{border-color:#10201C}
