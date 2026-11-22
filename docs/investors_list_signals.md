@@ -52,3 +52,7 @@ execute granted to `anon` and `authenticated`. Returns `{startups, before, with,
   top-100 firm that came in after at least twice.
 - Not done: hiding pairs that are really the same firm under two names (claude/duplicate-firm-candidates.md in the project).
 Timed: about 45 ms for Sequoia, a16z and 500 Global.
+
+## Migration `firm_page_signals_with_map_place` (2026-11-22)
+`v2_firm_signals_for` also returns `place: {region, level, area}` from `v2_map_firm_places`, so the firm page's "On the map"
+card can put the firm's dot on the right map. The keys it already returned are unchanged. Timed: about 20 ms for two firms.

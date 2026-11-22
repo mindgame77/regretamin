@@ -355,6 +355,7 @@
       headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
       body: JSON.stringify({ p_slug: slug })
     }).then(r => (r.ok ? r.json() : null)).then(d => {
+      if (d && d.place) { PLACE = { slug: slug, place: d.place }; mapCard(main); }
       const html = d ? signalsHtml(d) : '';
       const now = main.querySelector('.ats .att');
       if (!html || !now || now.querySelector('.asig')) return;
@@ -2616,12 +2617,39 @@
     const n = Array.from(grid.children).filter(el => el.classList && el.classList.contains('mod') && !el.classList.contains('span2') && !el.classList.contains('filler') && !el.hidden).length;
     if (n % 2 === 0) { if (old) old.remove(); return; }
     if (old) return;
-    const ROOT = window.REGRET_ROOT || '';
     const card = document.createElement('article');
     card.className = 'mod filler';
     card.id = 'onmap';
-    card.innerHTML = '<div class="mh"><h3>On the map</h3></div><a class="fmap" href="' + ROOT + 'map/" aria-label="Open the map"><img src="' + ROOT + 'assets/map/world.svg" alt="" loading="lazy"></a><a class="ash" href="' + ROOT + 'map/">Open the map</a>';
     grid.insertBefore(card, grid.querySelector('.mod.span2'));
+    mapCard(root);
+  }
+  // The map card shows where the firm sits: its own dot and place name on the map of its region (United States, Europe
+  // or the world), and a link that opens the main map there. Until the place is known it stays a plain link to the map.
+  let PLACE = null, GEO = null;
+  function mapCard(root) {
+    const card = root.querySelector && root.querySelector('#onmap');
+    if (!card) return;
+    const ROOT = window.REGRET_ROOT || '';
+    const main = root.closest ? (root.closest('main') || root) : root;
+    const slug = main && main.dataset && main.dataset.firm;
+    const pl = PLACE && PLACE.slug === slug ? PLACE.place : null;
+    const level = pl && (pl.level === 'us' || pl.level === 'eu') ? pl.level : 'world';
+    const key = level === 'world' ? (pl && pl.region) : (pl && pl.area);
+    const draw = function () {
+      const g = GEO && GEO[level], spot = g && key && g.places && g.places[key];
+      const label = spot ? spot.n : '';
+      const where = level === 'us' ? 'United States' : level === 'eu' ? 'Europe' : 'World';
+      const href = ROOT + (level === 'world' ? '' : '?zoom=' + level);
+      card.innerHTML = '<div class="mh"><h3>On the map</h3></div>'
+        + '<a class="fmap" href="' + href + '" aria-label="Open the map' + (label ? ' at ' + esc(label) : '') + '">'
+        + '<span class="fmapin" style="aspect-ratio:' + (g ? g.w + '/' + g.h : '1060/620') + '"><img src="' + ROOT + 'assets/map/' + level + '.svg" alt="" loading="lazy">'
+        + (spot ? '<i style="left:' + (spot.x / g.w * 100).toFixed(2) + '%;top:' + (spot.y / g.h * 100).toFixed(2) + '%"></i><b style="left:' + (spot.x / g.w * 100).toFixed(2) + '%;top:' + (spot.y / g.h * 100).toFixed(2) + '%" class="' + (spot.x / g.w > 0.6 ? 'l' : '') + '">' + esc(label) + '</b>' : '')
+        + '</span></a><a class="ash" href="' + href + '">' + (label ? 'Open the map: ' + esc(where) : 'Open the map') + '</a>';
+    };
+    if (GEO) return draw();
+    draw();
+    if (typeof fetch !== 'function') return;
+    fetch(ROOT + 'assets/map/places.json').then(r => r.json()).then(g => { GEO = g; draw(); }).catch(function () {});
   }
   if (window.addEventListener) window.addEventListener('resize', () => {
     const main = document.querySelector && document.querySelector('main.prof');
