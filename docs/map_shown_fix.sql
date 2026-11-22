@@ -1,3 +1,10 @@
+-- UNDONE on 2026-11-22, about three hours after it was applied (migration: map_functions_undo_shown_filter_too_slow).
+-- With "and <alias>.shown" added, v2_map_summary took about 40 seconds instead of about 1-2, so the map timed out for
+-- visitors (anon statement_timeout is 20 s) and showed empty. The seven functions are back exactly as they were.
+-- The gap this was meant to close is small (48 deals). To do it again it needs a plan that stays fast, for example
+-- an index on v2_deals that covers shown, or filtering shown inside the view the functions read. For the developer
+-- and data owner to decide. The text below is kept as the record of what was tried.
+--
 -- Map functions count only deals the site shows (v2_deals.shown).
 -- Applied to production on 2026-11-22 at the founder's request (migration: map_functions_count_only_shown_deals).
 -- For the developer and data owner to review and add to supabase/migrations/.
