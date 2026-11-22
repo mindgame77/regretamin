@@ -2389,6 +2389,31 @@
     }
     fitTeam(root);
     evenCards(root);
+    fitPortfolio(root);
+  }
+  // "Also in the portfolio" stays on one line in the card; a last "+N" tag opens the full list (the card's Show all).
+  function fitPortfolio(root) {
+    const list = root.querySelector && root.querySelector('#deals .adl');
+    const mark = list && list.querySelector('.adp');
+    if (!mark || typeof mark.offsetTop !== 'number') return;
+    const old = list.querySelector('.pmore');
+    if (old) old.remove();
+    const chips = [];
+    for (let n = mark.nextElementSibling; n; n = n.nextElementSibling) if (n.classList && n.classList.contains('ad')) { n.hidden = false; chips.push(n); }
+    if (chips.length < 2) return;
+    const top = chips[0].offsetTop;
+    const all = root.querySelector('#deals .ash');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pmore';
+    btn.textContent = '+';
+    list.appendChild(btn);
+    let keep = chips.length;
+    while (keep > 1 && btn.offsetTop > top) { keep--; chips[keep].hidden = true; }
+    if (keep === chips.length && !(all && !all.hidden)) { btn.remove(); return; }
+    btn.textContent = keep < chips.length ? '+' + (chips.length - keep) : '+';
+    btn.setAttribute('aria-label', 'Show all portfolio companies');
+    btn.addEventListener('click', function () { if (all && all.click) all.click(); });
   }
   // The grid keeps an even number of cards. When the firm's own cards leave a hole, a map card fills it.
   function evenCards(root) {

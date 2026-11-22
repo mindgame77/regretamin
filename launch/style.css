@@ -1494,3 +1494,100 @@ main.prof .mod.filler .fmap img{width:100%;height:100%;object-fit:contain;displa
 main.prof .adp{border-top:2px solid #10201C;margin-top:10px;padding-top:14px;font-size:12px;text-transform:uppercase}
 main.prof .sb.big .sbx{flex:none;width:56px;height:56px;margin-left:10px;border-radius:12px;border:1px solid #8A9893;background:#fff;color:#10201C;display:flex;align-items:center;justify-content:center}
 main.prof .sb.big .sbx:hover{border-color:#10201C}
+
+/* ---------- The new look on every remaining page (sign in, account, my firms, request a firm, pricing, terms, privacy,
+   how we check, page not found): the old purple tokens become ink and grey, and one type family is used everywhere. */
+:root{--vio:#10201C;--viobg:#F3F5F4;--ink:#10201C;--ink2:#3B4A45;--line:#E2E7E5;--mute:#586964;--mint:#1F9D55;--mintbg:#DDEFE3}
+body{background:#fff;color:#10201C}
+body,body *{font-family:'Geist',system-ui,sans-serif!important}
+.vm-tag,.vm-based,.fcount,.fsig.f100,.firms-pg .frow.h button,.firms-pg .frow.h span.hunsortable,.firms-pg .frow .finv,.firms-pg .fmenu label span.optcount,.firms-pg .fdrop .facet-badge,
+main.prof .htag-l,main.prof .htag-k,main.prof .invlab,main.prof .att small,main.prof .adh,main.prof .adh *,main.prof .adp,main.prof .adp *{font-family:'Geist Mono',ui-monospace,monospace!important}
+h1,h2,h3{letter-spacing:-.03em;font-weight:600}
+.btn{background:#10201C;color:#fff;border-radius:12px;box-shadow:none}
+/* Recent deals card: the companies with no dated deal sit on one line of tags after the line; the rest open with Show all. */
+main.prof #deals .adl{display:flex;flex-wrap:wrap;gap:0 6px}
+main.prof #deals .adl>.ad,main.prof #deals .adl>.adp{flex:0 0 100%;box-sizing:border-box}
+main.prof #deals .adl>.adp{margin-bottom:10px}
+main.prof #deals .adl>.adp~.ad{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 12px;border:0;border-radius:9px;background:#fff;font-size:14px;width:auto;min-width:0}
+main.prof #deals .adl>.adp~.ad[hidden]{display:none}
+main.prof #deals .adl>.adp~.ad>*{display:none}
+main.prof #deals .adl>.adp~.ad>b{display:inline;font-weight:500;order:2}
+main.prof #deals .adl>.adp~.ad>.arty{display:inline-flex;font-size:0;gap:0;order:1}
+main.prof #deals .adl>.pmore{flex:0 0 auto;height:36px;padding:0 12px;border:1.5px solid #10201C;border-radius:9px;background:#fff;font-size:14px;font-weight:600;cursor:pointer}
+
+/* ---------- How we check (pages/how_we_check.py). Everything sits on one 1040px grid; the video is a 9:16 frame. */
+.hw{max-width:1040px;margin:0 auto;padding:48px 24px 72px;display:flex;flex-direction:column;gap:72px;color:#10201C}
+.hw-top{display:flex;gap:56px;align-items:stretch}
+.hw-video{width:360px;aspect-ratio:9/16;flex:none;border-radius:22px;overflow:hidden;background:#C9D1CE}
+.hw-video>*{width:100%;height:100%;display:block;object-fit:cover;border:0}
+.hw-say{flex:1;min-width:0;display:flex;flex-direction:column}
+.hw h1{margin:0;font-size:52px;font-weight:600;letter-spacing:-.05em;line-height:1.02}
+.hw h2{margin:0 0 16px;font-size:30px;font-weight:600;letter-spacing:-.04em;display:flex;align-items:center;gap:12px}
+.hw h2 em{font:400 11px 'Geist Mono',ui-monospace,monospace!important;font-style:normal;letter-spacing:.06em;text-transform:uppercase;border:1.5px solid #10201C;border-radius:6px;padding:2px 7px}
+.hw-steps{list-style:none;margin:36px 0 0;padding:0;border-bottom:1px solid #E2E7E5}
+.hw-steps li{display:flex;align-items:center;gap:16px;height:64px;border-top:1px solid #E2E7E5}
+.hw-steps span{font:400 13px 'Geist Mono',ui-monospace,monospace!important;color:#586964;width:24px}
+.hw-steps b{font-size:20px;font-weight:600;letter-spacing:-.02em}
+.hw-go{margin:auto 0 0;padding-top:24px;display:flex;gap:10px}
+.hw-btn{height:48px;padding:0 20px;border-radius:12px;display:inline-flex;align-items:center;font-weight:600;border:1.5px solid #10201C;color:#10201C;text-decoration:none}
+.hw-btn.on{background:#10201C;color:#fff}
+.hw-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.hw-card{height:190px;background:#F3F5F4;border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;white-space:nowrap}
+.hw-card>div{flex:1;display:flex;align-items:center;justify-content:center}
+.hw-card>b{font-size:16px;font-weight:600;letter-spacing:-.02em}
+.hw-ring{width:84px;height:84px;border-radius:50%;background:conic-gradient(#C4CCF2 0 32%,#8E9BE0 32% 60%,#A9C4E8 60% 78%,#F3D98B 78% 88%,#DADFDD 88% 100%);display:flex;align-items:center;justify-content:center}
+.hw-ring i{width:48px;height:48px;border-radius:50%;background:#F3F5F4}
+.hw-bars{display:flex;align-items:flex-end;gap:6px;height:84px}
+.hw-bars i{width:18px;border-radius:4px 4px 0 0;background:#10201C}
+.hw-chks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;align-items:start}
+.hw-chk{border:1px solid #E2E7E5;border-radius:12px;font-size:14px;line-height:1.25}
+.hw-chk summary{display:flex;align-items:center;gap:10px;min-height:64px;padding:0 14px;cursor:pointer;list-style:none}
+.hw-chk summary::-webkit-details-marker{display:none}
+.hw-chk summary span{font:400 12px 'Geist Mono',ui-monospace,monospace!important;color:#586964}
+.hw-chk summary b{flex:1;font-weight:400}
+.hw-chk summary i{font-style:normal;color:#586964}
+.hw-chk[open] summary i{transform:rotate(45deg)}
+.hw-chk ul{margin:0;padding:0 14px 12px;list-style:none;font-size:13px;line-height:1.4;color:#3B4A45}
+.hw-chk li{padding:6px 0;border-top:1px solid #E2E7E5}
+.hw-chk li b{display:block;color:#10201C;font-weight:600}
+.hw-pills{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.hw-pill{border-top:1px solid #E2E7E5;padding-top:14px}
+.hw-pill span{display:inline-block;padding:4px 12px;border-radius:99px;font-size:14px;font-weight:600;background:#E9EDEB;color:#3B4A45}
+.hw-pill span.c{background:#DDEFE3;color:#1C5E3A}.hw-pill span.r{background:#F7E6B5;color:#6B4E00}.hw-pill span.w{background:#DCE8F7;color:#1F3F6B}
+.hw-pill p{margin:10px 0 0;font-size:14px;line-height:1.4;color:#3B4A45}
+.hw-fine{margin:-40px 0 0;font-size:13px;color:#586964}
+@media (max-width:900px){.hw{gap:48px;padding:24px 16px 56px}.hw-top{flex-direction:column;gap:24px}.hw-video{width:100%}.hw h1{font-size:38px}.hw-cards,.hw-pills{grid-template-columns:repeat(2,minmax(0,1fr))}.hw-chks{grid-template-columns:1fr 1fr}.hw-card{white-space:normal}}
+
+/* ---------- Terms and privacy: the text only, readable. (The old page picked up two unrelated classes, .hp and .lg.) */
+main.hp.lg{display:block;max-width:760px;margin:0 auto;padding:56px 24px 80px;background:none;border:0;border-radius:0;height:auto;font-size:16px;line-height:1.6;color:#10201C;text-align:left}
+main.hp.lg div,main.hp.lg span,main.hp.lg em,main.hp.lg i{display:revert;font-size:inherit;color:inherit;width:auto;height:auto;flex:none;font-weight:inherit;border-radius:0}
+main.hp.lg .ey{display:block;font:400 13px 'Geist Mono',ui-monospace,monospace!important;letter-spacing:.06em;text-transform:uppercase;color:#586964;margin-bottom:10px}
+main.hp.lg h1{font-size:44px;font-weight:600;letter-spacing:-.05em;line-height:1.05;margin:0}
+main.hp.lg h2{font-size:22px;font-weight:600;letter-spacing:-.03em;margin:36px 0 8px}
+main.hp.lg .lead{font-size:18px;margin:12px 0 0}
+main.hp.lg .eff{color:#586964;font-size:14px}
+main.hp.lg .toc{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin:28px 0 12px;padding:18px 20px;background:#F3F5F4;border-radius:14px;font-size:14px;position:static}
+main.hp.lg a{color:#10201C;text-decoration:underline;text-underline-offset:3px}
+main.hp.lg .toc a{text-decoration:none}
+main.hp.lg .toc a:hover{text-decoration:underline}
+
+/* ---------- Sign in (pop-up and /login/): a white card. It works as before. */
+.md.sgm{background:#fff;padding:0;border-radius:22px;border:1.5px solid #10201C;box-shadow:0 24px 60px rgba(16,32,28,.18)}
+.sgi{background:#fff;color:#10201C;border-radius:20px}
+.sgm h2{color:#10201C;font-size:34px;letter-spacing:-.04em}
+.sgm p.s{color:#586964}
+.sg4 b{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#10201C;font-weight:600;letter-spacing:-.05em}
+.sg4 span{color:#586964;font:400 12px 'Geist Mono',ui-monospace,monospace!important;letter-spacing:.06em}
+.sgm .x{background:#F3F5F4;color:#10201C}
+.gbx{background:#10201C;box-shadow:none;border-radius:12px;font-weight:600}
+.gbx:hover,.gbx.ld,.gbx:disabled{background:#22332E}
+.gbx:active,.gbx.prs,.gbx.prs:disabled{background:#10201C;transform:none}
+.sgm .orx{color:#586964}.sgm .orx:before,.sgm .orx:after{background:#E2E7E5}
+.sgm .in{background:#fff;border:1.5px solid #10201C;color:#10201C;border-radius:12px}
+.sgm .btn.o,.sgm .btn{background:#fff;color:#10201C;border:1.5px solid #10201C;border-radius:12px;box-shadow:none}
+.sgm a{color:#10201C}
+.sgm,.sgm *{text-shadow:none}
+.sgi *:not(.gbx):not(.gbx *):not(.btn){color:#10201C!important}
+.sgi input,.sgi .in{background:#fff!important;border:1.5px solid #10201C!important;border-radius:12px}
+.sgi input::placeholder{color:#586964!important}
+.sgi .sudiv,.sgi hr{background:#E2E7E5;border-color:#E2E7E5}

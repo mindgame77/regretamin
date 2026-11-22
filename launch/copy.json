@@ -328,7 +328,7 @@
   },
   "signed_out": {
    "account_h2": "Sign in to see your account",
-   "account_p": "Your plan, credits left and account settings are here once you sign in.",
+   "account_p": "Your account details are here once you sign in.",
    "checks_h2": "Sign in to see your checks",
    "checks_p": "Every firm you’ve checked is saved here once you sign in.",
    "button": "Sign in"
@@ -875,7 +875,7 @@
    "h1": "My firms",
    "refund_note": "Not finished in 24 hours · 1 credit refunded",
    "title": "My firms",
-   "sub": "Firms you’ve saved and firms you’ve checked. A check is 1 credit and opens the full report; reopening is free.",
+   "sub": "Firms you saved. Press the bookmark on any firm page to add one.",
    "tabs": [
     [
      "all",
@@ -1018,8 +1018,8 @@
    "404": {
     "title": "Not found · Regretamin",
     "description": "The requested Regretamin page could not be found.",
-    "h1": "Page not found",
-    "body": "This page does not exist. Search for a firm instead."
+    "h1": "This page took the money and vanished",
+    "body": "There is nothing at this address. Search for a VC instead."
    }
   }
  },
