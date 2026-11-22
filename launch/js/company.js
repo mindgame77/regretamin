@@ -2518,7 +2518,7 @@
   }
   // "Who invests around them": firms that keep appearing in the same startups, before, together with, or after this
   // firm (v2_firm_around; docs/investors_list_signals.md). The card appears only when there is something to show.
-  const AROUND_COL = { before: '#F3E3A3', with: '#BFD9F2', after: '#A8D8B4' };
+  const AROUND_COL = { before: '#F3D98B', with: '#A9C4E8', after: '#9FD4C3' };  // three of the map's own colours
   let AROUND = null;
   function aroundCard(root) {
     const C = window.REGRET || {};
@@ -2545,19 +2545,20 @@
     if (!grid || !total || grid.querySelector('#around')) return;
     const W = 509, H = 208, CX = W / 2, CY = H / 2, ys = [36, 104, 172];
     const rad = n => Math.round(13 + 4.2 * Math.sqrt(n));
-    const bub = (x, y, f, col) => { const r = rad(f.n); return '<span class="arb" style="left:' + (x - r) + 'px;top:' + (y - r) + 'px;width:' + (2 * r) + 'px;height:' + (2 * r) + 'px;background:' + col + '">' + f.n + '</span>'; };
+    const bub = (x, y, f, col) => { const r = rad(f.n); return '<span class="arb" style="left:' + (x - r) + 'px;top:' + (y - r) + 'px;width:' + (2 * r) + 'px;height:' + (2 * r) + 'px;border-color:' + col + ';border-width:' + Math.max(5, Math.round(r * 0.32)) + 'px">' + f.n + '</span>'; };
     const lab = (x, y, w, al, f) => '<a class="arl" href="' + (window.REGRET_VC_BASE || (window.REGRET_ROOT || '') + 'vc/') + encodeURIComponent(f.slug) + '/" style="left:' + x + 'px;top:' + (y - 9) + 'px;width:' + w + 'px;text-align:' + al + '">' + esc(f.name) + '</a>';
     const B = (d.before.list || []).slice(0, 3), A = (d.after.list || []).slice(0, 3), Wd = (d.with.list || []).slice(0, 2);
     let svg = '', html = '';
-    B.forEach((f, i) => { svg += '<path d="M150 ' + ys[i] + ' C205 ' + ys[i] + ' 205 ' + CY + ' ' + CX + ' ' + CY + '" fill="none" stroke="' + AROUND_COL.before + '" stroke-width="' + (2 + Math.min(f.n, 14) * 0.9).toFixed(1) + '" stroke-linecap="round"/>'; html += bub(150, ys[i], f, AROUND_COL.before) + lab(0, ys[i], 112, 'right', f); });
-    A.forEach((f, i) => { svg += '<path d="M' + (W - 150) + ' ' + ys[i] + ' C' + (W - 205) + ' ' + ys[i] + ' ' + (W - 205) + ' ' + CY + ' ' + CX + ' ' + CY + '" fill="none" stroke="' + AROUND_COL.after + '" stroke-width="' + (2 + Math.min(f.n, 14) * 0.9).toFixed(1) + '" stroke-linecap="round"/>'; html += bub(W - 150, ys[i], f, AROUND_COL.after) + lab(W - 112, ys[i], 112, 'left', f); });
-    if (Wd.length) svg += '<path d="M' + CX + ' ' + (Wd[1] ? 20 : 20) + ' V' + (Wd[1] ? H - 20 : CY) + '" stroke="' + AROUND_COL.with + '" stroke-width="7" stroke-linecap="round"/>';
+    B.forEach((f, i) => { svg += '<path d="M150 ' + ys[i] + ' C205 ' + ys[i] + ' 205 ' + CY + ' ' + CX + ' ' + CY + '" fill="none" stroke="#10201C" stroke-opacity=".55" stroke-width="1.5" stroke-linecap="round"/>'; html += bub(150, ys[i], f, AROUND_COL.before) + lab(0, ys[i], 112, 'right', f); });
+    A.forEach((f, i) => { svg += '<path d="M' + (W - 150) + ' ' + ys[i] + ' C' + (W - 205) + ' ' + ys[i] + ' ' + (W - 205) + ' ' + CY + ' ' + CX + ' ' + CY + '" fill="none" stroke="#10201C" stroke-opacity=".55" stroke-width="1.5" stroke-linecap="round"/>'; html += bub(W - 150, ys[i], f, AROUND_COL.after) + lab(W - 112, ys[i], 112, 'left', f); });
+    if (Wd.length) svg += '<path d="M' + CX + ' ' + (Wd[1] ? 20 : 20) + ' V' + (Wd[1] ? H - 20 : CY) + '" stroke="#10201C" stroke-opacity=".55" stroke-width="1.5" stroke-dasharray="2 4" stroke-linecap="round"/>';
     Wd.forEach((f, i) => { const y = i ? H - 20 : 20; html += bub(CX, y, f, AROUND_COL.with) + '<span class="arw" style="left:' + (CX - 70) + 'px;top:' + (i ? H - 64 : 48) + 'px"><span>' + esc(f.name) + '</span></span>'; });
     const name = ((root.closest && root.closest('main') || root).querySelector('.ph h1') || {}).textContent || '';
     const card = document.createElement('article');
     card.className = 'mod';
     card.id = 'around';
-    card.innerHTML = '<div class="mh"><h3>Who invests around them</h3></div><p class="arsub">Before, with and after. Number = startups in common.</p>'
+    const key = (k, t) => '<span><i style="background:' + AROUND_COL[k] + '"></i>' + t + ' ' + ((d[k] && d[k].firms) || 0) + '</span>';
+    card.innerHTML = '<div class="mh"><h3>Who invests around them</h3></div><p class="arsub">' + key('before', 'Before') + key('with', 'With') + key('after', 'After') + '<em>number = startups in common</em></p>'
       + '<div class="arbox"><div class="arstage"><svg aria-hidden="true" width="' + W + '" height="' + H + '">' + svg + '</svg>' + html
       + '<span class="arme" style="left:' + (CX - 34) + 'px;top:' + (CY - 34) + 'px">' + esc(name.split(' ')[0]) + '</span></div></div>'
       + '<button type="button" class="ash" data-around>Show all ' + total + ' firms</button>';

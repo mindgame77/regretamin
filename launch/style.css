@@ -1653,3 +1653,14 @@ main.prof .mod.filler .fmapin img{position:absolute;inset:0;width:100%;height:10
 main.prof .mod.filler .fmapin i{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#F0861E;border:2px solid #10201C;box-shadow:0 0 0 6px rgba(240,134,30,.25)}
 main.prof .mod.filler .fmapin b{position:absolute;margin:-10px 0 0 16px;padding:1px 7px;border-radius:6px;background:#10201C;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;line-height:18px}
 main.prof .mod.filler .fmapin b.l{margin-left:0;transform:translateX(calc(-100% - 16px))}
+/* The card borrows the map's look: a dotted panel, ring circles with white centres, thin ink arcs, the firm lit in amber. */
+main.prof #around .arbox{background:#fff radial-gradient(#C9D1CE 1px,transparent 1.2px) 0 0/9px 9px;border-radius:12px;margin-bottom:6px}
+main.prof #around .arsub{display:flex;align-items:center;gap:14px;margin:-2px 0 8px;font:400 12px 'Geist Mono',ui-monospace,monospace!important;letter-spacing:.06em;text-transform:uppercase;color:#586964}
+main.prof #around .arsub span,main.prof #around .arsub em{font:inherit!important;font-style:normal;display:inline-flex;align-items:center;gap:6px;color:#10201C}
+main.prof #around .arsub em{margin-left:auto;color:#586964;text-transform:none;letter-spacing:0}
+main.prof #around .arsub i{width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 1.5px #10201C}
+.arb{background:#fff;border-style:solid;box-shadow:0 0 0 1.5px #10201C,inset 0 0 0 1.5px #10201C}
+.arme{background:#10201C;box-shadow:0 0 0 3px #fff,0 0 0 6px #F0861E,0 0 0 14px rgba(240,134,30,.22)}
+.arl{font-weight:500;background:#fff;border-radius:4px;padding:0 4px}
+.arw span{background:#fff;border-radius:4px}
+main.prof #around .arstage{transform:scale(.78)}
