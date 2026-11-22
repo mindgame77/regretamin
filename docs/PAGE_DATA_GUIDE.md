@@ -21,6 +21,7 @@ Rule ids (A1.2, B6c.3, C8.4) are stable. `docs/rules_index.csv` lists every rule
   - [A13. Dates shown on the page](#a13)
   - [A14. New database move](#a14)
   - [A15. Data intake rules (all data types)](#a15)
+  - [A16. 2021 cutoff](#a16)
 - [F. Firm report collect (v2)](#f)
 - [N. Next firms: what does not fit](#n)
 - [B. The page](#b)
@@ -318,6 +319,21 @@ Preliminary, for the next few firms. This is not a permanent ignore rule. The ea
 - **A15.6** Rounded counts: if a platform only shows a rounded follower count (like YouTube's "20.1K"), the bot uploads it marked as rounded. The page shows it the same way as other counts, and an exact count replaces it once one is found.
 - **A15.7** Regional accounts: a firm's regional account (like LightspeedIndia) counts only if the firm's own website links to it. It's stored marked as regional, with its region, and shows as a separate pill labelled with the region, for example "X · India".
 - **A15.8** Money amounts (latest fund and all fund amounts, AUM, Fund assets) are saved as the full number in the original currency, plus a currency code, for example 14000000000 USD or 13200000 EUR. Never shortened forms like 0.13, 106.5 or '$82.2B'. How the amount is shown (like '$14B' or '€13.2M') is decided by the page, not stored. (Alex, 2026-10-29)
+
+<a id="a16"></a>
+## A16. 2021 cutoff
+
+The site shows deals from 2021 on (Alex, 2026-11-22). Older data is hidden or parked, never deleted.
+
+- **A16.1** Hidden deals. Every deal dated before 2021-01-01 is hidden: `v2_deals.shown` = false. Nothing is deleted. A hidden deal is not on firm pages, in “Show all”, in Investments, Deals or Rounds counts, in activity labels, or in the investors list. Bots still see it in the `deals` action, so they do not add it again.
+- **A16.2** What counts as dated. Undated means the year is not known (`deal_date` is empty). A year-only or year+month date counts as dated. It is stored as January 1 (or the 1st of the month) of that year, with `deal_date_precision` `year` or `year+month` ([F.2](#f)). The year decides: 2021 or later is a current deal, before 2021 is an old deal. Undated deals stay as they are and are not hidden.
+- **A16.3** Parked startups. A startup with deals but no deal dated 2021 or later is parked on `founderlist.startups`: old deals only, undated deals only, or old plus undated. Founder research (`status`) and city and country (`loc_status`) are set to `parked`. The claims hand out only `open`, so bots never get a parked startup. A row that was `done` is parked too, and its prior status is kept in `founderlist.parked_prior`. Rows `taken` or `rejected` are not touched.
+- **A16.4** What is kept. A firm’s or startup’s founded year, legal cases, reviews and feedback, and owner comments stay, even when they are from before 2021. The cutoff is only for deals and the startup research tied to them.
+- **A16.5** Automatic rules (database triggers on `v2_deals` and `founderlist.startups`). A new or updated deal dated before 2021 is always saved hidden, whatever path writes it. A deal hidden in the 2026-11-22 batch whose date is corrected to 2021 or later is shown again. When a startup gets a deal dated 2021 or later, its parked rows go back to their prior status: `open`, or `done` for a row already researched (it is not reopened). A startup whose deals have no 2021+ date is parked, including a new row added to the founder list. Every automatic change is logged in `founderlist.events` with bot `auto-2021-rule`.
+- **A16.6** Founders and startups pages. Startup founders are not shown on the site today. A future founders or startups page shows only startups with a deal dated 2021 or later. Parked startups and their founders are hidden there. (Alex, 2026-11-22)
+- **A16.7** Applied 2026-11-22, 8:56–9:03 AM PT. 17,989 deals across 1,628 firms hidden. 29,339 open founder rows and 41 open location rows parked. 1,282 done founder rows parked with their prior status (381 old only, 528 undated only, 373 both).
+- **A16.8** Known side effect. 45 startups now show as undated portfolio companies on a firm page. Each had an undated record that was covered by a pre-2021 deal, which is now hidden ([B6e](#b6e) portfolio list). They stay as they are.
+- **A16.9** Rollback. `rollback.sql` (everything) and `rollback_founders.sql` (only the done-row parking) are kept with the lists of affected rows in `/workspace/rollback-20261122-pre2021/` on the bot box and in the database schema `rollback_20261122`. The triggers, functions, `founderlist.parked_prior` and the `parked` status were added live and are not yet in a repo migration.
 
 <a id="b"></a>
 # B. The page
