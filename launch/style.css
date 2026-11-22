@@ -1419,3 +1419,48 @@ body>nav .left{background:#F3F5F4;color:#10201C;font:500 13px 'Geist',system-ui,
 #facet-signal .optlabel .fsig.f100{width:auto}
 .optdesc{flex:1 1 100%;font:400 12.5px/1.35 'Geist',system-ui,sans-serif;color:#586964;margin-top:2px}
 @media (max-width:900px){#facet-signal .fmenu{width:min(400px,calc(100vw - 28px))}}
+
+/* ---------- VC (firm) page in the new look. Scoped to main.prof. Design: project docs claude/plans/vc-page.md and
+   claude/plans/vc-page-design-update.md. Structure and cards are unchanged; this block only restyles them. */
+body:has(main.prof){background:#fff}
+main.prof{--vio:#10201C;--viobg:#F3F5F4;--ink:#10201C;--ink2:#3B4A45;--mute:#586964;--line:#E2E7E5;--mint:#1F9D55;--mintbg:#DDEFE3;max-width:1168px;font-family:'Geist',system-ui,sans-serif;color:#10201C}
+main.prof h1,main.prof h2,main.prof h3,main.prof .att b,main.prof .ps0 input,main.prof button,main.prof input,main.prof .btn{font-family:'Geist',system-ui,sans-serif}
+main.prof .sb.big{border:2px solid #10201C;border-radius:18px;box-shadow:none;padding:10px 10px 10px 22px}
+main.prof .ps0 input{font-weight:600;font-size:34px;letter-spacing:-.04em;color:#10201C}
+main.prof .sb.big .btn{background:#10201C;color:#fff;border-radius:12px;height:56px;padding:0 28px;font-weight:600;font-size:17px}
+main.prof .ph{border:1px solid #E2E7E5;border-radius:22px;box-shadow:none;background:#fff}
+main.prof .ph .ph1 h1{font-size:46px;font-weight:600;letter-spacing:-.05em;line-height:1}
+main.prof .ph1 .sv{font-size:0;gap:0;width:36px;height:36px;padding:0;border-radius:50%;border:1px solid #8A9893;background:#fff;color:#10201C;justify-content:center}
+main.prof .ph1 .sv svg{width:16px;height:16px}
+main.prof .ph1 .sv.apply{font-size:14px;font-weight:600;width:auto;padding:0 14px;border-radius:99px;border:1.5px solid #10201C;text-decoration:none}
+main.prof .ph p.m,main.prof .ph p.m a{color:#586964}
+main.prof .ph p.intro{color:#10201C;font-size:15px;line-height:1.45}
+main.prof .sc.soc,main.prof .socp .hp{background:#F3F5F4;color:#10201C;border:0;border-radius:99px;height:34px;padding:0 12px;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:7px}
+main.prof .htag-l,main.prof .invlab{font:400 13px 'Geist Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#586964}
+main.prof .htag .hp{background:#fff;border:1px solid #C9D1CE;border-radius:9px;padding:5px 11px;font-size:14px;font-weight:400}
+main.prof .att{background:#F3F5F4;border:0;border-radius:14px;color:#10201C}
+main.prof .att.aon{background:#DDEFE3;color:#1C5E3A}
+main.prof .att small{font:400 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#586964}
+main.prof .att b{font-weight:600;letter-spacing:-.04em;color:#10201C}
+main.prof .rgt-tabs{display:none}
+main.prof .mod{background:#F3F5F4;border:0;border-radius:20px;box-shadow:none}
+main.prof .mod h2,main.prof .mod h3{font-weight:600;letter-spacing:-.03em;color:#10201C}
+main.prof a{color:#10201C}
+main.prof .fine{color:#586964}
+main.prof,main.prof *{font-family:'Geist',system-ui,sans-serif}
+main.prof .htag-l,main.prof .invlab,main.prof .att small,main.prof .adh,main.prof .adh *{font-family:'Geist Mono',ui-monospace,monospace}
+main.prof .ph1 .sv:not(.apply){font-size:0!important;color:#10201C}
+main.prof .invlab{margin-top:28px}
+main.prof .mod h3{font-size:22px;font-weight:600;letter-spacing:-.03em}
+main.prof .tcard,main.prof .lgline,main.prof .ipr.ipr-b{background:#fff;border-radius:12px}
+main.prof .lgline{border:0}
+main.prof .ipr.ipr-a{background:#DCE8F7;border-radius:12px}
+main.prof .arv{border-radius:12px}
+main.prof .arv.pos{background:#DDEFE3}
+main.prof .ash{background:none;border:0;color:#10201C;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px;text-align:left}
+main.prof .seg{background:#fff;border:1px solid #8A9893;border-radius:9px}
+main.prof .ad.adh,main.prof .adp{background:transparent;color:#586964;letter-spacing:.06em}
+main.prof .ad{border-color:#D5DCD9}
+main.prof .ad a{text-decoration:none;font-weight:600}
+main.prof .ad a:hover{text-decoration:underline}
+main.prof #reviews>.ash,main.prof #investors>.ash{background:#F3F5F4}
