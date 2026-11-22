@@ -1402,8 +1402,6 @@ body>nav .r a.on{color:#10201C;font-weight:600}
 body>nav .r a#signin:not([hidden]){color:#10201C}
 .ft{font-family:'Geist',system-ui,sans-serif;color:#586964;border-top:1px solid #E2E7E5}
 .ft a{color:#10201C}
-/* Pricing is parked while there is nothing to pay for (founder, 2026-11-22): the links stay in the page, hidden. */
-body>nav a[data-open="paywall"]{display:none!important}
 /* The free-credits counter stays in the header (founder), in the new look. */
 body>nav .left{background:#F3F5F4;color:#10201C;font:500 13px 'Geist',system-ui,sans-serif;padding:6px 12px;border-radius:99px}
 .firms-pg .fdrop-caret{font-size:13px}
