@@ -1721,3 +1721,16 @@ main.prof #around .arstage{transform:scale(.78)}
 
 /* Bubbles card: the firm's name in the middle may take two lines. */
 .arme{text-align:center;line-height:1.15;padding:0 3px;box-sizing:border-box}
+
+/* Investors list on a computer: text that does not fit ends in "…" instead of being cut mid-letter. */
+@media (min-width:641px){
+  .firms-pg a.frow .fcity,.firms-pg a.frow .fdeal{display:block;line-height:43px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .firms-pg a.frow .fcity .fflag{display:inline-block;vertical-align:-1px}
+  .firms-pg a.frow .find{display:block;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .firms-pg a.frow .find i{display:inline-block;margin-right:6px;vertical-align:0}
+}
+@media (min-width:641px) and (max-width:1199px){
+  .firms-pg .frow,.firms-pg .flist.has-activity .frow{grid-template-columns:minmax(140px,1.4fr) minmax(128px,1.1fr) minmax(150px,1.2fr) 70px minmax(140px,1.1fr) minmax(170px,1.6fr) 110px}
+  .firms-pg .flist:not(.has-activity) .frow{grid-template-columns:minmax(140px,1.4fr) minmax(128px,1.1fr) minmax(150px,1.2fr) 70px minmax(170px,1.6fr) 110px}
+  .firms-pg .frow>*{padding:0 12px}
+}

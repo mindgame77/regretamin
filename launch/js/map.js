@@ -36,6 +36,7 @@
   const S = { view: 'flow', days: 90, level: 'world', q0: 0, q1: NQ - 1, stages: [], sectors: [], who: 'all', unit: 'pct', pinned: null, list: null, data: null, geo: null, updates: [], playing: null };
   // "Which firms" in the Hot right now view.
   const KEEP = 'regretamin.map.view';
+  let BACK = null;  // the place (and firms list) that was open when the map was left; reopened once after the first load
   const WHO = [['all', 'All firms'], ['top', 'Top firms'], ['focused', 'Focused funds'], ['new', 'New entrants']];
   const who = () => (S.view === 'hot' ? S.who : 'all');
   // A link can carry the view in its address (view, days, zoom, sectors, stages, firms). The page never rewrites its own address.
@@ -60,10 +61,11 @@
       if (WHO.some(([k]) => k === m.who)) S.who = m.who;
       if (m.unit === 'pct' || m.unit === 'num') S.unit = m.unit;
       if (Number.isInteger(m.q0) && Number.isInteger(m.q1) && m.q0 >= 0 && m.q0 <= m.q1 && m.q1 < NQ) { S.q0 = m.q0; S.q1 = m.q1; }
+      if (m.open && m.open.p != null) BACK = m.open;
     } catch (e) { /* no storage: start from the default view */ }
   })();
   function remember() {
-    try { sessionStorage.setItem(KEEP, JSON.stringify({ view: S.view, days: S.days, level: S.level, sectors: S.sectors, stages: S.stages, who: S.who, unit: S.unit, q0: S.q0, q1: S.q1 })); } catch (e) { /* private mode */ }
+    try { sessionStorage.setItem(KEEP, JSON.stringify({ view: S.view, days: S.days, level: S.level, sectors: S.sectors, stages: S.stages, who: S.who, unit: S.unit, q0: S.q0, q1: S.q1, open: BACK || (S.list ? { p: S.list.place.p, step: S.list.step || null, sector: S.list.sector || null } : null) })); } catch (e) { /* private mode */ }
   }
   window.addEventListener('pagehide', remember);
   const $ = (s, r) => (r || el).querySelector(s);
@@ -538,6 +540,14 @@ ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.m
     const d = await firms(place);
     if (S.list && S.list.place.p === place.p) { S.list.data = d || { count: place.f, firms: [] }; drawSide(); }
   }
+  // Coming back to the map: the place that was open opens again, with its firms list if that was showing.
+  async function reopen() {
+    const b = BACK; BACK = null;
+    const row = b && (stage._rows || []).find((r) => r.p === b.p);
+    if (!row) return;
+    await openList(row);
+    if (S.view === 'hot' && b.step === 'firms' && S.list && S.list.place.p === b.p) showFirms(b.sector);
+  }
   function closeList() { if (S.list) { S.list = null; S.pinned = null; drawSide(); draw(); } }
 
   // ---------- start
@@ -554,5 +564,5 @@ ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.m
     msg.hidden = true; S.data = d; draw();
   }
   drawPicks(); drawTime(); drawSide(); marks();
-  fetch(ROOT + 'assets/map/places.json').then((r) => r.json()).then((g) => { S.geo = g; return refresh(); }).then(loadUpdates);
+  fetch(ROOT + 'assets/map/places.json').then((r) => r.json()).then((g) => { S.geo = g; return refresh(); }).then(() => { reopen(); return loadUpdates(); });
 })();

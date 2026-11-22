@@ -249,7 +249,7 @@
   function row(f) {
     const date = fmtDate(f.added);
     const city = cityLabel(f);
-    const inds = invests(f, 2);
+    const inds = invests(f, window.innerWidth < 1200 ? 1 : 2);  // a narrow window has room for one sector and the "+N"
     const investments = investmentCount(f);
     const dealMain = (f.latest_company && f.latest_deal_date)
       ? [f.latest_company, roundName(f.latest_round)].filter(Boolean).join(' · ') : '';
