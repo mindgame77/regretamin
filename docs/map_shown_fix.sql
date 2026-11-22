@@ -1,3 +1,8 @@
+-- APPLIED AGAIN on 2026-11-22 (migration: map_functions_count_only_shown_deals_with_indexes), after the database bot
+-- added v2_deals_shown_date_idx and v2_deals_shown_firm_date_idx (PR 447). Timed right after: v2_map_summary 1.4 s
+-- (1.4 s just before the change), v2_map_hot 0.65 s, v2_map_updates 0.5 s, v2_map_hot('top') 1.2 s, v2_map_hot_detail 0.6 s.
+-- All seven v2_map_* functions now filter on "is_current and shown". The history of the first attempt is kept below.
+--
 -- UNDONE on 2026-11-22, about three hours after it was applied (migration: map_functions_undo_shown_filter_too_slow).
 -- With "and <alias>.shown" added, v2_map_summary took about 40 seconds instead of about 1-2, so the map timed out for
 -- visitors (anon statement_timeout is 20 s) and showed empty. The seven functions are back exactly as they were.
