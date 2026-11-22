@@ -152,8 +152,8 @@
     const shown = rows.slice(0, n);
     const more = rows.length - shown.length;
     return shown.map(function (name) {
-      return '<span style="color:' + sectorColor(name) + '">' + esc(name) + '</span>';
-    }).join(', ') + (more > 0 ? ' +' + more : '');
+      return '<span class="find"><i style="background:' + sectorColor(name) + '"></i>' + esc(name) + '</span>';
+    }).join('') + (more > 0 ? '<span class="fmore">+' + more + '</span>' : '');
   }
   // Total investments: dated shown deals + undated portfolio-only rows.
   // firm_directory_page returns that as `investments` and keeps `deals` dated-only
@@ -196,6 +196,14 @@
     if (!a) return '<span class="fact"></span>';
     return '<span class="fact"><span class="alab ' + a.cls + '">' + esc(a.text) + '</span></span>';
   }
+  // Country flag from the two-letter country code. No flag when the country is unknown.
+  function flagOf(f) {
+    const cc = String((f && (f.country || f.hq_country)) || '').trim().toUpperCase();
+    if (!/^[A-Z]{2}$/.test(cc)) return '';
+    const name = COUNTRY[cc] || cc;
+    return '<span class="fflag" role="img" aria-label="' + esc(name) + '" title="' + esc(name) + '">'
+      + String.fromCodePoint(0x1F1E6 + cc.charCodeAt(0) - 65, 0x1F1E6 + cc.charCodeAt(1) - 65) + '</span>';
+  }
   function row(f) {
     const date = fmtDate(f.added);
     const city = cityLabel(f);
@@ -209,7 +217,7 @@
       : '';
     return '<a class="frow" href="' + href(f.slug) + '">'
       + '<span class="fnm"><b>' + esc(f.name) + '</b></span>'
-      + '<span class="fcity">' + esc(city) + '</span>'
+      + '<span class="fcity">' + (city ? flagOf(f) : '') + esc(city) + '</span>'
       + '<span class="finds">' + inds + '</span>'
       + '<span class="finv">' + esc(investments) + '</span>'
       + activityHtml(f)
@@ -222,9 +230,7 @@
     const name = String(f.name || '').toLowerCase();
     const short = String(f.short_name || '').toLowerCase();
     const site = String(f.website || '').toLowerCase();
-    if (name.indexOf(query) !== -1 || (short && short.indexOf(query) !== -1) || (site && site.indexOf(query) !== -1)) return true;
-    const hit = function (s) { return String(s || '').toLowerCase().indexOf(query) !== -1; };
-    return (f.startups || []).some(hit) || (f.startup_sites || []).some(hit);
+    return name.indexOf(query) !== -1 || (short && short.indexOf(query) !== -1) || (site && site.indexOf(query) !== -1);
   }
   function optionMatch(arr, value) {
     const want = keyOf(value);
@@ -285,6 +291,7 @@
       let sort = 'newest';
       let asc = false;
       let panelKey = null;
+      let menuKey = null;
       let draft = [];
       const active = { region: [], industry: [], stage: [], status: [] };
 
@@ -345,20 +352,32 @@
           + '<span class="optlabel"' + (color ? ' style="color:' + color + '"' : '') + ' title="' + esc(o.label) + '">' + esc(o.label) + '</span>'
           + '<span class="optcount">' + o.count + '</span></label>';
       }
+      // One drop-down per filter group, in a row under the search bar. The menu lists the five biggest options;
+      // "Show all" opens the full, searchable panel.
       function renderFacets() {
         groupsEl.innerHTML = Object.keys(GROUPS).map(function (key) {
           const g = GROUPS[key];
           const open = panel && !panel.hidden && key === panelKey;
           const shown = g.options.slice(0, INLINE_OPTIONS);
           const more = g.options.length > shown.length;
-          return '<section class="facet" id="facet-' + key + '"><h4>' + esc(g.title)
-            + (active[key].length ? '<span class="facet-badge">' + active[key].length + '</span>' : '') + '</h4>'
+          const n = active[key].length;
+          const menuOpen = menuKey === key;
+          return '<section class="facet' + (n ? ' on' : '') + (menuOpen || open ? ' open' : '') + '" id="facet-' + key + '">'
+            + '<button type="button" class="fdrop" data-drop="' + esc(key) + '" aria-haspopup="true" aria-expanded="' + (menuOpen ? 'true' : 'false') + '">'
+            + esc(g.title) + (n ? '<span class="facet-badge">' + n + '</span>' : '') + '<span class="fdrop-caret" aria-hidden="true">▾</span></button>'
+            + '<div class="fmenu"' + (menuOpen ? '' : ' hidden') + '><h4>' + esc(g.title)
+            + (n ? '<span class="facet-badge">' + n + '</span>' : '') + '</h4>'
             + shown.map(function (o) { return facetOption(o, key, false); }).join('')
             + (more
               ? '<button type="button" class="show-all" data-open="' + esc(key) + '" aria-expanded="' + (open ? 'true' : 'false') + '">Show all (' + g.options.length + ')</button>'
               : '')
-            + '</section>';
+            + '</div></section>';
         }).join('');
+      }
+      function paintCount() {
+        const el = document.getElementById('firms-count');
+        if (!el) return;
+        el.textContent = total > 0 ? total.toLocaleString('en-US') + (total === 1 ? ' firm' : ' firms') : '';
       }
       function updateBadge() {
         const n = selectedCount();
@@ -366,6 +385,7 @@
           openBadge.hidden = !n;
           openBadge.textContent = n ? String(n) : '';
         }
+        renderChips();
       }
       function matchesFilters(f) {
         if (active.region.length && active.region.indexOf(regionOf(f)) === -1) return false;
@@ -455,9 +475,9 @@
       function headHtml() {
         return '<div class="frow h" role="row">'
           + headerCell('name', pageCopy.col_firm || 'Investor')
-          + headerCell('city', pageCopy.col_city || 'City')
+          + headerCell('city', pageCopy.col_city || 'Based in')
           + '<span class="hunsortable">' + esc(pageCopy.col_invests || 'Invests in') + '</span>'
-          + headerCell('deals', pageCopy.col_investments || 'Investments')
+          + headerCell('deals', pageCopy.col_investments || 'Deals')
           + headerCell('activity', pageCopy.col_activity || 'Activity')
           + headerCell('deal', pageCopy.col_deal || 'Latest deal')
           + headerCell('newest', pageCopy.col_added || 'Added')
@@ -583,14 +603,40 @@
         if (typed) terms.push(typed);
         return terms;
       }
+      function filterLabel(key, val) {
+        const o = (GROUPS[key].options || []).filter(function (x) { return x.value === val; })[0];
+        return (o && o.label) || val;
+      }
       function renderChips() {
         const el = document.getElementById('firms-chips');
         if (!el) return;
-        el.innerHTML = chips.map(function (c, i) {
+        const tags = [];
+        Object.keys(active).forEach(function (key) {
+          active[key].forEach(function (val) {
+            const label = filterLabel(key, val);
+            tags.push('<span class="firms-chip firms-tag"><span class="firms-chip-text">' + esc(label) + '</span>'
+              + '<button type="button" data-tag-key="' + esc(key) + '" data-tag-val="' + esc(val) + '" aria-label="Remove ' + esc(label) + '">×</button></span>');
+          });
+        });
+        el.innerHTML = tags.join('') + chips.map(function (c, i) {
           return '<span class="firms-chip"><span class="firms-chip-text">' + esc(c) + '</span>'
             + '<button type="button" data-chip-x="' + i + '" aria-label="Remove ' + esc(c) + '">×</button></span>';
         }).join('');
-        if (q) q.placeholder = chips.length ? '' : placeholder;
+        if (q) q.placeholder = (chips.length || tags.length) ? '' : placeholder;
+        paintClear();
+      }
+      function paintClear() {
+        const btn = document.getElementById('firms-clear');
+        if (btn) btn.hidden = !(chips.length || filtersOn() || (q && q.value.trim()));
+      }
+      function clearAll() {
+        chips = [];
+        menuKey = null;
+        if (q) q.value = '';
+        Object.keys(active).forEach(function (key) { active[key] = []; });
+        closePanel();
+        updateBadge();
+        draw();
       }
       function addChip(raw) {
         const t = String(raw || '').trim();
@@ -714,7 +760,8 @@
           const data = typeof payload === 'string' ? JSON.parse(payload) : (payload || {});
           const rows = Array.isArray(data.rows) ? data.rows : [];
           total = Number(data.total) || 0;
-          if (data.facets) applyFacets(data.facets);
+          paintCount();
+          if (data.facets) { applyFacets(data.facets); renderChips(); }
           appendRows(rows);
           offset += rows.length;
           done = rows.length === 0 || offset >= total;
@@ -767,6 +814,7 @@
           return matchesFilters(f) && (!terms.length || terms.some(function (t) { return searchMatch(f, t); }));
         }));
         total = localShown.length;
+        paintCount();
         loading = false;
         gen += 1;
         appendLocal();
@@ -808,25 +856,19 @@
           return;
         }
         const facet = document.getElementById('facet-' + panelKey);
-        const side = sidebar;
-        if (!facet || !side) return;
+        if (!facet) return;
         const f = boxRect(facet);
-        const s = boxRect(side);
-        let left = s.right + 16;
-        const pw = Math.min(594, vw - 24);
+        const pw = Math.min(420, vw - 24);
+        let left = f.left;
         if (left + pw > vw - margin) left = Math.max(margin, vw - pw - margin);
         panel.style.right = 'auto';
         panel.style.bottom = 'auto';
-        panel.style.width = '';
+        panel.style.width = pw + 'px';
         panel.style.maxHeight = '';
         panel.style.left = left + 'px';
-        const space = Math.max(160, vh - margin * 2);
-        let top = f.top - 6;
-        if (top < margin) top = margin;
-        const useful = Math.min(space, 560);
-        if (vh - margin - top < useful) top = Math.max(margin, vh - margin - useful);
+        const top = Math.max(margin, f.bottom + 6);
         panel.style.top = top + 'px';
-        if (box.style) box.style.maxHeight = Math.max(160, vh - margin - top) + 'px';
+        if (box.style) box.style.maxHeight = Math.max(200, Math.min(520, vh - margin - top)) + 'px';
       }
       function renderPanel() {
         if (!panelKey) return;
@@ -900,7 +942,17 @@
       });
       groupsEl.addEventListener('click', function (e) {
         const btn = e.target.closest('.show-all');
-        if (btn) openPanel(btn.getAttribute('data-open'));
+        if (btn) {
+          menuKey = null;
+          openPanel(btn.getAttribute('data-open'));
+          return;
+        }
+        const drop = e.target.closest('.fdrop');
+        if (!drop) return;
+        const key = drop.getAttribute('data-drop');
+        if (panel && !panel.hidden) closePanel();
+        menuKey = menuKey === key ? null : key;
+        renderFacets();
       });
       panel.addEventListener('change', function (e) {
         const input = e.target.closest('input[type="checkbox"]');
@@ -917,10 +969,11 @@
       document.getElementById('panel-apply').addEventListener('click', applyPanel);
       document.getElementById('facet-search').addEventListener('input', renderPanel);
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') { closePanel(); closeMobile(); }
+        if (e.key === 'Escape') { menuKey = null; closePanel(); closeMobile(); }
       });
       document.addEventListener('mousedown', function (e) {
         if (panel && !panel.hidden && !panel.contains(e.target) && !e.target.closest('.show-all')) closePanel();
+        if (menuKey && !e.target.closest('#facet-groups')) { menuKey = null; renderFacets(); }
       });
       if (openBtn) openBtn.addEventListener('click', function () {
         if (pageRoot && pageRoot.classList.contains('filters-open')) closeMobile();
@@ -930,6 +983,15 @@
       window.addEventListener('resize', function () {
         if (panel && !panel.hidden) positionPanel();
         if (window.innerWidth > 900) closeMobile();
+      });
+      window.addEventListener('scroll', function () {
+        if (panel && !panel.hidden) positionPanel();
+      }, { passive: true });
+      const clearBtn = document.getElementById('firms-clear');
+      if (clearBtn) clearBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        clearAll();
+        if (q) q.focus();
       });
       list.addEventListener('click', function (e) {
         const btn = e.target.closest('.frow.h [data-sort]');
@@ -955,6 +1017,7 @@
             if (added) { renderChips(); chipsChanged = true; }
           }
           queueSettle();
+          paintClear();
           clearTimeout(searchTimer);
           if (chipsChanged) armLog();
           if (chipsChanged || !remote) draw();
@@ -981,6 +1044,13 @@
       }
       const chipBox = document.getElementById('firms-chips');
       if (chipBox) chipBox.addEventListener('click', function (e) {
+        const tag = e.target.closest('[data-tag-key]');
+        if (tag) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFacet(tag.getAttribute('data-tag-key'), tag.getAttribute('data-tag-val'), false);
+          return;
+        }
         const btn = e.target.closest('[data-chip-x]');
         if (!btn) return;
         e.preventDefault();

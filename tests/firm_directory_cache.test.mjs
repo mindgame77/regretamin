@@ -390,7 +390,7 @@ test('show all is only offered when a group has more options than the five on sc
   assert.doesNotMatch(html, /Legal records|Recorded information|Deals in last 12 months|Legal \/ regulatory/);
   assert.match(html, /Investor status/);
   assert.match(html, /act-on|Active/);
-  const status = html.slice(html.indexOf('id="facet-status"'), html.indexOf('id="facet-status"') + 800);
+  const status = html.slice(html.indexOf('id="facet-status"'), html.indexOf('id="facet-status"') + 1600);
   assert.match(status, /Active/);
   assert.match(status, /Low activity/);
   assert.match(status, /Not active/);

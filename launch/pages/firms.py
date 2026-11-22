@@ -1,13 +1,15 @@
 def render(c):
     E, F = c.E, c.S['pages']['investors']
-    return f"""<main class="wrap firms-pg">
+    return f"""<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<main class="wrap firms-pg">
 <div class="firms-search-hero">
-<label class="srch firms-qbox" for="firms-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="m15 15 6 6"></path></svg><span class="firms-qfield"><span id="firms-chips" class="firms-chips"></span><input id="firms-q" type="text" placeholder="{E(F["search"])}" aria-label="{E(F["search"])}" autocomplete="off" spellcheck="false" enterkeyhint="done"></span></label>
+<label class="srch firms-qbox" for="firms-q"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="7"></circle><path d="m15 15 6 6"></path></svg><span class="firms-qfield"><span id="firms-chips" class="firms-chips"></span><input id="firms-q" type="text" placeholder="{E(F["search"])}" aria-label="{E(F["search"])}" autocomplete="off" spellcheck="false" enterkeyhint="done"></span><button type="button" class="firms-clear" id="firms-clear" hidden>Clear all</button></label>
 </div>
 <div class="sidebar-layout">
 <aside class="sidebar" id="firms-sidebar">
-<div class="sidebar-head"><h2>Filters</h2></div>
-<div id="facet-groups"></div>
+<div id="facet-groups" class="fdrops" role="group" aria-label="Filters"></div>
+<span class="fcount" id="firms-count" aria-live="polite"></span>
 </aside>
 <div class="flist-wrap">
 <div class="table-toolbar">
