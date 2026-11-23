@@ -5,6 +5,15 @@
 -- Undo one firm: update public.v2_firm_research_closed set reopened_at = now(), reopen_reason = '...' where firm_id = ...;
 -- Nothing on the site reads this table, so site data does not change. Current unexpired claims finish normally.
 
+-- On a database without the v2 tables (the test database in CI) this whole file is a no-op, like the other v2 data
+-- migrations. It ran in production on 2026-11-22 as written below; the wrapper only lets a fresh test database skip it.
+do $mig$
+begin
+  if to_regclass('public.v2_firms') is null then
+    raise notice 'v2 tables missing: firm research closed skipped';
+    return;
+  end if;
+  execute $closedci$
 -- 1. Marker table.
 create table if not exists public.v2_firm_research_closed (
   firm_id bigint primary key references public.v2_firms(firm_id),
@@ -1523,3 +1532,6 @@ BEGIN
     'website', frm.website_url);
 END
 $function$;
+$closedci$;
+end
+$mig$;

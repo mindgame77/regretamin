@@ -6,6 +6,17 @@
 -- The firm stays on the site with its name and deals. Current unexpired claims finish normally;
 -- only new hand-outs skip held firms. The site does not change.
 
+-- On a database without the v2 tables (the test database in CI) this whole file is a no-op, like the other v2 data
+-- migrations. It ran in production on 2026-11-22 as written below; the wrapper only lets a fresh test database skip it.
+do $mig$
+begin
+  if to_regclass('public.v2_firms') is null
+     or to_regclass('public.v2_firm_type') is null
+     or to_regclass('public.v2_firm_types_firms') is null then
+    raise notice 'v2 tables missing: firm research hold skipped';
+    return;
+  end if;
+  execute $holdci$
 -- 1. Two more firm types.
 insert into public.v2_firm_type (firm_type_id, name) overriding system value values (9, 'University fund'), (10, 'Angel group')
 on conflict do nothing;
@@ -942,3 +953,6 @@ BEGIN
     'website', frm.website_url);
 END
 $function$;
+$holdci$;
+end
+$mig$;
