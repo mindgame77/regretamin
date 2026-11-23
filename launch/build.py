@@ -386,6 +386,7 @@ def main():
     shutil.copytree(os.path.join(HERE, 'fav'), os.path.join(OUT, 'fav'))
     shutil.copytree(os.path.join(HERE, 'assets', 'video'), os.path.join(OUT, 'assets', 'video'))
     shutil.copytree(os.path.join(HERE, 'assets', 'map'), os.path.join(OUT, 'assets', 'map'))  # backgrounds and coordinates for /map/ (tools/map/gen_assets.cjs)
+    shutil.copytree(os.path.join(HERE, 'assets', 'share'), os.path.join(OUT, 'assets', 'share'))  # the picture for shared links (og:image)
     # Email templates load this from https://regretamin.com/assets/logo/lockup-light@2x.png
     logo_dir = os.path.join(OUT, 'assets', 'logo')
     os.makedirs(logo_dir, exist_ok=True)
