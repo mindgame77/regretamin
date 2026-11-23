@@ -56,7 +56,9 @@ try {
     const r = await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 45000 });
     if (!r || r.status() !== 200) throw new Error('home status ' + (r && r.status()));
   });
-  if (await page.locator('form[data-search] input').count()) ok('home: search box'); else fail('home: no search box');
+  // The home page is the map since 2026-11-23 (the search box moved to the Investors list and the firm pages).
+  try { await page.waitForFunction(() => document.querySelectorAll('#vm-stage [data-i]').length > 0, null, { timeout: 20000 }); ok('home: map drawn, ' + (await page.locator('#vm-stage [data-i]').count()) + ' places'); }
+  catch (_) { fail('home: the map never drew its places'); }
   try { await page.waitForFunction(() => /\d/.test((document.querySelector('#left') || {}).textContent || ''), null, { timeout: 20000 }); ok('home: check counter "' + (await page.textContent('#left')).trim() + '"'); }
   catch (_) { fail('home: check counter never loaded'); }
 
