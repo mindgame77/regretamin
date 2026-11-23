@@ -1772,3 +1772,13 @@ main.prof #where .wmap b{position:absolute;transform:translateY(-50%);font-size:
 main.prof #where .wmap b span{display:block;font-weight:400;color:#6B7A76}
 main.prof #where .wnote{margin:8px 0 2px;font-size:13px;color:#586964}
 main.prof #where .wmap b{z-index:1;padding:1px 5px;border-radius:5px;background:rgba(243,245,244,.88)}
+
+/* Account: the box for changing the sign-in email is off for now (founder); its form and code stay for later. */
+.ac .sec[hidden]{display:none!important}
+/* My firms: a saved firm wears the firm page's bookmark, not a star. */
+.mfr .star{font-size:0;width:32px;height:32px;border:1px solid #8A9893;border-radius:50%;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310201C' stroke-width='2.2' stroke-linejoin='round'%3E%3Cpath d='M6 3h12v18l-6-4-6 4z'/%3E%3C/svg%3E") center/15px no-repeat}
+.mfr .star.on{border-color:var(--sun);background:var(--sun) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2310201C' stroke='%2310201C' stroke-width='2.2' stroke-linejoin='round'%3E%3Cpath d='M6 3h12v18l-6-4-6 4z'/%3E%3C/svg%3E") center/15px no-repeat}
+/* My firms: no Results column while background checks are off (it was empty for every firm). */
+.mfr{grid-template-columns:36px minmax(0,1.6fr) 140px 150px}
+.mfr>.nc,.mfr>.pls,.mfr.h>span:nth-child(4){display:none}
+@media (max-width:760px){.mfr{grid-template-columns:34px minmax(0,1fr) auto}}
