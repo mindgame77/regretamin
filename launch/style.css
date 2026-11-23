@@ -1739,3 +1739,9 @@ main.prof #around .arstage{transform:scale(.78)}
 main.prof .ats .att .asig{cursor:default;align-self:stretch;padding-left:10px}
 main.prof .ats .att .asig .fsigw{cursor:help}
 .sigtip{position:fixed;z-index:60;max-width:260px;padding:8px 11px;border-radius:9px;background:#10201C;color:#fff;font:400 13px/1.35 'Geist',system-ui,sans-serif;box-shadow:0 6px 20px rgba(16,32,28,.18);pointer-events:none}
+
+/* 23 Nov: the sector dot's ring stays whole (it sat flush against the tag's clipped left edge). */
+.firms-pg a.frow .find i{margin-left:2px}
+/* 23 Nov: bigger signal icons in the firm page's status tile. */
+main.prof .ats .att .asig{gap:12px}
+main.prof .ats .att .asig .fsig{font-size:22px}

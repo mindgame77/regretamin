@@ -331,7 +331,7 @@
   // The firm's signals as icons at the right end of the status tile: the same icons and rules as the Investors list
   // (v2_firm_signals, refreshed daily; docs/investors_list_signals.md). No signals: the tile stays as it is.
   const SIGNALS = [
-    ['up', '🚀', 'Speeding up'], ['down', '📉', 'Slowing down'], ['top', '', 'Top 100'], ['chain', '🔗', 'Top firms follow it'],
+    ['up', '🚀', 'Speeding up'], ['down', '📉', 'Slowing down'], ['top', '💯', 'Top 100'], ['chain', '🔗', 'Top firms follow it'],
     ['lead', '🏆', 'Leads rounds'], ['spec', '🎯', 'Specialist'], ['fund', '💰', 'Fresh fund']
   ];
   function signalsHtml(d) {
@@ -402,15 +402,15 @@
     a.innerHTML = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>';
     bar.appendChild(a);    nameTag(bar);
   }
-  // The search bar is the Investors list's bar: the firm is a tag with an x, and typing a name opens the Investors
-  // list narrowed to it. The x on the tag is the only control (founder); it opens the full list.
+  // The search bar looks like the Investors list's bar: the firm is a tag with an x, which opens the full list.
+  // Typing a name shows the site's usual hints under the bar; nothing opens until one is chosen (founder, 23 Nov).
   function nameTag(bar) {
     const input = bar.querySelector('input[name="q"]');
     if (!input || !input.insertAdjacentElement || bar.querySelector('.sbtag')) return;
     const name = String(input.value || '').trim();
     if (!name) return;
     const list = (window.REGRET_ROOT || '') + 'investors/';
-    const go = function (text) { location.href = list + (text ? '?q=' + encodeURIComponent(text) : ''); };
+    const go = function () { location.href = list; };
     const tag = document.createElement('span');
     tag.className = 'sbtag';
     tag.innerHTML = '<span>' + esc(name) + '</span><button type="button" aria-label="Remove ' + esc(name) + '">×</button>';
@@ -419,19 +419,9 @@
     input.placeholder = '';
     input.removeAttribute('onfocus');
     tag.querySelector('button').addEventListener('click', function () { go(''); });
-    let timer = 0;
-    input.addEventListener('input', function () {
-      clearTimeout(timer);
-      const text = input.value.trim();
-      if (text.length >= 2) timer = setTimeout(function () { go(text); }, 350);
-    });
+    // Typing is left to the site's own search (search.js): it shows matching firms under the bar and nothing happens
+    // until one is chosen. The only extra here: Backspace in an empty bar removes the tag, like its ×.
     input.addEventListener('keydown', function (e) { if (e.key === 'Backspace' && !input.value) { e.preventDefault(); go(''); } });
-    bar.addEventListener('submit', function (e) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      clearTimeout(timer);
-      go(input.value.trim());
-    }, true);
   }
   // Keep a row of tags on one line. What does not fit collapses into a last "+N" tag; pressing it shows them all
   // in place and it turns into "Show less". Does nothing where the layout cannot be measured.

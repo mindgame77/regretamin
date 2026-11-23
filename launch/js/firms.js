@@ -217,7 +217,7 @@
   const SIGNALS = [
     ['up', '🚀', 'Speeding up', 'At least 10 more deals in the last 12 months than in the 12 months before.'],
     ['down', '📉', 'Slowing down', 'At least 10 fewer deals in the last 12 months than in the 12 months before.'],
-    ['top', '', 'Top 100', 'On the Regretamin Top Firms list for the year.'],
+    ['top', '💯', 'Top 100', 'On the Regretamin Top Firms list for the year.'],
     ['chain', '🔗', 'Top firms follow it', 'Five or more top-100 firms invested after it, at least twice each.'],
     ['lead', '🏆', 'Leads rounds', 'Led at least half of its deals in the last 12 months (10 deals or more).'],
     ['spec', '🎯', 'Specialist', 'More than half of its deals are in one sector.'],
@@ -338,6 +338,8 @@
       const active = { region: [], industry: [], stage: [], status: [], signal: [], dealsyear: [] };
       // A place on the map ("US West", "Bay Area"), set only by the map's "See the investors" link. Shown as a tag; × removes it.
       let place = null;
+      // True once the database offers the map's regions (US West, Caribbean, ...) for the Region filter; until then the eight big regions are used.
+      let mapRegions = false;
 
       // Older links put legal, info, or firm_status in the query string.
       // Those groups are gone. Ignore the params so the page still loads.
@@ -772,9 +774,23 @@
       function applyFacets(facets) {
         const regionCounts = {};
         (facets.region || []).forEach(function (o) { regionCounts[o.value] = Number(o.count) || 0; });
-        GROUPS.region.options = REGION_OPTIONS.map(function (pair) {
-          return { value: pair[0], label: pair[1], count: regionCounts[pair[0]] || 0 };
-        }).sort(byCount);
+        if (Array.isArray(facets.map_region) && facets.map_region.length) {
+          // The Region filter speaks the map's language. A region that arrived from the map as a tag becomes an ordinary choice.
+          if (!mapRegions) {
+            const had = active.region.length;
+            mapRegions = true;
+            active.region = [];
+            if (place && place.level === 'world') { active.region = [place.p]; place = null; }
+            if (had) setTimeout(draw, 0);
+          }
+          GROUPS.region.options = facets.map_region.map(function (o) {
+            return { value: String(o.value), label: String(o.value), count: Number(o.count) || 0 };
+          }).sort(byCount);
+        } else {
+          GROUPS.region.options = REGION_OPTIONS.map(function (pair) {
+            return { value: pair[0], label: pair[1], count: regionCounts[pair[0]] || 0 };
+          }).sort(byCount);
+        }
         function opts(list) {
           return (list || []).map(function (o) {
             return { value: o.value, label: o.label || o.value, count: Number(o.count) || 0 };
@@ -805,7 +821,7 @@
           p_sort: sort,
           p_asc: asc,
           p_search: searchTerms(),
-          p_region: active.region,
+          p_region: mapRegions ? [] : active.region,
           p_industry: active.industry,
           p_stage: active.stage,
           p_legal: [],
@@ -816,6 +832,7 @@
           p_place_level: place ? place.level : null,
           p_place: place ? place.p : null
         };
+        if (mapRegions) body.p_map_region = active.region;
         loading = true;
         showStatus();
         fetch(C.url + '/rest/v1/rpc/firm_directory_page_v4', {
