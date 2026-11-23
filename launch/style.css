@@ -1762,3 +1762,13 @@ main.prof .ats .att .asig .fsig{font-size:22px}
 .fhints hr{border:0;border-top:1px solid #E6EAE8;margin:6px 4px}
 .fhints .fh-foot{padding:9px 12px 6px;font-size:13px;color:#6B7A76}
 .fhints .fh-foot kbd{font:500 11px/1 'Geist Mono',ui-monospace,monospace!important;border:1px solid #C9D1CE;border-radius:5px;padding:2px 5px;margin-right:6px;color:#10201C;background:#fff}
+
+/* Firm page: "Where they invest" card (circles on the map where the firm's startups are based). */
+main.prof #where .wbox{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 8px}
+main.prof #where .wmap{position:relative;display:block;height:100%;max-width:100%}
+main.prof #where .wmap img{position:absolute;inset:0;width:100%;height:100%;opacity:.9}
+main.prof #where .wmap i{position:absolute;transform:translate(-50%,-50%);border-radius:50%;background:#9FD4C3;box-shadow:0 0 0 1.5px #10201C}
+main.prof #where .wmap b{position:absolute;transform:translateY(-50%);font-size:12.5px;font-weight:600;line-height:1.2;color:#10201C;white-space:nowrap}
+main.prof #where .wmap b span{display:block;font-weight:400;color:#6B7A76}
+main.prof #where .wnote{margin:8px 0 2px;font-size:13px;color:#586964}
+main.prof #where .wmap b{z-index:1;padding:1px 5px;border-radius:5px;background:rgba(243,245,244,.88)}

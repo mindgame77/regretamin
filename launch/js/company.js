@@ -2529,6 +2529,7 @@
     }
     fitTeam(root);
     aroundCard(root);
+    whereCard(root);
     evenCards(root);
     fitPortfolio(root);
   }
@@ -2591,7 +2592,7 @@
       + '<div class="arbox"><div class="arstage"><svg aria-hidden="true" width="' + W + '" height="' + H + '">' + svg + '</svg>' + html
       + '<span class="arme" style="left:' + (CX - 30) + 'px;top:' + (CY - 30) + 'px">' + centreName(name) + '</span></div></div>'
       + '<button type="button" class="ash" data-around>Show all ' + total + ' firms</button>';
-    grid.insertBefore(card, grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
+    grid.insertBefore(card, grid.querySelector('#where') || grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
     card.querySelector('[data-around]').addEventListener('click', function () { openAround(name, d); });
   }
   function openAround(name, d) {
@@ -2640,6 +2641,71 @@
     btn.addEventListener('click', function () { if (all && all.click) all.click(); });
   }
   // The grid keeps an even number of cards. When the firm's own cards leave a hole, a map card fills it.
+  // "Where they invest": where the startups the firm backed are based, as circles on the map of the United States,
+  // Europe or the world (whichever holds most of them). Shown only when the database knows the city of five or more
+  // of the firm's startups (founder, 23 Nov); otherwise there is no card.
+  let WHERE = null;
+  function whereCard(root) {
+    const C = window.REGRET || {};
+    const main = root && root.closest ? (root.closest('main') || root) : root;
+    const slug = main && main.dataset && main.dataset.firm;
+    const grid = root.querySelector && root.querySelector('.bento');
+    if (!slug || !grid || !C.url || !C.key || typeof fetch !== 'function') return;
+    if (WHERE && WHERE.slug === slug) { if (WHERE.data) drawWhere(root, WHERE.data); return; }
+    WHERE = { slug: slug, data: null };
+    fetch(C.url + '/rest/v1/rpc/v2_firm_invests_where', {
+      method: 'POST',
+      headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_slug: slug })
+    }).then(r => (r.ok ? r.json() : null)).then(d => {
+      if (!d || !WHERE || WHERE.slug !== slug || !Array.isArray(d.places) || !d.places.length) return;
+      WHERE.data = d;
+      drawWhere(root, d);
+    }).catch(function () { /* no card is fine */ });
+  }
+  function drawWhere(root, d) {
+    const grid = root.querySelector('.bento');
+    if (!grid || grid.querySelector('#where')) return;
+    const ROOT = window.REGRET_ROOT || '';
+    const level = d.level === 'us' || d.level === 'eu' ? d.level : 'world';
+    const paint = function () {
+      const g = GEO && GEO[level];
+      if (!g || grid.querySelector('#where')) return;
+      const spots = d.places.map(p => ({ n: Number(p.n) || 0, s: g.places && g.places[p.p] })).filter(x => x.s && x.n > 0);
+      if (!spots.length) return;
+      const placed = spots.reduce((a, x) => a + x.n, 0), big = spots[0].n, rest = Math.max(0, (Number(d.known) || 0) - placed);
+      const rad = n => Math.round(4 + Math.sqrt(n / big) * 18);
+      const pos = x => 'left:' + (x.s.x / g.w * 100).toFixed(2) + '%;top:' + (x.s.y / g.h * 100).toFixed(2) + '%';
+      // Names for the biggest places only, and never two names on top of each other.
+      const named = [];
+      spots.slice(0, 5).forEach(x => {
+        if (named.length >= 3) return;
+        if (named.some(o => Math.abs(o.s.y - x.s.y) / g.h < 0.13 && Math.abs(o.s.x - x.s.x) / g.w < 0.3)) return;
+        named.push(x);
+      });
+      const label = x => {
+        const left = x.s.x / g.w < 0.5, gap = rad(x.n) + 7;
+        const side = left ? 'left:calc(' + (x.s.x / g.w * 100).toFixed(2) + '% + ' + gap + 'px)' : 'right:calc(' + (100 - x.s.x / g.w * 100).toFixed(2) + '% + ' + gap + 'px);text-align:right';
+        return '<b style="' + side + ';top:' + (x.s.y / g.h * 100).toFixed(2) + '%">' + esc(x.s.n) + '<span>' + x.n.toLocaleString('en-US') + (x.n === 1 ? ' startup' : ' startups') + '</span></b>';
+      };
+      const out = ' elsewhere';  // other countries, or towns the map has no place for
+      const href = ROOT + (level === 'world' ? '' : '?zoom=' + level);
+      const card = document.createElement('article');
+      card.className = 'mod';
+      card.id = 'where';
+      card.innerHTML = '<div class="mh"><h3>Where they invest</h3></div>'
+        + '<div class="wbox"><span class="wmap" style="aspect-ratio:' + g.w + '/' + g.h + '"><img src="' + ROOT + 'assets/map/' + level + '.svg" alt="" loading="lazy">'
+        + spots.map(x => '<i style="' + pos(x) + ';width:' + rad(x.n) * 2 + 'px;height:' + rad(x.n) * 2 + 'px"></i>').join('')
+        + named.map(label).join('') + '</span></div>'
+        + '<p class="wnote">Where ' + placed.toLocaleString('en-US') + ' of their ' + (Number(d.startups) || placed).toLocaleString('en-US') + ' startups are based.'
+        + (rest ? ' ' + rest.toLocaleString('en-US') + ' more ' + (rest === 1 ? 'is' : 'are') + out + '.' : '') + '</p>'
+        + '<a class="ash" href="' + href + '">Open the map</a>';
+      grid.insertBefore(card, grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
+      evenCards(root);
+    };
+    if (GEO) return paint();
+    fetch(ROOT + 'assets/map/places.json').then(r => r.json()).then(g => { GEO = g; paint(); mapCard(root); }).catch(function () {});
+  }
   function evenCards(root) {
     const grid = root.querySelector && root.querySelector('.bento');
     if (!grid || !grid.querySelectorAll || !grid.insertBefore) return;
