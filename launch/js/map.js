@@ -86,7 +86,13 @@
     if (cache.has(key)) return cache.get(key);
     let out = null;
     if (FIXTURE) out = hot ? (FX_HOT ? await fetch(FX_HOT).then((r) => r.json()) : null) : await fetch(FIXTURE).then((r) => r.json());
-    else if (sb) { const { data, error } = await sb.rpc(hot ? 'v2_map_hot' : 'v2_map_summary', a); if (!error) out = data; }
+    else if (sb) {
+      // The opening view (nothing chosen yet) is read from an answer the database prepared ahead of time; it is refreshed
+      // every 15 minutes. Anything else, or a missing answer, is counted live as before.
+      const plain = who() === 'all' && !S.stages.length && !S.sectors.length && (hot ? S.days === 90 : S.q0 === 0 && S.q1 === NQ - 1);
+      if (plain) { const r = await sb.rpc('v2_map_cached', { p_key: hot ? 'hot' : 'summary' }); if (!r.error && r.data) out = r.data; }
+      if (!out) { const { data, error } = await sb.rpc(hot ? 'v2_map_hot' : 'v2_map_summary', a); if (!error) out = data; }
+    }
     if (out) cache.set(key, out);
     return out;
   }
@@ -112,7 +118,11 @@
   async function loadUpdates() {
     let data = null;
     if (FX_UPDATES) data = await fetch(FX_UPDATES).then((r) => r.json());
-    else if (!FIXTURE && sb) { const r = await sb.rpc('v2_map_updates', { p_limit: COL ? 6 : 3 }); if (!r.error) data = r.data; }
+    else if (!FIXTURE && sb) {
+      const c = await sb.rpc('v2_map_cached', { p_key: 'updates' });  // prepared ahead of time; live when it is missing
+      if (!c.error && Array.isArray(c.data)) data = c.data;
+      else { const r = await sb.rpc('v2_map_updates', { p_limit: COL ? 6 : 3 }); if (!r.error) data = r.data; }
+    }
     if (Array.isArray(data)) { S.updates = data.slice(0, COL ? 6 : 3); drawSide(); draw(); }
   }
 
@@ -135,6 +145,10 @@
   const stage = $('#vm-stage'), mapBox = $('#vm-map');
 
   // ---------- filters (two pop-up lists of checkboxes)
+  // "Hot right now": the sector named next to a place follows the unit switch. On "%" it is the biggest rise or fall in
+  // percent; on "#" it is the biggest in number of deals (hotn / coldn from the database).
+  const hotOf = (p) => (S.unit === 'num' && p.hotn) || p.hot;
+  const coldOf = (p) => (S.unit === 'num' && p.coldn) || p.cold;
   function drawPicks() {
     [['sectors', SECTORS, 'All sectors'], ['stages', STAGES, 'All stages']].forEach(([k, all, none]) => {
       const box = $(`[data-pick="${k}"]`), on = S[k], open = box.classList.contains('vm-open');
@@ -328,14 +342,14 @@
       else if (p.kind === 'hot') b.style.backgroundColor = '';
       else b.style.backgroundColor = p.kind === 'plain' ? (S.sectors.length === 1 ? COLORS[S.sectors[0]] : '#C9D1CE') : (COLORS[(p.top && p.top[0] && p.top[0][0])] || '#C9D1CE');
       // label: below, else above, else right, else left; dropped if nothing fits
-      const sub = p.kind === 'hot' ? (S.level === 'world' ? toneText(p) + (p.hot && p.tone !== 'few' ? ' · ' + p.hot[0] : '') : num(p.d) + ' · ' + toneText(p)) : num(p.d) + (S.level === 'world' && !sector && p.so ? ' · ' + p.so : ''), small = p.kind === 'dot';
+      const sub = p.kind === 'hot' ? (S.level === 'world' ? toneText(p) + (hotOf(p) && p.tone !== 'few' ? ' · ' + hotOf(p)[0] : '') : num(p.d) + ' · ' + toneText(p)) : num(p.d) + (S.level === 'world' && !sector && p.so ? ' · ' + p.so : ''), small = p.kind === 'dot';
       const w = Math.max(p.n.length * (small ? 5.6 : 6.6), small ? 0 : sub.length * 5.9) + 8, h = small ? 14 : 30;
       const tries = small ? [[p.x + p.r + 6, p.y - 7, 'l'], [p.x - p.r - 6 - w, p.y - 7, 'r']] : [[p.x - w / 2, p.y + p.r + 2, 'c'], [p.x - w / 2, p.y - p.r - h - 2, 'c'], [p.x + p.r + 4, p.y - h / 2, 'l'], [p.x - p.r - 4 - w, p.y - h / 2, 'r'],
         [p.x + p.r * 0.7 + 2, p.y + p.r * 0.7, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y + p.r * 0.7, 'r'], [p.x + p.r * 0.7 + 2, p.y - p.r * 0.7 - h, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y - p.r * 0.7 - h, 'r']];
       let placed = false;
       for (const [x, y, al] of tries) {
         const bx = { x0: x, y0: y, x1: x + w, y1: y + h };
-        if (!hit(bx)) { boxes.push(bx); placed = true; labs += `<span class="vm-lab ${small ? 'vm-sm' : ''}" style="left:${x}px;top:${y}px;width:${w}px;text-align:${al === 'c' ? 'center' : al === 'l' ? 'left' : 'right'}">${esc(p.n)}${small ? ' ' + num(p.d) : `<br><em>${p.kind === 'hot' ? (S.level === 'world' ? toneHtml(p) + (p.hot && p.tone !== 'few' ? ' · ' + esc(p.hot[0]) : '') : num(p.d) + ' · ' + toneHtml(p)) : esc(sub)}</em>`}</span>`; break; }
+        if (!hit(bx)) { boxes.push(bx); placed = true; labs += `<span class="vm-lab ${small ? 'vm-sm' : ''}" style="left:${x}px;top:${y}px;width:${w}px;text-align:${al === 'c' ? 'center' : al === 'l' ? 'left' : 'right'}">${esc(p.n)}${small ? ' ' + num(p.d) : `<br><em>${p.kind === 'hot' ? (S.level === 'world' ? toneHtml(p) + (hotOf(p) && p.tone !== 'few' ? ' · ' + esc(hotOf(p)[0]) : '') : num(p.d) + ' · ' + toneHtml(p)) : esc(sub)}</em>`}</span>`; break; }
       }
       // No room for the full name (crowded Europe): fall back to the two-letter country code, beside the ring if it fits, else in its centre.
       if (!placed && S.level === 'eu' && !small) {
@@ -372,7 +386,7 @@
     if (S.view === 'hot') {
       const per = S.days === 365 ? 'year' : S.days + ' days';
       // each fact on its own line, with its numbers kept together on the right so nothing breaks mid-number
-      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-tr"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${per}</span></span><span class="vm-tr"><span>${toneHtml(p)}</span>${p.tone === 'few' ? '' : `<span class="vm-pc vm-mu">${num(p.pv)} before</span>`}</span>${p.hot ? `<span class="vm-tr vm-rule"><span><i class="${toneCls(toneOf(p.hot[1], p.hot[2]))}"></i><b>${esc(p.hot[0])}</b></span><span class="vm-pc">${num(p.hot[1])} vs ${num(p.hot[2])}</span></span>` : ''}${p.cold ? `<span class="vm-tr${p.hot ? '' : ' vm-rule'}"><span><i class="${toneCls(toneOf(p.cold[1], p.cold[2]))}"></i><b>${esc(p.cold[0])}</b></span><span class="vm-pc">${num(p.cold[1])} vs ${num(p.cold[2])}</span></span>` : ''}`;
+      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-tr"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${per}</span></span><span class="vm-tr"><span>${toneHtml(p)}</span>${p.tone === 'few' ? '' : `<span class="vm-pc vm-mu">${num(p.pv)} before</span>`}</span>${hotOf(p) ? `<span class="vm-tr vm-rule"><span><i class="${toneCls(toneOf(hotOf(p)[1], hotOf(p)[2]))}"></i><b>${esc(hotOf(p)[0])}</b></span><span class="vm-pc">${num(hotOf(p)[1])} vs ${num(hotOf(p)[2])}</span></span>` : ''}${coldOf(p) ? `<span class="vm-tr${hotOf(p) ? '' : ' vm-rule'}"><span><i class="${toneCls(toneOf(coldOf(p)[1], coldOf(p)[2]))}"></i><b>${esc(coldOf(p)[0])}</b></span><span class="vm-pc">${num(coldOf(p)[1])} vs ${num(coldOf(p)[2])}</span></span>` : ''}`;
     } else {
     const tot = p.tot || 1, sector = S.sectors.length > 0, top = p.top || [], rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
     t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.d)} ${S.sectors.length === 1 ? esc(S.sectors[0]) + ' ' : ''}deal${p.d === 1 ? '' : 's'}${S.sectors.length > 1 ? ' in the chosen sectors' : ''} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>

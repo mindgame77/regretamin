@@ -1140,6 +1140,15 @@
         placesAsked = true;
         rpc('firm_place_suggest', { p_q: '', p_limit: 3000 }).then(function (d) {
           placeList = Array.isArray(d) ? d : [];
+          // Countries arrive as two-letter codes; the browser knows their names.
+          let names = null;
+          try { names = new Intl.DisplayNames(['en'], { type: 'region' }); } catch (e) {}
+          placeList.forEach(function (x) {
+            if (x.kind !== 'country') return;
+            let n = '';
+            try { n = names ? names.of(x.p) : ''; } catch (e) {}
+            x.name = n && n !== x.p ? n : x.p;
+          });
           if (hintBox && !hintBox.hidden) paintHints();
         });
       }

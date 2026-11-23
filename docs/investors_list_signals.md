@@ -116,3 +116,26 @@ bar is focused and matches as you type. Execute granted to `anon`, `authenticate
 - Map: with a place open, "See the investors" sends `zoom, place, pname, from, to` (plus `days` in "Hot right now", `who`,
   `sectors`, `stages`); the list shows a period tag ("Last 90 days") and the firms the map counted. Removing the period tag
   goes back to profile-based sectors and stages.
+
+## Migrations of 2026-11-23, later: `map_hot_biggest_sector_by_number`, `map_opening_view_ready_made_answer`, `investors_list_v5_countries`
+
+### `v2_map_hot` (both versions): two more fields per place
+`hotn` and `coldn`: the sector with the biggest rise and the biggest fall counted in deals (`order by (n - p) desc` / `asc`,
+same `n + p >= 10` floor as `hot` / `cold`, which are picked by percentage and are unchanged). The map shows them when its
+unit switch is on "#". Made by text replacement on both functions; nothing else in their output changed.
+
+### The map's opening views, counted ahead of time
+- Table `v2_map_cache (key text primary key, payload jsonb, refreshed_at timestamptz)`, RLS on, no `anon` / `authenticated` access.
+- `v2_refresh_map_cache()` (security definer, not callable by `anon`): stores `v2_map_summary()`, `v2_map_hot()` and
+  `v2_map_updates(6)` under the keys `summary`, `hot`, `updates`. Cron job `v2-map-cache`, every 15 minutes.
+- `v2_map_cached(p_key text) returns jsonb` (granted to `anon`, `authenticated`): the stored answer, or null when it is
+  missing or more than a day old; the page then asks the live function as before.
+- The page uses it only when nothing is chosen (all sectors, all stages, all firms; the whole period in "Money flow" or
+  90 days in "Hot right now") and for the latest updates. 1.3 s / 0.7 s / 0.5 s became about 1 ms each.
+- If `v2_map_summary`, `v2_map_hot` or `v2_map_updates` change shape, the stored answers follow at the next refresh.
+
+### Countries
+- `firm_place_suggest` also returns the 115 countries that have a listed firm (`kind` and `level` `country`, `p` = the
+  two-letter code from `firm_summary.hq_country`; the page turns the code into a name with `Intl.DisplayNames`).
+- `firm_directory_page_v5` accepts `p_place_level = 'country'` with the code in `p_place` (`upper(hq_country) = code`).
+  Same arguments as before. Germany: 125 firms.
