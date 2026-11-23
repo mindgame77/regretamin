@@ -924,6 +924,45 @@
     "title": "Regretamin",
     "description": "Research venture capital firms before you take the meeting or the money."
    },
+   "api": {
+    "title": "API · Regretamin",
+    "description": "Read-only API for published Regretamin firms, deals, team, and legal cases.",
+    "h1": "API",
+    "lead": "Read published firms, deals, team members, and legal cases. Send the key only in the x-api-key header.",
+    "fine": "Keys are issued by Regretamin. A missing or inactive key is rejected. While the API is off, every request says so.",
+    "blocks": [
+     {
+      "h2": "List firms",
+      "method": "GET /v1/firms",
+      "text": "q matches the name, short name, website, or slug. country is a two-letter code. activity is active, low, not_active, or not_checked. Those are the Investors list labels: Active, Low activity, Not active, and Not checked yet. limit is at most 100. Pass next_cursor back as cursor.",
+      "example": "curl -sS -H \"x-api-key: YOUR_KEY\" \"https://sxxgvkdwgiouyqciztec.supabase.co/functions/v1/public-api/v1/firms?q=sequoia&country=US&activity=active&limit=50\""
+     },
+     {
+      "h2": "One firm",
+      "method": "GET /v1/firms/{slug}",
+      "text": "The firm, its published team, and its published legal cases. Team is the founders and current leaders. Legal cases are the published rows only.",
+      "example": "curl -sS -H \"x-api-key: YOUR_KEY\" \"https://sxxgvkdwgiouyqciztec.supabase.co/functions/v1/public-api/v1/firms/sequoia\""
+     },
+     {
+      "h2": "Deals",
+      "method": "GET /v1/firms/{slug}/deals",
+      "text": "Each deal has the startup, round, date, and source link. A deal with no date is included with date null. Deals with no date are not counted in the activity label. Pass next_cursor back as cursor.",
+      "example": "curl -sS -H \"x-api-key: YOUR_KEY\" \"https://sxxgvkdwgiouyqciztec.supabase.co/functions/v1/public-api/v1/firms/sequoia/deals?limit=50\""
+     },
+     {
+      "h2": "Recently updated",
+      "method": "GET /v1/updated",
+      "text": "Published firms, newest update first. Each row adds updated_at. Pass next_cursor back as cursor.",
+      "example": "curl -sS -H \"x-api-key: YOUR_KEY\" \"https://sxxgvkdwgiouyqciztec.supabase.co/functions/v1/public-api/v1/updated?limit=50\""
+     },
+     {
+      "h2": "Errors",
+      "method": "",
+      "text": "401 means the key is missing, unknown, or turned off. 429 means the daily limit is used up and includes reset_at. 503 with the message API is turned off means the whole API is off.",
+      "example": ""
+     }
+    ]
+   },
    "pending": {
     "title": "Regretamin",
     "description": "Request a background check on a venture capital firm."
