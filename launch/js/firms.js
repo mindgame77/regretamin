@@ -340,6 +340,12 @@
       let place = null;
       // True once the database offers the map's regions (US West, Caribbean, ...) for the Region filter; until then the eight big regions are used.
       let mapRegions = false;
+      // Set only by the map's link when a place was open there: the list then shows the firms the map counted, by deals done
+      // in that period, instead of by what a firm's profile says. Shown as one more tag ("Last 90 days"); its × ends it.
+      let deal = null;
+      let typedLive = false;
+      const DEAL_STAGE = { 'pre-seed': 'Pre-seed', 'seed': 'Seed', 'series a': 'Series A', 'series b': 'Series B', 'series c': 'Series C+', 'series d': 'Series C+', 'series e': 'Series C+', 'series f': 'Series C+', 'growth': 'Growth' };
+      function dealOn() { return !!(deal && place && place.level !== 'city'); }
 
       // Older links put legal, info, or firm_status in the query string.
       // Those groups are gone. Ignore the params so the page still loads.
@@ -648,7 +654,15 @@
         if (typed.length < 2) return;
         idleTimer = setTimeout(function () {
           if (!q || q.value.trim() !== typed) return;
+          if (!remote) { armLog(); return; }
+          const t = typed.toLowerCase();
+          if (firmFor !== t) return;  // the hints for this text have not come back
+          const m = hintMatches(t);
+          if (m.places.length || m.sectors.length || m.firms.length) { logTyped(typed); return; }
+          typedLive = true;  // nothing to choose from: search the list for it, which shows the "not here yet" message
+          hideHints();
           armLog();
+          draw();
         }, 1500);
       }
       function notePageResult(key, totalCount, slug) {
@@ -659,7 +673,9 @@
 
       function searchTerms() {
         const terms = chips.map(function (c) { return c.toLowerCase(); });
-        const typed = q && q.value ? q.value.trim().toLowerCase() : '';
+        // With the list on the server, typed text is not a search until Enter makes it a tag. One exception (typedLive):
+        // a name that matches no firm, place or sector is searched after a pause, so "we don't have this firm yet" still shows.
+        const typed = (!remote || typedLive) && q && q.value ? q.value.trim().toLowerCase() : '';
         if (typed) terms.push(typed);
         return terms;
       }
@@ -673,6 +689,8 @@
         const tags = [];
         if (place) tags.push('<span class="firms-chip firms-tag"><span class="firms-chip-text">' + esc(place.name) + '</span>'
           + '<button type="button" data-place-x aria-label="Remove ' + esc(place.name) + '">×</button></span>');
+        if (dealOn()) tags.push('<span class="firms-chip firms-tag"><span class="firms-chip-text">' + esc(deal.label) + '</span>'
+          + '<button type="button" data-deal-x aria-label="Remove ' + esc(deal.label) + '">×</button></span>');
         Object.keys(active).forEach(function (key) {
           active[key].forEach(function (val) {
             const label = filterLabel(key, val);
@@ -695,8 +713,10 @@
         chips = [];
         menuKey = null;
         if (q) q.value = '';
+        typedLive = false;
         Object.keys(active).forEach(function (key) { active[key] = []; });
         place = null;
+        deal = null;
         closePanel();
         updateBadge();
         draw();
@@ -780,7 +800,7 @@
             const had = active.region.length;
             mapRegions = true;
             active.region = [];
-            if (place && place.level === 'world') { active.region = [place.p]; place = null; }
+            if (place && place.level === 'world' && !deal) { active.region = [place.p]; place = null; }
             if (had) setTimeout(draw, 0);
           }
           GROUPS.region.options = facets.map_region.map(function (o) {
@@ -829,13 +849,24 @@
           p_status: active.status,
           p_signals: active.signal,
           p_deals_year: active.dealsyear[0] || null,
-          p_place_level: place ? place.level : null,
-          p_place: place ? place.p : null
+          p_place_level: place && place.level !== 'city' ? place.level : null,
+          p_place: place && place.level !== 'city' ? place.p : null,
+          p_city: place && place.level === 'city' ? [place.p] : []
         };
+        if (dealOn()) {
+          // The map's rule: firms based in the place that did deals in these sectors and stages in the period.
+          body.p_industry = [];
+          body.p_stage = [];
+          body.p_deal_from = deal.from;
+          body.p_deal_to = deal.to;
+          body.p_deal_firms = deal.who;
+          body.p_deal_sectors = active.industry.map(function (v) { return deal.names[v] || filterLabel('industry', v); });
+          body.p_deal_stages = Array.from(new Set(active.stage.map(function (v) { return DEAL_STAGE[v] || v; })));
+        }
         if (mapRegions) body.p_map_region = active.region;
         loading = true;
         showStatus();
-        fetch(C.url + '/rest/v1/rpc/firm_directory_page_v4', {
+        fetch(C.url + '/rest/v1/rpc/firm_directory_page_v5', {
           method: 'POST',
           headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
@@ -1094,6 +1125,120 @@
         }
         draw();
       });
+      // ---- Hints under the search bar: the places, sectors and firms that match what is typed. Nothing in the list moves
+      // until one is chosen, or until Enter turns the typed word into a tag (founder, 23 Nov).
+      let hintBox = null, hintItems = [], hintAt = -1, hintTimer = 0, hintSeq = 0, placeList = null, placesAsked = false, firmHits = [], firmFor = '';
+      const PIN = '<svg class="fh-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/></svg>';
+      const BLD = '<svg class="fh-ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M10 21v-4h4v4"/></svg>';
+      function rpc(name, args) {
+        return fetch(C.url + '/rest/v1/rpc/' + name, { method: 'POST', headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' }, body: JSON.stringify(args) })
+          .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+      }
+      // Every place that has a firm (the map's regions and US areas, and the cities on firm profiles), fetched once.
+      function loadPlaces() {
+        if (placesAsked || !remote) return;
+        placesAsked = true;
+        rpc('firm_place_suggest', { p_q: '', p_limit: 3000 }).then(function (d) {
+          placeList = Array.isArray(d) ? d : [];
+          if (hintBox && !hintBox.hidden) paintHints();
+        });
+      }
+      function hintRank(name, t) { const n = String(name || '').toLowerCase(); return n.indexOf(t) === 0 ? 2 : n.indexOf(' ' + t) !== -1 ? 1 : 0; }
+      function hintMark(name, t) {
+        const n = String(name || ''), i = n.toLowerCase().indexOf(t);
+        return i === -1 ? esc(n) : esc(n.slice(0, i)) + '<mark>' + esc(n.slice(i, i + t.length)) + '</mark>' + esc(n.slice(i + t.length));
+      }
+      function firmsWord(n) { return Number(n || 0).toLocaleString('en-US') + (Number(n) === 1 ? ' firm' : ' firms'); }
+      function hintMatches(t) {
+        const top = function (list, nameOf, max) {
+          return list.map(function (x) { return [hintRank(nameOf(x), t), x]; }).filter(function (p) { return p[0]; })
+            .sort(function (a, b) { return b[0] - a[0] || (b[1].count || 0) - (a[1].count || 0); }).slice(0, max).map(function (p) { return p[1]; });
+        };
+        return {
+          places: top(placeList || [], function (x) { return x.name; }, 3),
+          sectors: top((GROUPS.industry.options || []).filter(function (o) { return active.industry.indexOf(o.value) === -1; }), function (o) { return o.label; }, 3),
+          firms: firmFor === t ? firmHits.slice(0, 4) : []
+        };
+      }
+      // Search demand is still recorded for a typed name that had hints (as the search bar on other pages does).
+      function logTyped(typed) {
+        const key = typed.toLowerCase();
+        if (loggedTerms.has(key)) return;
+        loggedTerms.add(key);
+        const log = window.RegretSearch && window.RegretSearch.logSearch;
+        if (!log) return;
+        try { log(typed, location.pathname || '/', firmHits.length, firmHits[0] ? firmHits[0].slug : null); } catch (e) {}
+      }
+      function hideHints() { if (hintBox) hintBox.hidden = true; hintItems = []; hintAt = -1; if (q) q.setAttribute('aria-expanded', 'false'); }
+      function paintHints() {
+        const t = q.value.trim().toLowerCase();
+        if (!hintBox || t.length < 2) return hideHints();
+        const m = hintMatches(t), places = m.places, sectors = m.sectors, firms = m.firms;
+        hintItems = [];
+        const row = function (item, icon, name, right) {
+          const i = hintItems.push(item) - 1;
+          return '<button type="button" role="option" class="fh-row' + (i === hintAt ? ' on' : '') + '" data-hint="' + i + '">' + icon + '<b>' + hintMark(name, t) + '</b><span class="fh-r">' + esc(right) + '</span></button>';
+        };
+        const parts = [];
+        if (places.length) parts.push('<h5>Places <span>adds a filter</span></h5>' + places.map(function (x) { return row({ type: 'place', place: x }, PIN, x.name, firmsWord(x.count)); }).join(''));
+        if (sectors.length) parts.push('<h5>Sectors <span>adds a filter</span></h5>' + sectors.map(function (o) { return row({ type: 'sector', value: o.value }, '<i class="fh-dot" style="background:' + sectorColor(o.label) + '"></i>', o.label, firmsWord(o.count)); }).join(''));
+        if (firms.length) parts.push('<h5>Firms <span>opens the firm</span></h5>' + firms.map(function (f) { return row({ type: 'firm', slug: f.slug }, BLD, f.name, f.hq || ''); }).join(''));
+        parts.push('<div class="fh-foot"><kbd>Enter</kbd> shows every firm with “' + esc(q.value.trim()) + '” in its name</div>');
+        hintBox.innerHTML = parts.join('<hr>');
+        hintBox.hidden = false;
+        q.setAttribute('aria-expanded', 'true');
+      }
+      function askHints() {
+        const t = q.value.trim().toLowerCase();
+        if (t.length < 2) return hideHints();
+        hintAt = -1;
+        if (!typedLive) paintHints();
+        const n = ++hintSeq;
+        rpc('firm_suggest', { q: t }).then(function (d) {
+          if (n !== hintSeq) return;
+          firmHits = Array.isArray(d) ? d : [];
+          firmFor = t;
+          if (q.value.trim().toLowerCase() === t && !typedLive && document.activeElement === q) paintHints();
+        });
+      }
+      function pickHint(item) {
+        if (!item) return;
+        if (item.type === 'firm') { location.href = href(item.slug); return; }
+        if (item.type === 'sector') {
+          if (active.industry.indexOf(item.value) === -1) active.industry = active.industry.concat([item.value]);
+        } else {
+          const x = item.place;
+          deal = null;  // a place chosen by hand is an ordinary filter, not the map's deals view
+          if (x.kind === 'region' && mapRegions) { place = null; if (active.region.indexOf(x.p) === -1) active.region = active.region.concat([x.p]); }
+          else place = { level: x.level, p: x.p, name: x.name };
+        }
+        q.value = '';
+        hideHints();
+        renderFacets();
+        updateBadge();
+        renderChips();
+        draw();
+      }
+      if (q && remote && typeof document.createElement === 'function') {
+        hintBox = document.createElement('div');
+        hintBox.className = 'fhints';
+        hintBox.id = 'firms-hints';
+        hintBox.setAttribute('role', 'listbox');
+        hintBox.hidden = true;
+        const holder = q.closest ? q.closest('.firms-search-hero') : null;
+        if (holder) holder.appendChild(hintBox); else hintBox = null;
+        if (hintBox) {
+          q.setAttribute('aria-controls', 'firms-hints');
+          q.setAttribute('aria-expanded', 'false');
+          hintBox.addEventListener('mousedown', function (e) { e.preventDefault(); });  // keep the cursor in the bar
+          hintBox.addEventListener('click', function (e) {
+            const b = e.target.closest('[data-hint]');
+            if (b) pickHint(hintItems[Number(b.getAttribute('data-hint'))]);
+          });
+          q.addEventListener('focus', function () { loadPlaces(); if (q.value.trim().length >= 2) askHints(); });
+          q.addEventListener('blur', function () { setTimeout(hideHints, 150); });
+        }
+      }
       if (q) {
         q.addEventListener('input', function () {
           let chipsChanged = false;
@@ -1110,14 +1255,32 @@
           clearTimeout(searchTimer);
           if (chipsChanged) armLog();
           if (chipsChanged || !remote) draw();
-          else searchTimer = setTimeout(draw, 250);
+          // With the list on the server, typing only brings hints; the rows wait for a choice or for Enter.
+          if (remote) {
+            if (typedLive) { typedLive = false; draw(); }  // the text changed: the list goes back to what the tags say
+            clearTimeout(hintTimer);
+            hintTimer = setTimeout(askHints, 120);
+          }
         });
         q.addEventListener('keydown', function (e) {
           if (e.isComposing || e.keyCode === 229) return;
+          if (hintBox && !hintBox.hidden) {
+            if (e.key === 'Escape') { hideHints(); return; }
+            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && hintItems.length) {
+              e.preventDefault();
+              hintAt = e.key === 'ArrowDown' ? (hintAt + 1) % hintItems.length : (hintAt <= 0 ? hintItems.length : hintAt) - 1;
+              paintHints();
+              return;
+            }
+            if (e.key === 'Enter' && hintAt >= 0) { e.preventDefault(); clearTimeout(hintTimer); pickHint(hintItems[hintAt]); return; }
+          }
           if (e.key === 'Enter') {
             e.preventDefault();
             clearTimeout(idleTimer);
             clearTimeout(searchTimer);
+            clearTimeout(hintTimer);
+            hideHints();
+            typedLive = false;
             if (q.value.trim()) {
               commitTyped();
               armLog();
@@ -1133,10 +1296,20 @@
       }
       const chipBox = document.getElementById('firms-chips');
       if (chipBox) chipBox.addEventListener('click', function (e) {
+        if (e.target.closest('[data-deal-x]')) {
+          e.preventDefault();
+          e.stopPropagation();
+          deal = null;
+          if (place && place.level === 'world' && mapRegions) { active.region = [place.p]; place = null; renderFacets(); }
+          updateBadge();
+          draw();
+          return;
+        }
         if (e.target.closest('[data-place-x]')) {
           e.preventDefault();
           e.stopPropagation();
           place = null;
+          deal = null;
           updateBadge();
           draw();
           return;
@@ -1212,6 +1385,15 @@
             else stages.push(v.toLowerCase());
           });
           active.stage = stages;
+          const day = /^\d{4}-\d{2}-\d{2}$/, df = from.get('from') || '', dt = from.get('to') || '', days = parseInt(from.get('days'), 10);
+          if (place && day.test(df) && day.test(dt)) {
+            const mon = function (d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); };
+            const names = {};
+            many('sectors').forEach(function (v) { names[v.toLowerCase()] = v; });
+            const who = from.get('who');
+            deal = { from: df, to: dt, names: names, who: ['top', 'focused', 'new'].indexOf(who) !== -1 ? who : null,
+              label: days > 0 && days < 1000 ? 'Last ' + days + ' days' : mon(df) + ' – ' + mon(dt) };
+          }
         }
       } catch (e) { /* no address to read: start with no filters */ }
       renderFacets();

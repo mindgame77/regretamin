@@ -81,3 +81,38 @@ The list's count is close to the map's but not the same: the map counts firms th
 the chosen period; the list counts firms whose profile carries those sectors and stages (founder accepted, 22 Nov).
 Example, US West + Bio, Climate & Energy, AI models + Pre-seed: map 125 firms, list 121.
 Timed as `anon`: 0.5 s with a place, three sectors and a stage; no place gives the same total as v3 (5,660).
+
+## Migrations of 2026-11-23: `investors_list_v5_map_match_cities_place_hints`, `investors_list_v5_faster_hints_and_deal_filter`
+Three new functions. Nothing existing was changed or removed; `firm_directory_page_v4` (22 Nov) is no longer called by the
+page and can be dropped by the developer.
+
+### `v2_map_firm_ids(p_firms, p_level, p_place, p_from, p_to, p_stages, p_sectors) returns setof bigint`
+Which firms the map counts for a place. It is the `stg`, `cfg`, `fp` and `d` parts of `v2_map_firms` (8 arguments) copied as
+they are, returning firm ids instead of a list capped at 500. **Keep it in step with `v2_map_firms`.** Not granted to `anon`
+or `authenticated`; only `firm_directory_page_v5` calls it. Checked equal to `v2_map_firms(...)->>'count'` for: US West since
+2021 (943), Denver + Real estate in the last 90 days (1, Range Ventures), US West + Seed + Consumer/Fintech + top firms (10).
+
+### `firm_directory_page_v5(... v3's arguments ..., p_place_level, p_place, p_map_region, p_city, p_deal_from, p_deal_to, p_deal_stages, p_deal_sectors, p_deal_firms)`
+`firm_directory_page_v3`'s text with these optional filters added (made by reading v3 and replacing seven spots):
+- `p_place_level` (`world` / `us` / `eu`) + `p_place`: a place on the map, same rule as `v2_map_firms`.
+- `p_map_region text[]`: the map's regions, any of them; `'Not disclosed'` means no region. Facets also return `map_region`
+  counts, which is what switches the page's Region filter to the map's 17 regions.
+- `p_city text[]`: the firm's own city (`firm_summary.hq_city`, case-insensitive).
+- `p_deal_from` together with a place: only the firms `v2_map_firm_ids` returns for that place, period, stages, sectors and
+  "which firms" choice. The page then sends no `p_industry` / `p_stage` (those filter by profile).
+Execute granted to `anon`, `authenticated`, `service_role`. Timed as `anon`: no filters 0.4 s; Denver + Real estate + last
+90 days 1.0 s; US West since 2021 0.7 s.
+
+### `firm_place_suggest(p_q text, p_limit int default 6) returns jsonb`
+Places that have at least one listed firm, with the count: the map's regions (`kind` region, `level` world), the map's US
+areas (`area`, `us`: a city with the towns around it) and, for every city that is not the name of a US area, the city on the
+firm's profile (`city`, `city`). An empty `p_q` returns all of them (1,306 rows, 0.6 s); the page asks once when the search
+bar is focused and matches as you type. Execute granted to `anon`, `authenticated`, `service_role`.
+
+### What the page does with them
+- Investors list search: typing shows hints (places, sectors, firms) and the rows do not change; a place or sector hint adds
+  a tag, a firm hint opens the firm, Enter makes the typed word a name tag. A name with no hint at all is searched after a
+  pause so the "we don't have this firm yet, leave your email" flow and the search-demand log still work.
+- Map: with a place open, "See the investors" sends `zoom, place, pname, from, to` (plus `days` in "Hot right now", `who`,
+  `sectors`, `stages`); the list shows a period tag ("Last 90 days") and the firms the map counted. Removing the period tag
+  goes back to profile-based sectors and stages.

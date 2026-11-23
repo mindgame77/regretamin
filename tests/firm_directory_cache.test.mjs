@@ -1,4 +1,4 @@
-// Investors directory loads one page at a time from firm_directory_page_v4 (v2 plus signals and the map's place filter; docs/investors_list_signals.sql).
+// Investors directory loads one page at a time from firm_directory_page_v5 (v2 plus signals and the map's place, region, city and deals filters; docs/investors_list_signals.sql).
 // node --test tests/firm_directory_cache.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -115,7 +115,7 @@ test('the first request is 100 firms, newest first, and renders that page', asyn
   }, { url: 'https://db.test', key: 'anon-key', copy: {} });
   await flush();
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].url, 'https://db.test/rest/v1/rpc/firm_directory_page_v4');
+  assert.equal(calls[0].url, 'https://db.test/rest/v1/rpc/firm_directory_page_v5');
   assert.equal(calls[0].body.p_limit, 100);
   assert.equal(calls[0].body.p_offset, 0);
   assert.equal(calls[0].body.p_sort, 'newest');
@@ -193,10 +193,11 @@ test('a filter change asks the server again from the first page', async () => {
   assert.deepEqual(calls[1].p_region, ['europe']);
 });
 
-test('typing a search waits, then asks the server from the first page', async () => {
+test('typing leaves the list alone; Enter asks the server from the first page', async () => {
   const calls = [];
   const { els } = boot((url, opts) => {
-    calls.push(JSON.parse(opts.body));
+    const body = JSON.parse(opts.body);
+    if (String(url).includes('firm_directory_page')) calls.push(body);
     return Promise.resolve(jsonResponse(200, page([], 0, null)));
   }, { url: 'https://db.test', key: 'anon-key', copy: {} });
   await flush();
@@ -206,6 +207,9 @@ test('typing a search waits, then asks the server from the first page', async ()
   await flush();
   assert.equal(calls.length, 1);
   await new Promise((resolve) => setTimeout(resolve, 300));
+  assert.equal(calls.length, 1);  // typing only brings hints (founder, 23 Nov)
+  q.listeners.keydown[0]({ key: 'Enter', preventDefault() {} });
+  await flush();
   assert.equal(calls.length, 2);
   assert.equal(calls[1].p_offset, 0);
   assert.deepEqual(calls[1].p_search, ['sequoia']);

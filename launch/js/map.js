@@ -452,7 +452,13 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   // The Investors list, opened with what is chosen here (place, sectors, stages) as its tags.
   function listUrl() {
     const q = [], P = S.list && S.list.place;
-    if (P) q.push('zoom=' + S.level, 'place=' + encodeURIComponent(P.p), 'pname=' + encodeURIComponent(P.n));
+    if (P) {
+      q.push('zoom=' + S.level, 'place=' + encodeURIComponent(P.p), 'pname=' + encodeURIComponent(P.n));
+      // With a place open, the list shows the same firms this map counted: it gets the period (and the "which firms" choice) too.
+      if (S.view === 'hot') q.push('days=' + S.days, 'from=' + iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - S.days + 1)), 'to=' + iso(now));
+      else q.push('from=' + iso(qStart(S.q0)), 'to=' + iso(qEnd(S.q1)));
+      if (who() !== 'all') q.push('who=' + who());
+    }
     const sec = S.view === 'hot' && S.list && S.list.sector ? [S.list.sector] : S.sectors;
     if (sec.length) q.push('sectors=' + sec.map(encodeURIComponent).join('|'));
     if (S.stages.length) q.push('stages=' + S.stages.map(encodeURIComponent).join('|'));
@@ -462,7 +468,10 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     const side = $('#vm-side');
     $('#vm-cta').href = listUrl();
     const hotList = S.view === 'hot' && S.list;
-    $('#vm-cta').textContent = hotList ? `See the ${num(S.list.place.f)} investor${S.list.place.f === 1 ? '' : 's'} in ${S.list.place.n}` : 'See the investors';
+    // The button names what is chosen: the place, and the sector when one is open, with the number of firms the map counted.
+    const openSec = hotList && S.list.sector && ((S.list.det || {}).sectors || []).find((r) => r[0] === S.list.sector);
+    const ctaN = openSec ? openSec[3] : hotList ? S.list.place.f : 0;
+    $('#vm-cta').textContent = hotList ? `See the ${num(ctaN)} ${openSec ? S.list.sector + ' ' : ''}investor${ctaN === 1 ? '' : 's'} in ${S.list.place.n}` : 'See the investors';
     const units = () => side.querySelectorAll('.vm-unit button').forEach((u) => u.onclick = () => { S.unit = u.dataset.u; draw(); drawSide(); });
     drawFirms();
     if (hotList) {  // a clicked place opens on its sectors; its firms open in their own panel beside the rail
