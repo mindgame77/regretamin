@@ -567,5 +567,9 @@ ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.m
     msg.hidden = true; S.data = d; draw();
   }
   drawPicks(); drawTime(); drawSide(); marks();
-  fetch(ROOT + 'assets/map/places.json').then((r) => r.json()).then((g) => { S.geo = g; return refresh(); }).then(() => { reopen(); return loadUpdates(); });
+  // The map's places, its numbers and the latest updates are asked for at the same time, not one after another.
+  // draw() does nothing until both the places and the numbers are in, so the order they arrive in does not matter.
+  const places = fetch(ROOT + 'assets/map/places.json').then((r) => r.json()).then((g) => { S.geo = g; });
+  Promise.all([places, refresh()]).then(() => { draw(); reopen(); });
+  loadUpdates();
 })();
