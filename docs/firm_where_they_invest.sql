@@ -1,5 +1,5 @@
--- NOT APPLIED YET (23 Nov 2026): waiting for the founder's yes. The firm page's "Where they invest" card calls this
--- function and stays hidden until it exists.
+-- Applied 23 Nov 2026 as migration `firm_page_where_they_invest` (founder's yes the same day). Not yet in supabase/migrations/.
+-- Timed as anon: about 0.6 s for one firm (it reads the map-places view once). Sequoia: US map, Bay Area 65, New York 31.
 --
 -- Where the startups a firm backed are based, grouped by the map's places. Read-only; nothing existing is changed.
 -- Returns null when the city is known for fewer than 5 of the firm's startups.
