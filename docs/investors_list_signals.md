@@ -56,3 +56,28 @@ Timed: about 45 ms for Sequoia, a16z and 500 Global.
 ## Migration `firm_page_signals_with_map_place` (2026-11-22)
 `v2_firm_signals_for` also returns `place: {region, level, area}` from `v2_map_firm_places`, so the firm page's "On the map"
 card can put the firm's dot on the right map. The keys it already returned are unchanged. Timed: about 20 ms for two firms.
+
+## Migration `investors_list_directory_page_v4_map_place` (2026-11-22)
+`firm_directory_page_v4` is a copy of `firm_directory_page_v3` (left untouched) with two more optional arguments,
+`p_place_level text` (`world`, `us` or `eu`) and `p_place text`. Together they keep only firms that sit in that place on the
+map, read from `v2_map_firm_places` with the same rule `v2_map_firms` uses: at `world` level `region = p_place`, at `us` / `eu`
+level `level = p_place_level and area = p_place`. Any other level is ignored. Rows, totals and facets are as in v3.
+Execute granted to `anon`, `authenticated` and `service_role`.
+
+It was made by reading v3's text and replacing five spots (the migration refuses to run if v3's text has changed):
+the name, the argument list, two new variables (`v_plevel`, `v_place`), `v_narrow`, and one more line in the `where` of `scored`:
+
+```sql
+and (v_place is null or s.firm_id in (select mp.firm_id from v2_map_firm_places mp
+     where (v_plevel = 'world' and mp.region = v_place)
+        or (v_plevel in ('us', 'eu') and mp.level = v_plevel and mp.area = v_place)))
+```
+
+Used by the map's "See the investors" button, which opens the Investors list with the place, sectors and stages as tags
+(`investors/?zoom=world&place=US West&pname=US West&sectors=Bio|AI models&stages=Pre-seed`). The map's "Series C+" becomes
+Series C, D, E and F on the list.
+
+The list's count is close to the map's but not the same: the map counts firms that did deals in those sectors and stages in
+the chosen period; the list counts firms whose profile carries those sectors and stages (founder accepted, 22 Nov).
+Example, US West + Bio, Climate & Energy, AI models + Pre-seed: map 125 firms, list 121.
+Timed as `anon`: 0.5 s with a place, three sectors and a stage; no place gives the same total as v3 (5,660).

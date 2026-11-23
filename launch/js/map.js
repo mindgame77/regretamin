@@ -159,7 +159,6 @@
     closeList(); drawPicks(); refresh().then(() => { if (!S.list) drawSide(); });
   });
 
-  $('#vm-cta').addEventListener('click', (e) => { if (S.view === 'hot' && S.list) { e.preventDefault(); showFirms(null); } });
   // ---------- time line
   const q0 = $('#vm-q0'), q1 = $('#vm-q1');
   function drawTime() {
@@ -450,8 +449,18 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     const rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
     return `<div class="vm-facts"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'}${!sector && p.so ? ` · stands out for <b>${esc(p.so)}</b>` : ''}</span><span class="vm-bar">${top.map(([n, v]) => `<i style="width:${v / tot * 100}%;background:${COLORS[n] || COLORS.Other}" title="${esc(n)} ${Math.round(v / tot * 100)}%"></i>`).join('')}</span><span class="vm-key">${top.map(([n, v]) => `<span><i style="background:${COLORS[n] || COLORS.Other}"></i>${esc(n)} ${Math.round(v / tot * 100)}%</span>`).join('')}${rest > 0 ? `<span><i style="background:${REST}"></i>${sector ? 'Other chosen' : 'All other'} ${rest}%</span>` : ''}</span></div>`;
   }
+  // The Investors list, opened with what is chosen here (place, sectors, stages) as its tags.
+  function listUrl() {
+    const q = [], P = S.list && S.list.place;
+    if (P) q.push('zoom=' + S.level, 'place=' + encodeURIComponent(P.p), 'pname=' + encodeURIComponent(P.n));
+    const sec = S.view === 'hot' && S.list && S.list.sector ? [S.list.sector] : S.sectors;
+    if (sec.length) q.push('sectors=' + sec.map(encodeURIComponent).join('|'));
+    if (S.stages.length) q.push('stages=' + S.stages.map(encodeURIComponent).join('|'));
+    return ROOT + 'investors/' + (q.length ? '?' + q.join('&') : '');
+  }
   function drawSide() {
     const side = $('#vm-side');
+    $('#vm-cta').href = listUrl();
     const hotList = S.view === 'hot' && S.list;
     $('#vm-cta').textContent = hotList ? `See the ${num(S.list.place.f)} investor${S.list.place.f === 1 ? '' : 's'} in ${S.list.place.n}` : 'See the investors';
     const units = () => side.querySelectorAll('.vm-unit button').forEach((u) => u.onclick = () => { S.unit = u.dataset.u; draw(); drawSide(); });
@@ -467,18 +476,12 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
       return;
     }
     if (S.list) {
-      const L = S.list, chips = [[L.place.n, 'place']].concat(S.sectors.map((s) => [s, 'sector']), S.stages.map((s) => [s, 'stage']));
+      const L = S.list;
       side.className = 'vm-card vm-side vm-list';
       side.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
-<div class="vm-chips">${chips.map(([t, k]) => `<button type="button" class="vm-chip" data-k="${k}" data-v="${esc(t)}" aria-label="Remove filter ${esc(t)}">${esc(t)}<span aria-hidden="true">×</span></button>`).join('')}</div>
-${COL ? placeFacts(L.place) : ''}<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
-<a class="vm-more" href="${ROOT}investors/">Open the full investors list</a>`;
+<div class="vm-facts"><span class="vm-mu">${esc(L.place.n)} · ${num(L.place.d)} deal${L.place.d === 1 ? '' : 's'}</span></div><div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
+<a class="vm-more" href="${listUrl()}">Open the full investors list</a>`;
       $('#vm-close').onclick = closeList;
-      side.querySelectorAll('.vm-chip').forEach((c) => c.onclick = () => {
-        if (c.dataset.k === 'place') return closeList();
-        const k = c.dataset.k === 'sector' ? 'sectors' : 'stages'; S[k] = S[k].filter((x) => x !== c.dataset.v);
-        const place = S.list.place; drawPicks(); refresh().then(() => openList(place));
-      });
       return;
     }
     side.className = 'vm-card vm-side';
@@ -520,7 +523,7 @@ ${COL ? placeFacts(L.place) : ''}<div class="vm-rows">${!L.data ? '' : L.data.fi
     fp.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-fpx" aria-label="Close the firms list"></button></div>
 <div class="vm-chips">${tags.map((x) => `<span class="vm-chip vm-chipst">${esc(x)}</span>`).join('')}</div>
 ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
-<a class="vm-more" href="${ROOT}investors/">Open the full investors list</a>`;
+<a class="vm-more" href="${listUrl()}">Open the full investors list</a>`;
     $('#vm-fpx').onclick = () => { L.step = 'sectors'; L.sector = null; L.data = null; drawSide(); };
   }
   async function showFirms(sector) {

@@ -336,6 +336,8 @@
       let menuKey = null;
       let draft = [];
       const active = { region: [], industry: [], stage: [], status: [], signal: [], dealsyear: [] };
+      // A place on the map ("US West", "Bay Area"), set only by the map's "See the investors" link. Shown as a tag; × removes it.
+      let place = null;
 
       // Older links put legal, info, or firm_status in the query string.
       // Those groups are gone. Ignore the params so the page still loads.
@@ -595,7 +597,7 @@
         }).catch(function () { return null; });
       }
       function filtersOn() {
-        return Object.keys(active).some(function (k) { return active[k].length; });
+        return !!place || Object.keys(active).some(function (k) { return active[k].length; });
       }
       function rawTerms() {
         const terms = chips.map(function (c) { return String(c || '').trim(); }).filter(Boolean);
@@ -667,6 +669,8 @@
         const el = document.getElementById('firms-chips');
         if (!el) return;
         const tags = [];
+        if (place) tags.push('<span class="firms-chip firms-tag"><span class="firms-chip-text">' + esc(place.name) + '</span>'
+          + '<button type="button" data-place-x aria-label="Remove ' + esc(place.name) + '">×</button></span>');
         Object.keys(active).forEach(function (key) {
           active[key].forEach(function (val) {
             const label = filterLabel(key, val);
@@ -690,6 +694,7 @@
         menuKey = null;
         if (q) q.value = '';
         Object.keys(active).forEach(function (key) { active[key] = []; });
+        place = null;
         closePanel();
         updateBadge();
         draw();
@@ -807,11 +812,13 @@
           p_info: [],
           p_status: active.status,
           p_signals: active.signal,
-          p_deals_year: active.dealsyear[0] || null
+          p_deals_year: active.dealsyear[0] || null,
+          p_place_level: place ? place.level : null,
+          p_place: place ? place.p : null
         };
         loading = true;
         showStatus();
-        fetch(C.url + '/rest/v1/rpc/firm_directory_page_v3', {
+        fetch(C.url + '/rest/v1/rpc/firm_directory_page_v4', {
           method: 'POST',
           headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
@@ -1109,6 +1116,14 @@
       }
       const chipBox = document.getElementById('firms-chips');
       if (chipBox) chipBox.addEventListener('click', function (e) {
+        if (e.target.closest('[data-place-x]')) {
+          e.preventDefault();
+          e.stopPropagation();
+          place = null;
+          updateBadge();
+          draw();
+          return;
+        }
         const tag = e.target.closest('[data-tag-key]');
         if (tag) {
           e.preventDefault();
@@ -1165,6 +1180,23 @@
           if (q.setSelectionRange) q.setSelectionRange(q.value.length, q.value.length);
         }
       } catch (e) { /* no address to read: start with an empty bar */ }
+      // The map's "See the investors" link carries what was chosen there: the place, the sectors and the stages.
+      // They arrive as ordinary filters, so each shows as a tag in the bar and comes off with its ×.
+      try {
+        const from = new URLSearchParams(location.search);
+        const many = function (k) { return (from.get(k) || '').split('|').map(function (v) { return v.trim().slice(0, 60); }).filter(Boolean).slice(0, 25); };
+        const zoom = from.get('zoom'), at = (from.get('place') || '').trim().slice(0, 80);
+        if (remote && at && ['world', 'us', 'eu'].indexOf(zoom) !== -1) place = { level: zoom, p: at, name: (from.get('pname') || at).trim().slice(0, 80) };
+        if (remote) {
+          active.industry = many('sectors').map(function (v) { return v.toLowerCase(); });
+          const stages = [];
+          many('stages').forEach(function (v) {
+            if (v === 'Series C+') ['series c', 'series d', 'series e', 'series f'].forEach(function (x) { stages.push(x); });
+            else stages.push(v.toLowerCase());
+          });
+          active.stage = stages;
+        }
+      } catch (e) { /* no address to read: start with no filters */ }
       renderFacets();
       updateBadge();
       watchScroll();

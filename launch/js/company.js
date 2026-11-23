@@ -2209,10 +2209,10 @@
     // The label comes from the database (activity.label, same function as the investors list). Fallback for old payloads.
     const actLab = rule ? (rule.fromText(A.label) || (allDeals ? rule.label(rule.countThisYear(allDeals), allDeals.length) : null)) : null;
     if (actLab) {
-      const u = d0 && safeUrl(d0.url);
+      // The status tile is plain text for every status: it never links anywhere (founder, 22 Nov).
       const inner = '<i></i><div><b>' + esc(actLab.text) + '</b></div>';
       const tone = actLab.cls === 'act-on' ? 'aon' : 'aon ' + actLab.cls;
-      tiles.push(u ? '<a class="att ' + tone + '" href="' + esc(u) + '" target="_blank" rel="noopener">' + inner + '</a>' : '<div class="att ' + tone + '">' + inner + '</div>');
+      tiles.push('<div class="att ' + tone + '">' + inner + '</div>');
     }
     const yearKnown = Array.isArray(A.deals);
     const yearCount = yearKnown ? window.RegretActivity.countThisYear(A.deals) : Number(A.deals_12m) || 0;
