@@ -431,7 +431,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
       if (k < 1) requestAnimationFrame(step);
     };
     step(t0);
-    $('#vm-legend').innerHTML = S.sectors.length > 1 ? 'Rings: split among the sectors you chose (top 5, the rest together). Size: their deals by VCs based there.' : sec ? 'Circle size: deals in the chosen sector by VCs based there.' : S.level === 'world' ? 'Rings: each place&#39;s own top 5 sectors. Size: share of all deals in the period.' : `Ring: ${RING_DEALS}+ deals from ${RING_FIRMS}+ firms. Small dot: ${DOT_DEALS} to ${RING_DEALS - 1} deals, in the colour of its biggest sector.`;
+    $('#vm-legend').innerHTML = '';  // no note over the map in this view: it only repeated what the map shows (founder, 23 Nov)
   }
 
   // ---------- right side: latest updates, or the firms behind a place
