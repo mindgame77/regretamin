@@ -1,4 +1,4 @@
-// HQ country flag after the city, and a Videos section (at most 3, most views first) between Team and News.
+// HQ country flag before the city (as on the Investors list), and a Videos section (at most 3, most views first) between Team and News.
 // node --test tests/videos_flag.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -45,24 +45,24 @@ const { metaLine, pageSecs, render } = sandbox.window.RegretCompany;
 const FLAG_US = '\u{1F1FA}\u{1F1F8}';
 const FLAG_GB = '\u{1F1EC}\u{1F1E7}';
 
-test('US flag sits after City, ST and the country name is not written', () => {
+test('US flag sits before City, ST and the country name is not written', () => {
   const m = metaLine({
     firm: {
       hq: 'Menlo Park, CA', short_name: 'a16z', hq_country: 'US',
       website: 'https://a16z.com', founded_year: 2009,
     },
   });
-  assert.match(m, new RegExp('Menlo Park, CA ' + FLAG_US + ' · Founded 2009 · <a href="https://a16z.com"'));
+  assert.match(m, new RegExp(FLAG_US + ' Menlo Park, CA · Founded 2009 · <a href="https://a16z.com"'));
   assert.doesNotMatch(m, /United States|USA/);
   assert.equal(copy.company.header.founded, 'Founded {y}');
 });
 
 test('a lowercase code still flags, and an unknown code adds nothing', () => {
-  assert.equal(metaLine({ firm: { hq: 'Menlo Park, CA', short_name: 'a16z', hq_country: 'us' } }), 'Menlo Park, CA ' + FLAG_US);
+  assert.equal(metaLine({ firm: { hq: 'Menlo Park, CA', short_name: 'a16z', hq_country: 'us' } }), FLAG_US + ' Menlo Park, CA');
   for (const code of [null, undefined, '', 'USA', 'U', '12']) {
     assert.equal(metaLine({ firm: { hq: 'Menlo Park, CA', short_name: 'a16z', hq_country: code } }), 'Menlo Park, CA');
   }
-  assert.equal(metaLine({ firm: { hq: 'London', hq_country: 'GB' } }), 'London ' + FLAG_GB);
+  assert.equal(metaLine({ firm: { hq: 'London', hq_country: 'GB' } }), FLAG_GB + ' London');
   assert.doesNotMatch(metaLine({ firm: { hq: 'London', hq_country: 'GB' } }), /United Kingdom|Britain/);
   assert.equal(metaLine({ firm: { short_name: 'a16z', hq_country: 'US' } }), '');
 });
@@ -107,7 +107,7 @@ test('videos render before Team and News, three tiles, most views first, no sour
   const meta = main.set('.m', el());
   main.set('.ph .m', meta);
   render(main, P);
-  assert.match(meta.innerHTML, new RegExp('Menlo Park, CA ' + FLAG_US));
+  assert.match(meta.innerHTML, new RegExp(FLAG_US + ' Menlo Park, CA'));
   const html = main.querySelector('.pmain').innerHTML;
   const videosAt = html.indexOf('id="videos"');
   const block = html.slice(videosAt, html.indexOf('</article>', videosAt));

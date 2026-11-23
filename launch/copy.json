@@ -328,7 +328,7 @@
   },
   "signed_out": {
    "account_h2": "Sign in to see your account",
-   "account_p": "Your plan, credits left and account settings are here once you sign in.",
+   "account_p": "Your account details are here once you sign in.",
    "checks_h2": "Sign in to see your checks",
    "checks_p": "Every firm you’ve checked is saved here once you sign in.",
    "button": "Sign in"
@@ -436,7 +436,7 @@
    "link": "Have a code?",
    "placeholder": "Code",
    "aria": "Promo code",
-   "apply": "Apply",
+   "apply": "Pitch",
    "remove": "Remove",
    "hidden_tag": "Unlocked with code",
    "hidden_bill": "{n} credits a month",
@@ -875,7 +875,7 @@
    "h1": "My firms",
    "refund_note": "Not finished in 24 hours · 1 credit refunded",
    "title": "My firms",
-   "sub": "Firms you’ve saved and firms you’ve checked. A check is 1 credit and opens the full report; reopening is free.",
+   "sub": "Firms you saved. Press the bookmark on any firm page to add one.",
    "tabs": [
     [
      "all",
@@ -883,7 +883,7 @@
     ],
     [
      "saved",
-     "★ Saved"
+     "Saved"
     ],
     [
      "checked",
@@ -979,7 +979,7 @@
     "nav_label": "Investors",
     "h1": "Investors",
     "sub": "Newest first",
-    "search": "Search an investor or startup",
+    "search": "Search a VC by name",
     "none": "No investors match those filters.",
     "loading": "Loading more investors",
     "end": "End of the list",
@@ -999,9 +999,9 @@
     "filter_loc": "All locations",
     "filter_ind": "All industries",
     "col_firm": "Investor",
-    "col_city": "City",
+    "col_city": "Based in",
     "col_invests": "Invests in",
-    "col_investments": "Investments",
+    "col_investments": "Deals",
     "col_activity": "Activity",
     "activity_active": "Active",
     "activity_low": "Low activity",
@@ -1011,11 +1011,15 @@
     "col_added": "Added",
     "filter_status": "Investor status"
    },
+   "map": {
+    "title": "Map of venture capital · Regretamin",
+    "description": "Where venture capital firms are based and what they invest in, by region, sector, stage and quarter since 2021."
+   },
    "404": {
     "title": "Not found · Regretamin",
     "description": "The requested Regretamin page could not be found.",
-    "h1": "Page not found",
-    "body": "This page does not exist. Search for a firm instead."
+    "h1": "This page took the money and vanished",
+    "body": "There is nothing at this address. Search for a VC instead."
    }
   }
  },
@@ -1233,7 +1237,7 @@
    "left_in": "Left in {year}",
    "founder_tag": "Founder",
    "copied": "Copied",
-   "apply": "Apply",
+   "apply": "Pitch",
    "fund_assets": "Fund assets",
    "latest_deal": "The latest deal",
    "h_company": "Company",

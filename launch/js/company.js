@@ -93,9 +93,9 @@
   }
   function metaLine(P) {
     const firm = P.firm || {};
-    // The flag sits after the HQ city. US stays "City, ST". No country name. No city: no flag.
+    // The flag sits before the HQ city, as on the Investors list. US stays "City, ST". No country name. No city: no flag.
     const flag = firm.hq ? countryFlag(firm.hq_country) : '';
-    const hq = firm.hq ? esc(nice(firm.hq)) + (flag ? ' ' + flag : '') : '';
+    const hq = firm.hq ? (flag ? flag + ' ' : '') + esc(nice(firm.hq)) : '';
     const link = siteLink(P);
     const y = Number(firm.founded_year);
     const fy = Number.isInteger(y) && y > 1000 && y <= new Date().getFullYear() ? esc((HCOPY.founded || 'Founded {y}').replace('{y}', String(y))) : '';
@@ -143,7 +143,8 @@
     const firm = (P && P.firm) || {};
     const email = String(firm.contact_email || '').trim();
     let h = '';
-    if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) h += '<button type="button" class="hp" data-copy="' + esc(email) + '">' + esc(email) + '</button>';
+    // The address stays hidden until the button is pressed; pressing shows it and copies it.
+    if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) h += '<button type="button" class="hp hmail" data-copy="' + esc(email) + '" data-reveal aria-label="' + esc(HCOPY.email_show || 'Show the contact email') + '">' + esc(HCOPY.email || 'Email') + '</button>';
     return h + secPills(P);
   }
   function paintSocial(main, P) {
@@ -252,7 +253,7 @@
     const stageBlock = (stagePills || check)
       ? '<div class="htag">' + (stagePills ? '<span class="htag-l">' + esc(HCOPY.stages || 'Stages') + '</span>' : '') + '<div class="secp">' + stagePills + check + '</div></div>'
       : '';
-    return focus + stageBlock;
+    return focus.replace('<div class="htag">', '<div class="htag hsec">') + stageBlock;
   }
   function paintTags(main, P) {
     if (!main || !main.querySelector) return;
@@ -268,6 +269,184 @@
       anchor.insertAdjacentElement(act ? 'beforebegin' : 'afterend', box);
     }
     box.innerHTML = html;
+    fitOneLine(box.querySelector('.hsec .secp'), 'hp hmore');
+    closeButton(main);
+    paintSignals(main);
+    readyButton(main);
+  }
+  // "Am I ready for this firm?" in the site header, on firm pages only. The check itself is not built yet, so the
+  // button opens a "coming soon" box that takes an email (stored by v2_ready_interest_add).
+  function readyButton(main) {
+    const nav = document.querySelector && document.querySelector('body > nav .r');
+    if (!nav || !nav.insertBefore || document.getElementById('readybtn')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'readybtn';
+    btn.className = 'readybtn';
+    btn.textContent = 'Am I ready for this firm?';
+    nav.insertBefore(btn, (nav.querySelector && (nav.querySelector('#left') || nav.querySelector('#signin') || nav.querySelector('#acct'))) || null);
+    btn.addEventListener('click', function () { openReady(main); });
+  }
+  function openReady(main) {
+    const C = window.REGRET || {};
+    const firm = (main.querySelector('.ph h1') || {}).textContent || 'this firm';
+    let box = document.getElementById('readybox');
+    if (box) box.remove();
+    box = document.createElement('div');
+    box.id = 'readybox';
+    box.className = 'readybox';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-labelledby', 'readyh');
+    box.innerHTML = '<div class="readycard"><button type="button" class="readyx" aria-label="Close">×</button>'
+      + '<p class="readytag">Coming soon</p><h2 id="readyh">Am I ready for ' + esc(firm) + '?</h2>'
+      + '<p>Upload your pitch deck and get a straight answer: ready, or not yet and what to fix. We are still building it. Leave your email and we will tell you when it opens.</p>'
+      + '<form class="readyform"><input type="email" name="email" required maxlength="200" placeholder="you@startup.com" aria-label="Email" autocomplete="email"><button type="submit">Tell me</button></form>'
+      + '<p class="readymsg" aria-live="polite"></p></div>';
+    document.body.appendChild(box);
+    const close = function () { box.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = function (e) { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    box.addEventListener('click', function (e) { if (e.target === box) close(); });
+    box.querySelector('.readyx').addEventListener('click', close);
+    const form = box.querySelector('form'), msg = box.querySelector('.readymsg'), input = form.querySelector('input');
+    input.focus();
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const email = input.value.trim();
+      if (!email || !C.url || !C.key) { msg.textContent = 'That did not work. Try again in a minute.'; return; }
+      form.querySelector('button').disabled = true;
+      fetch(C.url + '/rest/v1/rpc/v2_ready_interest_add', {
+        method: 'POST',
+        headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_email: email, p_slug: (main.dataset && main.dataset.firm) || null })
+      }).then(r => (r.ok ? r.json() : null)).then(d => {
+        const st = d && d.status;
+        if (st === 'ok') { form.hidden = true; msg.textContent = 'Got it. We will email you when it opens.'; return; }
+        form.querySelector('button').disabled = false;
+        msg.textContent = st === 'bad_email' ? 'That email does not look right.' : 'That did not work. Try again in a minute.';
+      }).catch(function () { form.querySelector('button').disabled = false; msg.textContent = 'That did not work. Try again in a minute.'; });
+    });
+  }
+  // The firm's signals as icons at the right end of the status tile: the same icons and rules as the Investors list
+  // (v2_firm_signals, refreshed daily; docs/investors_list_signals.md). No signals: the tile stays as it is.
+  const SIGNALS = [
+    ['up', '🚀', 'Speeding up'], ['down', '📉', 'Slowing down'], ['top', '💯', 'Top 100'], ['chain', '🔗', 'Top firms follow it'],
+    ['lead', '🏆', 'Leads rounds'], ['spec', '🎯', 'Specialist'], ['fund', '💰', 'Fresh fund']
+  ];
+  function signalsHtml(d) {
+    const have = Array.isArray(d && d.signals) ? d.signals : [];
+    return SIGNALS.filter(g => have.indexOf(g[0]) !== -1).map(g => {
+      let tip = g[2];
+      if (g[0] === 'up' || g[0] === 'down') tip += ': ' + d.deals_now + ' deals in the last 12 months, ' + d.deals_prev + ' in the 12 before.';
+      if (g[0] === 'lead') tip += ': led ' + d.led_now + ' of its ' + d.deals_now + ' deals in the last 12 months.';
+      return '<span class="fsigw" role="img" aria-label="' + esc(g[2]) + '" data-tip="' + esc(tip) + '">'
+        + (g[1] ? '<span class="fsig" aria-hidden="true">' + g[1] + '</span>' : '<span class="fsig f100" aria-hidden="true">100</span>') + '</span>';
+    }).join('');
+  }
+  // The status tile is a link to the source of the latest deal. The icons sit inside it but are not part of that link:
+  // pressing or pointing at one only says what the icon means.
+  function sigTips(box) {
+    let tip = null;
+    const hide = function () { if (tip) { tip.remove(); tip = null; } };
+    const show = function (el) {
+      hide();
+      tip = document.createElement('div');
+      tip.className = 'sigtip';
+      tip.textContent = el.getAttribute('data-tip') || '';
+      document.body.appendChild(tip);
+      const r = el.getBoundingClientRect(), w = tip.offsetWidth;
+      tip.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+      tip.style.top = (r.bottom + 8) + 'px';
+    };
+    box.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      const el = e.target.closest && e.target.closest('.fsigw');
+      if (el) show(el); else hide();
+    });
+    box.addEventListener('mouseover', function (e) { const el = e.target.closest && e.target.closest('.fsigw'); if (el) show(el); });
+    box.addEventListener('mouseleave', hide);
+    document.addEventListener('click', hide);
+    window.addEventListener('scroll', hide, { passive: true });
+  }
+  function paintSignals(main) {
+    const C = window.REGRET || {};
+    const slug = main && main.dataset && main.dataset.firm;
+    const tile = main.querySelector && main.querySelector('.ats .att');
+    if (!slug || !tile || !C.url || !C.key || typeof fetch !== 'function' || main.dataset.sig === slug) return;
+    main.dataset.sig = slug;
+    fetch(C.url + '/rest/v1/rpc/v2_firm_signals_for', {
+      method: 'POST',
+      headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_slug: slug })
+    }).then(r => (r.ok ? r.json() : null)).then(d => {
+      if (d && d.place) { PLACE = { slug: slug, place: d.place }; mapCard(main); }
+      const html = d ? signalsHtml(d) : '';
+      const now = main.querySelector('.ats .att');
+      if (!html || !now || now.querySelector('.asig')) return;
+      const box = document.createElement('span');
+      box.className = 'asig';
+      box.innerHTML = html;
+      now.appendChild(box);
+      sigTips(box);
+    }).catch(function () { /* no icons is fine */ });
+  }
+  // A close button on the big search bar goes back to the map (the home page).
+  function closeButton(main) {
+    const bar = main.querySelector && main.querySelector('form.sb.big');
+    if (!bar || !bar.appendChild || (bar.querySelector && bar.querySelector('.sbx'))) return;
+    const a = document.createElement('a');
+    a.className = 'sbx';
+    a.href = (window.REGRET_ROOT || '') || './';
+    a.setAttribute('aria-label', 'Close and go back to the map');
+    a.innerHTML = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>';
+    bar.appendChild(a);    nameTag(bar);
+  }
+  // The search bar looks like the Investors list's bar: the firm is a tag with an x, which opens the full list.
+  // Typing a name shows the site's usual hints under the bar; nothing opens until one is chosen (founder, 23 Nov).
+  function nameTag(bar) {
+    const input = bar.querySelector('input[name="q"]');
+    if (!input || !input.insertAdjacentElement || bar.querySelector('.sbtag')) return;
+    const name = String(input.value || '').trim();
+    if (!name) return;
+    const list = (window.REGRET_ROOT || '') + 'investors/';
+    const go = function () { location.href = list; };
+    const tag = document.createElement('span');
+    tag.className = 'sbtag';
+    tag.innerHTML = '<span>' + esc(name) + '</span><button type="button" aria-label="Remove ' + esc(name) + '">×</button>';
+    input.insertAdjacentElement('beforebegin', tag);
+    input.value = '';
+    input.placeholder = '';
+    input.removeAttribute('onfocus');
+    tag.querySelector('button').addEventListener('click', function () { go(''); });
+    // Typing is left to the site's own search (search.js): it shows matching firms under the bar and nothing happens
+    // until one is chosen. The only extra here: Backspace in an empty bar removes the tag, like its ×.
+    input.addEventListener('keydown', function (e) { if (e.key === 'Backspace' && !input.value) { e.preventDefault(); go(''); } });
+  }
+  // Keep a row of tags on one line. What does not fit collapses into a last "+N" tag; pressing it shows them all
+  // in place and it turns into "Show less". Does nothing where the layout cannot be measured.
+  function fitOneLine(row, cls) {
+    if (!row || !row.children || !row.appendChild) return;
+    const kids = Array.prototype.slice.call(row.children);
+    if (kids.length < 2 || typeof kids[0].offsetTop !== 'number') return;
+    const top = kids[0].offsetTop;
+    if (!kids.some(k => k.offsetTop > top)) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = cls;
+    btn.setAttribute('aria-expanded', 'false');
+    row.appendChild(btn);
+    let keep = kids.length;
+    btn.textContent = '+0';
+    while (keep > 1 && btn.offsetTop > top) { keep--; kids[keep].hidden = true; btn.textContent = '+' + (kids.length - keep); }
+    const more = '+' + (kids.length - keep);
+    btn.setAttribute('aria-label', 'Show ' + (kids.length - keep) + ' more');
+    btn.addEventListener('click', function () {
+      const open = btn.getAttribute('aria-expanded') === 'true';
+      kids.forEach((k, n) => { k.hidden = open && n >= keep; });
+      btn.textContent = open ? more : 'Show less';
+      btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    });
   }
   function setFirmName(main, name) {
     if (!name) return;
@@ -1690,29 +1869,30 @@
   // One hue per parent industry (21: the original 18 plus Defense, Space, Govtech). A sub-industry uses its parent's hue.
   // The same hue on every firm, range, chart, popup and deal row. Other is always slate.
   // A future name uses a hash of that name only, into the original 17 hues, so it does not depend on rank or firm.
-  const SECTOR_PALETTE = ['#4B2BD6', '#14D9A5', '#FFB020', '#FF5C8A', '#2EA8FF', '#8A63F5', '#18BBD4', '#FF9566', '#9EDB51', '#788BFF', '#F26C68', '#42CFC3', '#D781EF', '#E6BE45', '#3773DB', '#EC7DA8', '#77C9A1', '#A7A2C2'];
+  const SECTOR_PALETTE = ['#A9C4E8', '#F2A7A0', '#F3D98B', '#9FD4C3', '#D9B5E0', '#BFDCA0', '#C59AC7', '#8E9BE0', '#C4CCF2', '#A8BDB5', '#F7E6B5', '#F5C19A', '#D5E0A3', '#9CC9D9', '#EFC4D0', '#B9E0E6', '#E6C9B0'];
   const SECTOR_COLORS = {
-    'AI agents': '#4B2BD6',
-    'AI models': '#14D9A5',
-    'Bio': '#FFB020',
-    'Climate & Energy': '#FF5C8A',
-    'Consumer': '#2EA8FF',
-    'Crypto': '#8A63F5',
-    'Developer tools': '#18BBD4',
-    'Education': '#FF9566',
-    'Enterprise software': '#9EDB51',
-    'Fintech': '#788BFF',
-    'Food & Agriculture': '#F26C68',
-    'Hardware & Robotics': '#42CFC3',
-    'Health': '#D781EF',
-    'Media & Gaming': '#E6BE45',
-    'Mobility': '#3773DB',
-    'Real estate': '#EC7DA8',
-    'Security': '#77C9A1',
-    'Other': '#A7A2C2',
-    'Defense': '#C4622D',
-    'Space': '#3A4FBF',
-    'Govtech': '#0E8A6A'
+    // One colour per industry, the same as on the map (launch/js/map.js COLORS). A sub-industry shows in its parent's colour.
+    'Enterprise software': '#A9C4E8',
+    'Health': '#F2A7A0',
+    'Fintech': '#F3D98B',
+    'Hardware & Robotics': '#9FD4C3',
+    'Consumer': '#D9B5E0',
+    'Climate & Energy': '#BFDCA0',
+    'Bio': '#C59AC7',
+    'AI agents': '#8E9BE0',
+    'AI models': '#C4CCF2',
+    'Security': '#A8BDB5',
+    'Crypto': '#F7E6B5',
+    'Media & Gaming': '#F5C19A',
+    'Food & Agriculture': '#D5E0A3',
+    'Defense': '#B5B5BD',
+    'Space': '#9AA5D1',
+    'Mobility': '#9CC9D9',
+    'Education': '#EFC4D0',
+    'Developer tools': '#B9E0E6',
+    'Real estate': '#E6C9B0',
+    'Govtech': '#C2D6C8',
+    'Other': '#DADFDD'
   };
   // Sub-industry name -> parent. Names that are themselves parents are not listed.
   const SUB_PARENT = {
@@ -1871,6 +2051,13 @@
     const b = e.target && e.target.closest && e.target.closest('.hp[data-copy]');
     if (!b) return;
     const v = b.getAttribute('data-copy') || '';
+    if (b.hasAttribute && b.hasAttribute('data-reveal')) {
+      b.removeAttribute('data-reveal');
+      b.removeAttribute('aria-label');
+      b.textContent = v;
+      try { if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(function () {}, function () {}); } catch (err) {}
+      return;
+    }
     const show = () => { const old = b.textContent; b.textContent = AC.copied || 'Copied'; setTimeout(() => { if (b.textContent === (AC.copied || 'Copied')) b.textContent = old; }, 1400); };
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(show, function () {});
@@ -2012,10 +2199,10 @@
     // The label comes from the database (activity.label, same function as the investors list). Fallback for old payloads.
     const actLab = rule ? (rule.fromText(A.label) || (allDeals ? rule.label(rule.countThisYear(allDeals), allDeals.length) : null)) : null;
     if (actLab) {
-      const u = d0 && safeUrl(d0.url);
+      // The status tile is plain text for every status: it never links anywhere (founder, 22 Nov).
       const inner = '<i></i><div><b>' + esc(actLab.text) + '</b></div>';
       const tone = actLab.cls === 'act-on' ? 'aon' : 'aon ' + actLab.cls;
-      tiles.push(u ? '<a class="att ' + tone + '" href="' + esc(u) + '" target="_blank" rel="noopener">' + inner + '</a>' : '<div class="att ' + tone + '">' + inner + '</div>');
+      tiles.push('<div class="att ' + tone + '">' + inner + '</div>');
     }
     const yearKnown = Array.isArray(A.deals);
     const yearCount = yearKnown ? window.RegretActivity.countThisYear(A.deals) : Number(A.deals_12m) || 0;
@@ -2276,7 +2463,7 @@
     if (!body || !card.clientHeight) return;
     const rows = Array.from(body.children).filter(el => !el.classList.contains('ash'));
     const show = card.querySelector('.ash');
-    rows.forEach(row => { row.hidden = true; });
+    rows.forEach(row => { row.hidden = true; if (row.classList) row.classList.remove('peek'); if (row.style) row.style.maxHeight = ''; });
     if (show) show.hidden = false;
     const budget = card.clientHeight;
     let shown = 0;
@@ -2296,9 +2483,30 @@
       shown++;
     }
     const more = rows.some(row => row.hidden);
-    // Legal, What investors look for, and What founders say keep Show all even when the one row fits.
-    const keepShow = card.id === 'legal' || card.id === 'investors' || card.id === 'reviews';
-    if (show) show.hidden = keepShow ? false : !more;
+    // Show all appears only when there is more than fits, and says how many there are in all.
+    if (show) {
+      show.hidden = !more;
+      if (more && !show.querySelector('*')) show.textContent = (AC.show_all || 'Show all') + ' ' + rows.length;
+    }
+    // When there is more, the next row peeks in, cut off and faded, so the list visibly continues.
+    const next = more && rows.find(row => row.hidden);
+    if (next && next.classList && next.style && typeof next.getBoundingClientRect === 'function') {
+      // Measure the free space before the row is shown, so showing it cannot push Show all out of the card.
+      const shownRows = rows.filter(row => !row.hidden);
+      const last = shownRows[shownRows.length - 1];
+      const foot = show && !show.hidden ? show.getBoundingClientRect().top : card.getBoundingClientRect().bottom - 14;
+      const room = last ? Math.floor(foot - last.getBoundingClientRect().bottom - 8) : 0;
+      const peek = (row, h) => { row.style.maxHeight = h + 'px'; row.classList.add('peek'); row.hidden = false; };
+      if (room >= 18) peek(next, room);
+      else if (shownRows.length > 1) {
+        // No room under the last full row: that row becomes the cut-off one, so the list still visibly continues.
+        const h = last.getBoundingClientRect().height;
+        const prev = shownRows[shownRows.length - 2];
+        const room2 = Math.floor(foot - prev.getBoundingClientRect().bottom - 8);
+        last.hidden = true;
+        if (room2 >= 24) peek(last, Math.min(room2, Math.max(28, Math.round(h * 0.75))));
+      }
+    }
   }
   // Team keeps the shared row fitter. On a phone the card grows, so every person shows and Show all stays off.
   function fitTeam(root) {
@@ -2320,6 +2528,224 @@
       root.querySelectorAll('[data-fill]').forEach(fillCard);
     }
     fitTeam(root);
+    aroundCard(root);
+    whereCard(root);
+    evenCards(root);
+    fitPortfolio(root);
+  }
+  // "Who invests around them": firms that keep appearing in the same startups, before, together with, or after this
+  // firm (v2_firm_around; docs/investors_list_signals.md). The card appears only when there is something to show.
+  const AROUND_COL = { before: '#F3D98B', with: '#A9C4E8', after: '#9FD4C3' };  // three of the map's own colours
+  let AROUND = null;
+  function aroundCard(root) {
+    const C = window.REGRET || {};
+    const main = root && root.closest ? (root.closest('main') || root) : root;
+    const slug = main && main.dataset && main.dataset.firm;
+    const grid = root.querySelector && root.querySelector('.bento');
+    if (!slug || !grid || !C.url || !C.key || typeof fetch !== 'function') return;
+    if (AROUND && AROUND.slug === slug) { if (AROUND.data) drawAround(root, AROUND.data); return; }
+    AROUND = { slug: slug, data: null };
+    fetch(C.url + '/rest/v1/rpc/v2_firm_around', {
+      method: 'POST',
+      headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_slug: slug })
+    }).then(r => (r.ok ? r.json() : null)).then(d => {
+      if (!d || !AROUND || AROUND.slug !== slug) return;
+      AROUND.data = d;
+      drawAround(root, d);
+      evenCards(root);
+    }).catch(function () { /* no card is fine */ });
+  }
+  // The middle circle: two short words fit on two lines ("500 Global"); otherwise the first word.
+  function centreName(name) {
+    const w = String(name || '').trim().split(/\s+/);
+    return w.length > 1 && w[0].length <= 8 && w[1].length <= 8 ? esc(w[0]) + '<br>' + esc(w[1]) : esc(w[0] || '');
+  }
+  function drawAround(root, d) {
+    const grid = root.querySelector('.bento');
+    const total = ['before', 'with', 'after'].reduce((n, k) => n + ((d[k] && d[k].firms) || 0), 0);
+    if (!grid || !total || grid.querySelector('#around')) return;
+    const W = 509, H = 208, CY = H / 2, ys = [36, 104, 172], SIDE = 168, LW = 132;
+    const B = (d.before.list || []).slice(0, 3), A = (d.after.list || []).slice(0, 3), Wd = (d.with.list || []).slice(0, 2);
+    // With one side empty the firm moves to that side, so the picture stays balanced.
+    const CX = !B.length && A.length ? SIDE - 40 : !A.length && B.length ? W - SIDE + 40 : W / 2;
+    const rad = n => Math.min(25, Math.round(12 + 3 * Math.sqrt(n)));
+    const base = window.REGRET_VC_BASE || (window.REGRET_ROOT || '') + 'vc/';
+    const bub = (x, y, f, col) => { const r = rad(f.n); return '<a class="arb" href="' + base + encodeURIComponent(f.slug) + '/" aria-label="' + esc(f.name) + ', ' + f.n + ' startups in common" style="left:' + (x - r) + 'px;top:' + (y - r) + 'px;width:' + (2 * r) + 'px;height:' + (2 * r) + 'px;border-color:' + col + ';border-width:' + Math.max(5, Math.round(r * 0.32)) + 'px">' + f.n + '</a>'; };
+    const lab = (x, y, w, al, f) => '<a class="arl" href="' + base + encodeURIComponent(f.slug) + '/" title="' + esc(f.name) + '" style="left:' + x + 'px;top:' + (y - 9) + 'px;' + (al === 'right' ? 'max-width:' + w + 'px;transform:translateX(-100%)' : 'max-width:' + w + 'px') + '">' + esc(f.name) + '</a>';
+    const arc = (x, y) => '<path d="M' + x + ' ' + y + ' C' + ((x + CX) / 2) + ' ' + y + ' ' + ((x + CX) / 2) + ' ' + CY + ' ' + CX + ' ' + CY + '" fill="none" stroke="#10201C" stroke-opacity=".55" stroke-width="1.5" stroke-linecap="round"/>';
+    let svg = '', html = '';
+    B.forEach((f, i) => { svg += arc(SIDE, ys[i]); html += bub(SIDE, ys[i], f, AROUND_COL.before) + lab(SIDE - rad(f.n) - 10, ys[i], LW, 'right', f); });
+    A.forEach((f, i) => { svg += arc(W - SIDE, ys[i]); html += bub(W - SIDE, ys[i], f, AROUND_COL.after) + lab(W - SIDE + rad(f.n) + 10, ys[i], LW, 'left', f); });
+    if (Wd.length) svg += '<path d="M' + CX + ' 22 V' + (Wd[1] ? H - 22 : CY) + '" stroke="#10201C" stroke-opacity=".55" stroke-width="1.5" stroke-dasharray="2 4" stroke-linecap="round"/>';
+    // The "with" firms sit above and below the firm; their names go on the free side.
+    const wSide = !A.length && B.length ? 'right' : 'left';
+    Wd.forEach((f, i) => { const y = i ? H - 20 : 20, r = rad(f.n); html += bub(CX, y, f, AROUND_COL.with) + (wSide === 'left' && A.length && B.length
+      ? '<a class="arl arlw" href="' + base + encodeURIComponent(f.slug) + '/" title="' + esc(f.name) + '" style="left:' + CX + 'px;top:' + (i ? y - r - 19 : y + r + 2) + 'px;max-width:150px;transform:translateX(-50%)">' + esc(f.name) + '</a>'
+      : lab(wSide === 'right' ? CX + r + 10 : CX - r - 10, y, LW, wSide === 'right' ? 'left' : 'right', f)); });
+    const name = ((root.closest && root.closest('main') || root).querySelector('.ph h1') || {}).textContent || '';
+    const card = document.createElement('article');
+    card.className = 'mod';
+    card.id = 'around';
+    const key = (k, t) => (d[k] && d[k].firms) ? '<span><i style="background:' + AROUND_COL[k] + '"></i>' + t + ' ' + d[k].firms + '</span>' : '';
+    card.innerHTML = '<div class="mh"><h3>Who invests around them</h3></div><p class="arsub">' + key('before', 'Before') + key('with', 'With') + key('after', 'After') + '<em>number = startups in common</em></p>'
+      + '<div class="arbox"><div class="arstage"><svg aria-hidden="true" width="' + W + '" height="' + H + '">' + svg + '</svg>' + html
+      + '<span class="arme" style="left:' + (CX - 30) + 'px;top:' + (CY - 30) + 'px">' + centreName(name) + '</span></div></div>'
+      + '<button type="button" class="ash" data-around>Show all ' + total + ' firms</button>';
+    grid.insertBefore(card, grid.querySelector('#where') || grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
+    card.querySelector('[data-around]').addEventListener('click', function () { openAround(name, d); });
+  }
+  function openAround(name, d) {
+    const old = document.getElementById('aroundbox');
+    if (old) old.remove();
+    const base = window.REGRET_VC_BASE || (window.REGRET_ROOT || '') + 'vc/';
+    const col = (k, title) => '<div class="arcol"><h3 style="border-color:' + AROUND_COL[k] + '">' + title + ' <span>' + ((d[k] && d[k].firms) || 0) + ' firms</span></h3>'
+      + ((d[k] && d[k].list) || []).map(f => '<a href="' + base + encodeURIComponent(f.slug) + '/"><span>' + esc(f.name) + '</span><b>' + f.n + '</b></a>').join('') + '</div>';
+    const box = document.createElement('div');
+    box.id = 'aroundbox';
+    box.className = 'readybox';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.innerHTML = '<div class="readycard arcard"><button type="button" class="readyx" aria-label="Close">×</button><h2>Who invests around ' + esc(name) + '</h2>'
+      + '<p>Firms that keep turning up in the same startups, and whether they got there before, together, or after. The number is how many startups they share.</p>'
+      + '<div class="arcols">' + col('before', 'Before') + col('with', 'With') + col('after', 'After') + '</div></div>';
+    document.body.appendChild(box);
+    const close = function () { box.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = function (e) { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    box.addEventListener('click', function (e) { if (e.target === box) close(); });
+    box.querySelector('.readyx').addEventListener('click', close);
+  }
+  // "Also in the portfolio" stays on one line in the card; a last "+N" tag opens the full list (the card's Show all).
+  function fitPortfolio(root) {
+    const list = root.querySelector && root.querySelector('#deals .adl');
+    const mark = list && list.querySelector('.adp');
+    if (!mark || typeof mark.offsetTop !== 'number') return;
+    const old = list.querySelector('.pmore');
+    if (old) old.remove();
+    const chips = [];
+    for (let n = mark.nextElementSibling; n; n = n.nextElementSibling) if (n.classList && n.classList.contains('ad')) { n.hidden = false; chips.push(n); }
+    if (chips.length < 2) return;
+    const top = chips[0].offsetTop;
+    const all = root.querySelector('#deals .ash');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pmore';
+    btn.textContent = '+';
+    list.appendChild(btn);
+    let keep = chips.length;
+    while (keep > 1 && btn.offsetTop > top) { keep--; chips[keep].hidden = true; }
+    if (keep === chips.length && !(all && !all.hidden)) { btn.remove(); return; }
+    btn.textContent = keep < chips.length ? '+' + (chips.length - keep) : '+';
+    btn.setAttribute('aria-label', 'Show all portfolio companies');
+    btn.addEventListener('click', function () { if (all && all.click) all.click(); });
+  }
+  // The grid keeps an even number of cards. When the firm's own cards leave a hole, a map card fills it.
+  // "Where they invest": where the startups the firm backed are based, as circles on the map of the United States,
+  // Europe or the world (whichever holds most of them). Shown only when the database knows the city of five or more
+  // of the firm's startups (founder, 23 Nov); otherwise there is no card.
+  let WHERE = null;
+  function whereCard(root) {
+    const C = window.REGRET || {};
+    const main = root && root.closest ? (root.closest('main') || root) : root;
+    const slug = main && main.dataset && main.dataset.firm;
+    const grid = root.querySelector && root.querySelector('.bento');
+    if (!slug || !grid || !C.url || !C.key || typeof fetch !== 'function') return;
+    if (WHERE && WHERE.slug === slug) { if (WHERE.data) drawWhere(root, WHERE.data); return; }
+    WHERE = { slug: slug, data: null };
+    fetch(C.url + '/rest/v1/rpc/v2_firm_invests_where', {
+      method: 'POST',
+      headers: { apikey: C.key, Authorization: 'Bearer ' + C.key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_slug: slug })
+    }).then(r => (r.ok ? r.json() : null)).then(d => {
+      if (!d || !WHERE || WHERE.slug !== slug || !Array.isArray(d.places) || !d.places.length) return;
+      WHERE.data = d;
+      drawWhere(root, d);
+    }).catch(function () { /* no card is fine */ });
+  }
+  function drawWhere(root, d) {
+    const grid = root.querySelector('.bento');
+    if (!grid || grid.querySelector('#where')) return;
+    const ROOT = window.REGRET_ROOT || '';
+    const level = d.level === 'us' || d.level === 'eu' ? d.level : 'world';
+    const paint = function () {
+      const g = GEO && GEO[level];
+      if (!g || grid.querySelector('#where')) return;
+      const spots = d.places.map(p => ({ n: Number(p.n) || 0, s: g.places && g.places[p.p] })).filter(x => x.s && x.n > 0);
+      if (!spots.length) return;
+      const placed = spots.reduce((a, x) => a + x.n, 0), big = spots[0].n, rest = Math.max(0, (Number(d.known) || 0) - placed);
+      const rad = n => Math.round(4 + Math.sqrt(n / big) * 18);
+      const pos = x => 'left:' + (x.s.x / g.w * 100).toFixed(2) + '%;top:' + (x.s.y / g.h * 100).toFixed(2) + '%';
+      // Names for the biggest places only, and never two names on top of each other.
+      const named = [];
+      spots.slice(0, 5).forEach(x => {
+        if (named.length >= 3) return;
+        if (named.some(o => Math.abs(o.s.y - x.s.y) / g.h < 0.13 && Math.abs(o.s.x - x.s.x) / g.w < 0.3)) return;
+        named.push(x);
+      });
+      const label = x => {
+        const left = x.s.x / g.w < 0.5, gap = rad(x.n) + 7;
+        const side = left ? 'left:calc(' + (x.s.x / g.w * 100).toFixed(2) + '% + ' + gap + 'px)' : 'right:calc(' + (100 - x.s.x / g.w * 100).toFixed(2) + '% + ' + gap + 'px);text-align:right';
+        return '<b style="' + side + ';top:' + (x.s.y / g.h * 100).toFixed(2) + '%">' + esc(x.s.n) + '<span>' + x.n.toLocaleString('en-US') + (x.n === 1 ? ' startup' : ' startups') + '</span></b>';
+      };
+      const out = ' elsewhere';  // other countries, or towns the map has no place for
+      const href = ROOT + (level === 'world' ? '' : '?zoom=' + level);
+      const card = document.createElement('article');
+      card.className = 'mod';
+      card.id = 'where';
+      card.innerHTML = '<div class="mh"><h3>Where they invest</h3></div>'
+        + '<div class="wbox"><span class="wmap" style="aspect-ratio:' + g.w + '/' + g.h + '"><img src="' + ROOT + 'assets/map/' + level + '.svg" alt="" loading="lazy">'
+        + spots.map(x => '<i style="' + pos(x) + ';width:' + rad(x.n) * 2 + 'px;height:' + rad(x.n) * 2 + 'px"></i>').join('')
+        + named.map(label).join('') + '</span></div>'
+        + '<p class="wnote">Where ' + placed.toLocaleString('en-US') + ' of their ' + (Number(d.startups) || placed).toLocaleString('en-US') + ' startups are based.'
+        + (rest ? ' ' + rest.toLocaleString('en-US') + ' more ' + (rest === 1 ? 'is' : 'are') + out + '.' : '') + '</p>'
+        + '<a class="ash" href="' + href + '">Open the map</a>';
+      grid.insertBefore(card, grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
+      evenCards(root);
+    };
+    if (GEO) return paint();
+    fetch(ROOT + 'assets/map/places.json').then(r => r.json()).then(g => { GEO = g; paint(); mapCard(root); }).catch(function () {});
+  }
+  function evenCards(root) {
+    const grid = root.querySelector && root.querySelector('.bento');
+    if (!grid || !grid.querySelectorAll || !grid.insertBefore) return;
+    const old = grid.querySelector('.mod.filler');
+    const n = Array.from(grid.children).filter(el => el.classList && el.classList.contains('mod') && !el.classList.contains('span2') && !el.classList.contains('filler') && !el.hidden).length;
+    if (n % 2 === 0) { if (old) old.remove(); return; }
+    if (old) return;
+    const card = document.createElement('article');
+    card.className = 'mod filler';
+    card.id = 'onmap';
+    grid.insertBefore(card, grid.querySelector('.mod.span2'));
+    mapCard(root);
+  }
+  // The map card shows where the firm sits: its own dot and place name on the map of its region (United States, Europe
+  // or the world), and a link that opens the main map there. Until the place is known it stays a plain link to the map.
+  let PLACE = null, GEO = null;
+  function mapCard(root) {
+    const card = root.querySelector && root.querySelector('#onmap');
+    if (!card) return;
+    const ROOT = window.REGRET_ROOT || '';
+    const main = root.closest ? (root.closest('main') || root) : root;
+    const slug = main && main.dataset && main.dataset.firm;
+    const pl = PLACE && PLACE.slug === slug ? PLACE.place : null;
+    const level = pl && (pl.level === 'us' || pl.level === 'eu') ? pl.level : 'world';
+    const key = level === 'world' ? (pl && pl.region) : (pl && pl.area);
+    const draw = function () {
+      const g = GEO && GEO[level], spot = g && key && g.places && g.places[key];
+      const label = spot ? spot.n : '';
+      const where = level === 'us' ? 'United States' : level === 'eu' ? 'Europe' : 'World';
+      const href = ROOT + (level === 'world' ? '' : '?zoom=' + level);
+      card.innerHTML = '<div class="mh"><h3>On the map</h3></div>'
+        + '<a class="fmap" href="' + href + '" aria-label="Open the map' + (label ? ' at ' + esc(label) : '') + '">'
+        + '<span class="fmapin" style="aspect-ratio:' + (g ? g.w + '/' + g.h : '1060/620') + '"><img src="' + ROOT + 'assets/map/' + level + '.svg" alt="" loading="lazy">'
+        + (spot ? '<i style="left:' + (spot.x / g.w * 100).toFixed(2) + '%;top:' + (spot.y / g.h * 100).toFixed(2) + '%"></i><b style="left:' + (spot.x / g.w * 100).toFixed(2) + '%;top:' + (spot.y / g.h * 100).toFixed(2) + '%" class="' + (spot.x / g.w > 0.6 ? 'l' : '') + '">' + esc(label) + '</b>' : '')
+        + '</span></a><a class="ash" href="' + href + '">' + (label ? 'Open the map: ' + esc(where) : 'Open the map') + '</a>';
+    };
+    if (GEO) return draw();
+    draw();
+    if (typeof fetch !== 'function') return;
+    fetch(ROOT + 'assets/map/places.json').then(r => r.json()).then(g => { GEO = g; draw(); }).catch(function () {});
   }
   if (window.addEventListener) window.addEventListener('resize', () => {
     const main = document.querySelector && document.querySelector('main.prof');

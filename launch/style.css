@@ -1106,3 +1106,679 @@ main.wrap.firms-pg{max-width:1320px}
   .frow .fdeal{grid-column:1/-1;grid-row:5}
   .panel-option-grid{grid-template-columns:1fr}
 }
+
+/* ---------- Map page (/map/, js/map.js). Scoped to .vm; the first use of the new look: white, ink, one amber accent, Geist. */
+.vm{--mi:#10201C;--mm:#586964;--ml:#E2E7E5;--ms:#F3F5F4;--ma:#F0861E;position:relative;height:calc(100vh - 64px);min-height:700px;overflow:hidden;background:#fff;color:var(--mi);font-family:'Geist',system-ui,sans-serif;font-size:15px;line-height:1.35}
+.vm *{box-sizing:border-box}
+.vm button{font:inherit;color:inherit;cursor:pointer}
+.vm-map{position:absolute;inset:0}
+.vm-stage{position:absolute;left:0;top:0;transform-origin:0 0}
+.vm-bg{position:absolute;left:0;top:0;transition:opacity .45s}
+.vm-wave{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:linear-gradient(90deg,transparent,rgba(16,32,28,.7),transparent) no-repeat;background-size:30% 100%;-webkit-mask-size:100% 100%;mask-size:100% 100%;animation:vm-wave 1.15s linear infinite}
+.vm-busy .vm-wave{opacity:1}
+@keyframes vm-wave{from{background-position:-45% 0}to{background-position:145% 0}}
+.vm-card{position:absolute;background:#fff;border:1px solid var(--ml);border-radius:16px;box-shadow:0 8px 28px rgba(16,32,28,.08)}
+.vm-head{left:24px;top:20px;width:400px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.vm-head h1{margin:0;font-size:30px;font-weight:600;letter-spacing:-.05em;line-height:1.02}
+.vm-picks{display:flex;gap:6px}
+.vm-pick{position:relative;flex:0 0 auto}
+.vm-pick[data-pick="sectors"]{flex:0 1 auto;min-width:80px}
+.vm-pickbtn{height:44px;max-width:100%;padding:0 10px 0 12px;border-radius:10px;border:1px solid #8A9893;background:#fff;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.vm-pickbtn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vm-pickbtn svg{flex:none}
+.vm-who .vm-menu{left:auto;right:0}
+.vm-menu{position:absolute;z-index:6;left:0;top:48px;width:250px;max-height:340px;overflow:auto;background:#fff;border:1.5px solid var(--mi);border-radius:12px;padding:6px}
+.vm-menu label{display:flex;align-items:center;gap:8px;min-height:36px;padding:0 8px;border-radius:8px;font-size:14px;cursor:pointer}
+.vm-menu label:hover{background:var(--ms)}
+.vm-menu input{width:16px;height:16px;accent-color:var(--mi)}
+.vm-sw{width:10px;height:10px;border-radius:3px;flex:none}
+.vm-based{margin:0;font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;color:var(--mm)}
+.vm:not(.vm-hotview) .vm-who{display:none}
+.vm-btn{display:block;height:44px;line-height:44px;padding:0 16px;border:0;border-radius:10px;background:var(--mi);color:#fff!important;font-weight:600;text-align:center;text-decoration:none}
+.vm-link{border:0;background:none;padding:0;height:32px;font-size:13px;font-weight:600;text-decoration:underline}
+.vm-side{right:24px;top:20px;width:320px;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.vm-side h2{margin:0 0 6px;font-size:18px;font-weight:600;letter-spacing:-.03em}
+.vm-side>a{display:flex;flex-direction:column;gap:2px;padding:10px 0;border-top:1px solid var(--ml);text-decoration:none;color:inherit;font-size:14px}
+.vm-side>a.vm-first{font-weight:600}
+.vm-tag{font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mm);font-weight:400}
+.vm .vm-mu{color:var(--mm);font-weight:400}
+.vm-side.vm-list{bottom:150px;width:380px;padding-bottom:0;gap:10px;overflow:hidden}
+.vm-lh{display:flex;justify-content:space-between;align-items:center}
+.vm-lh h2{margin:0;font-size:20px}
+.vm-x{width:44px;height:44px;margin:-10px -10px -10px 0;border:0;background:none;position:relative}
+.vm-x:before,.vm-x:after{content:"";position:absolute;left:14px;top:21px;width:16px;height:2px;background:var(--mi);transform:rotate(45deg)}
+.vm-x:after{transform:rotate(-45deg)}
+.vm-chips{display:flex;flex-wrap:wrap;gap:6px}
+.vm-chip{height:30px;padding:0 8px 0 10px;border-radius:8px;border:1px solid var(--mi);background:var(--ms);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.vm-rows{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column}
+.vm-rows a{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:76px;padding:8px 0;border-top:1px solid var(--ml);text-decoration:none;color:inherit}
+.vm-rows a>span:first-child{display:flex;flex-direction:column;font-size:13px}
+.vm-rows b{font-size:15px;font-weight:600}
+.vm-rows .vm-st{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.vm-rows .vm-st i{width:8px;height:8px;border-radius:50%;background:#8A9893}
+.vm-rows .vm-st.vm-a i{background:#1C8A55}.vm-rows .vm-st.vm-l i{background:#D08A1C}
+.vm-rows .vm-ck{font-size:14px;text-decoration:underline}
+.vm-side>a.vm-more{flex:none;display:block;margin:0 -18px;padding:0 18px;border-top:1px solid var(--ml);line-height:48px;font-size:14px;font-weight:600;color:inherit}
+.vm-zoom{right:24px;bottom:20px;width:190px;padding:6px;display:flex;flex-direction:column;gap:2px}
+.vm-zoom button{height:44px;border:0;border-radius:10px;background:none;font-size:14px;text-align:left;padding:0 14px}
+.vm-zoom button[aria-pressed=true]{background:var(--mi);color:#fff;font-weight:600}
+.vm-dock{left:50%;bottom:20px;transform:translateX(-50%);width:min(900px,calc(100% - 520px));padding:12px 18px 10px 14px;display:flex;align-items:center;gap:14px}
+.vm-play{width:44px;height:44px;flex:none;border:0;border-radius:50%;background:var(--mi);position:relative}
+.vm-play:before{content:"";position:absolute;left:17px;top:13px;border:9px solid transparent;border-left:14px solid #fff;border-right:0}
+.vm-play.vm-on:before{left:15px;top:14px;width:5px;height:16px;border:0;background:#fff;box-shadow:9px 0 0 #fff}
+.vm-line{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vm-new{display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:var(--ma);box-shadow:0 0 0 3px rgba(240,134,30,.28)}
+.vm-all{height:44px;flex:none;padding:0 14px;border-radius:10px;border:1px solid #8A9893;background:#fff;font-size:14px}
+.vm-time{flex:1;min-width:0;padding-top:8px;display:flex;flex-direction:column;gap:14px}
+.vm-track{position:relative;height:6px;border-radius:3px;background:var(--ml)}
+.vm-fill{position:absolute;top:0;bottom:0;background:var(--mi);border-radius:3px}
+.vm-track i{position:absolute;top:10px;width:1px;height:4px;background:#8A9893}
+.vm-track i.vm-y{height:8px}
+.vm-track input{position:absolute;left:-12px;top:-9px;width:calc(100% + 24px);height:24px;margin:0;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
+.vm-track input::-webkit-slider-runnable-track{background:none;height:24px}
+.vm-track input::-moz-range-track{background:none}
+.vm-track input::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:24px;height:24px;border-radius:50%;background:#fff;border:2.5px solid var(--mi);cursor:grab}
+.vm-track input::-moz-range-thumb{pointer-events:auto;width:19px;height:19px;border-radius:50%;background:#fff;border:2.5px solid var(--mi);cursor:grab}
+.vm-years{position:relative;height:16px;font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;color:var(--mm)}
+.vm-years span{position:absolute;text-align:center}
+.vm-legend{position:absolute;left:24px;bottom:24px;width:230px;margin:0;font-size:13px;color:var(--mm)}
+.vm-msg{position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);padding:14px 18px;border:1.5px solid var(--mi);border-radius:12px;background:#fff;font-weight:600}
+.vm-pl{position:absolute;padding:0;border-radius:50%;border:2px solid #fff;transition:left .9s cubic-bezier(.3,.7,.2,1),top .9s cubic-bezier(.3,.7,.2,1),width .9s cubic-bezier(.3,.7,.2,1),height .9s cubic-bezier(.3,.7,.2,1),transform .8s cubic-bezier(.2,.9,.25,1.1),opacity .7s,background-color .6s,--vm-a1 .9s,--vm-a2 .9s,--vm-a3 .9s,--vm-a4 .9s,--vm-a5 .9s}
+.vm-pl.vm-in{transform:scale(.2);opacity:0}
+.vm-pl.vm-out{transform:scale(0);opacity:0;pointer-events:none;transition:transform .8s cubic-bezier(.4,0,.6,1),opacity .8s}
+.vm-pl.vm-ring{background:conic-gradient(var(--vm-c1) 0 var(--vm-a1),var(--vm-c2) var(--vm-a1) var(--vm-a2),var(--vm-c3) var(--vm-a2) var(--vm-a3),var(--vm-c4) var(--vm-a3) var(--vm-a4),var(--vm-c5) var(--vm-a4) var(--vm-a5),#F1F3F2 var(--vm-a5) 100%)}
+.vm-pl:after{content:"";position:absolute;left:27%;top:27%;width:46%;height:46%;border-radius:50%;background:#fff;transform:scale(0);transition:transform .7s cubic-bezier(.3,.7,.2,1)}
+.vm-pl.vm-ring:after{transform:scale(1)}
+.vm-pl.vm-dot,.vm-pl.vm-plain{border:1.5px solid var(--mi)}
+.vm-pl.vm-sel,.vm-pl:focus-visible{outline:2px solid var(--mi);outline-offset:2px}
+.vm-pl.vm-lit{box-shadow:0 0 0 2px var(--mi),0 0 0 9px rgba(240,134,30,.32),0 0 0 20px rgba(240,134,30,.14)}
+.vm-lab{position:absolute;font-size:12px;font-weight:600;line-height:15px;white-space:nowrap;pointer-events:none;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 4px #fff,0 0 4px #fff}
+#vm-labs .vm-lab{animation:vm-fade .35s both}
+#vm-labs.vm-late .vm-lab{animation-delay:.55s}
+@keyframes vm-fade{from{opacity:0}to{opacity:1}}
+.vm-lab.vm-code{font-size:11px;line-height:13px;text-align:center;letter-spacing:.02em}
+.vm-lab.vm-code-in{font-size:9px;text-shadow:none}
+.vm-lab em{font-style:normal;font-weight:400;color:var(--mm)}
+.vm-lab.vm-sm{font-size:10px;line-height:14px;font-weight:400;color:var(--mm)}
+.vm-tip{position:absolute;z-index:5;width:236px;background:#fff;border:1.5px solid var(--mi);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:12px}
+.vm-tip[hidden]{display:none}
+.vm-tip>b{font-size:14px;font-weight:600}
+.vm-tip .vm-tr{display:flex;align-items:center;gap:7px}
+.vm-tip .vm-tr i{width:10px;height:10px;border-radius:3px;flex:none}
+.vm-tip .vm-tr span:nth-child(2){flex:1}
+.vm-tip .vm-pc{font-family:'Geist Mono',ui-monospace,monospace}
+.vm-tip .vm-btn{height:34px;line-height:34px;margin-top:4px;border-radius:8px;font-size:12px}
+.vm-colwrap{display:contents}
+/* Column layout (founder's choice "A"): a grey rail on the left holds two separate cards, controls and news; the map has the rest. */
+.vm-col .vm-colwrap{position:absolute;left:0;top:0;bottom:0;width:424px;display:flex;flex-direction:column;gap:16px;padding:20px;background:var(--ms);border-right:1px solid var(--ml);z-index:3}
+.vm-col .vm-map{left:424px}
+.vm-col .vm-head{position:static;width:auto;box-shadow:none;padding:20px}
+.vm-col .vm-head h1{font-size:27px}
+.vm-col .vm-side,.vm-col .vm-side.vm-list{position:static;width:auto;flex:1;min-height:0;box-shadow:none;padding:16px 20px 8px;overflow:auto}
+.vm-col .vm-side.vm-list{overflow:hidden;padding-bottom:0}
+.vm-col .vm-side>a.vm-more{margin:0 -20px;padding:0 20px}
+.vm-col .vm-line{white-space:normal}
+.vm-col .vm-legend{left:448px;top:24px;bottom:auto;width:300px}
+.vm-facts{display:flex;flex-direction:column;gap:8px;font-size:13px}
+.vm-facts b{font-weight:600;color:var(--mi)}
+.vm-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:#F1F3F2}
+.vm-bar i{display:block;height:100%}
+.vm-key{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px}
+.vm-key span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.vm-key i{width:9px;height:9px;border-radius:3px}
+.vm-col .vm-zoom{top:20px;right:24px;bottom:auto;width:auto;flex-direction:row}
+.vm-col .vm-zoom button{text-align:center;padding:0 16px}
+.vm-col .vm-dock{left:calc(424px + (100% - 424px)/2);width:min(860px,calc(100% - 472px))}
+.vm-fp{left:448px;top:84px;bottom:100px;width:360px;z-index:5;padding:16px 20px 0;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.vm-fp[hidden]{display:none}
+.vm-fp>a.vm-more{margin:0 -20px;padding:0 20px}
+.vm-chipst{cursor:default;padding:0 10px}
+.vm-views{left:448px;top:20px;padding:5px;display:flex;gap:2px;border-radius:14px}
+.vm:not(.vm-col) .vm-views{left:50%;transform:translateX(-50%)}
+.vm-views button,.vm-period button{height:40px;padding:0 14px;border:0;border-radius:10px;background:none;font-size:14px}
+.vm-views button[aria-pressed=true],.vm-period button[aria-pressed=true]{background:var(--mi);color:#fff;font-weight:600}
+.vm-col .vm-legend{top:84px}
+.vm-col.vm-hotview .vm-legend{top:auto;bottom:16px;left:auto;right:24px;width:150px;font-size:12px;line-height:1.7}
+.vm-hotview .vm-keys i{display:inline-block;margin-left:0}
+.vm-hotview .vm-keys{display:flex;flex-direction:column}
+.vm-period{display:none;align-items:center;gap:6px;font-size:14px;color:var(--mm);margin:0 auto;white-space:nowrap}
+.vm-period button{border:1px solid #8A9893;color:var(--mi)}
+.vm-hotview .vm-period{display:flex}
+.vm-hotview .vm-dock>:not(.vm-period){display:none}
+.vm-hotview .vm-dock{width:auto;padding:10px 16px}
+.vm-pl.vm-hot{border:1.5px solid var(--mi)}
+.vm-pl.vm-up,i.vm-up{background:#A9D9B4}
+.vm-pl.vm-flat,i.vm-flat{background:#A9C4E8}
+.vm-pl.vm-down,i.vm-down{background:#F2A7A0}
+.vm .vm-tu{color:#177A49;font-weight:600}
+.vm .vm-td{color:#B93A2F;font-weight:600}
+.vm-pl.vm-few,i.vm-few{background:#fff;border:1.5px dashed #8A9893}
+.vm-keys{display:block}
+.vm-keys i,.vm-sec i{display:inline-block;width:11px;height:11px;border-radius:50%;border:1.5px solid var(--mi);box-sizing:border-box;vertical-align:-1px;margin:0 4px 0 8px}
+.vm-keys i:first-child{margin-left:0}
+.vm-pl.vm-up.vm-lt,i.vm-up.vm-lt{background:#CFEAD6}
+.vm-pl.vm-down.vm-lt,i.vm-down.vm-lt{background:#F8CFCA}
+.vm-spark{flex:none;width:72px;height:22px;display:block}
+.vm-secp .vm-spark{width:58px}
+.vm-sec span:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vm-unit{display:inline-flex;border:1px solid #8A9893;border-radius:8px;overflow:hidden;flex:none}
+.vm-unit button{width:32px;height:28px;border:0;background:#fff;color:var(--mi);font:inherit;font-size:13px;cursor:pointer}
+.vm-unit button[aria-pressed="true"]{background:var(--mi);color:#fff;font-weight:600}
+.vm-unit button:focus-visible{outline:2px solid var(--mi);outline-offset:-2px}
+.vm-lh2{margin-top:14px}
+.vm-lh2 h3{margin:0;font-size:16px;font-weight:600}
+.vm-srows{margin-top:6px}
+.vm-secp{min-height:44px}
+.vm-sec .vm-pc{min-width:44px;text-align:right}
+.vm-fl{flex:none;min-width:56px;text-align:right;font-size:13px;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.vm-back{display:block;margin:0 0 10px;padding:0;text-align:left}
+.vm-sec{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;padding:0 6px;margin:0 -6px;border:0;border-top:1px solid var(--ml);background:none;font-size:14px;text-align:left;border-radius:0}
+.vm-sec i{margin:0;flex:none}
+.vm-sec span:nth-child(2){flex:1}
+.vm-sec:hover,.vm-sec.vm-secon{background:var(--ms)}
+.vm-sec.vm-secon span:nth-child(2){font-weight:600}
+.vm-sub{font-size:12px;margin:10px 0 2px}
+.vm-pc{font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;white-space:nowrap}
+.vm-hotview .vm-tip{width:272px}
+.vm-hotview .vm-tip .vm-tr{justify-content:space-between;gap:10px}
+.vm-hotview .vm-tip .vm-tr>span:first-child{flex:1;min-width:0}
+.vm-hotview .vm-tip .vm-tr>span:nth-child(2){flex:none;text-align:right}
+.vm-hotview .vm-tip .vm-tr i{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--mi);box-sizing:border-box;margin-right:6px;vertical-align:-1px}
+.vm-hotview .vm-tip .vm-rule{border-top:1px solid var(--ml);padding-top:6px;margin-top:2px}
+.vm-hotview .vm-tip .vm-pc{font-size:12px}
+@property --vm-a1{syntax:'<percentage>';inherits:false;initial-value:0%}
+@property --vm-a2{syntax:'<percentage>';inherits:false;initial-value:0%}
+@property --vm-a3{syntax:'<percentage>';inherits:false;initial-value:0%}
+@property --vm-a4{syntax:'<percentage>';inherits:false;initial-value:0%}
+@property --vm-a5{syntax:'<percentage>';inherits:false;initial-value:0%}
+@media (prefers-reduced-motion:reduce){.vm-pl,.vm-bg{transition:opacity .2s}.vm-wave{animation:none;background:rgba(16,32,28,.25)}#vm-labs .vm-lab{animation:none}}
+
+/* ---------- Investors list (/investors/, js/firms.js) in the new look: a one-line grid, search bar on top with the chosen
+   filters as tags inside it, drop-down buttons under it. Scoped to .firms-pg; the header takes the new look on this page only
+   until the shared base is lifted out for every page. Plan: project doc claude/plans/investors-list.md. */
+body:has(main.firms-pg){background:#fff}
+body>nav{height:64px;padding:0 32px;border-bottom:1px solid #E2E7E5;font-family:'Geist',system-ui,sans-serif;font-size:15px}
+body>nav .logo{font:600 21px/1 'Geist',system-ui,sans-serif;letter-spacing:-.04em;color:#10201C;text-transform:lowercase;gap:10px}
+body>nav .logo img{display:none}
+body>nav .logo:before{content:'';width:28px;height:18px;flex:none;border-radius:99px;border:2px solid #10201C;background:linear-gradient(90deg,#F0861E 50%,#fff 50%);transform:rotate(35deg)}
+body>nav .r{color:#10201C;font-weight:400;gap:28px}
+body>nav .r a.on{color:#10201C;font-weight:600}
+.firms-pg,.firms-pg .facet-panel{--mi:#10201C;--mm:#586964;--ml:#E2E7E5;--ms:#F3F5F4;--ma:#F0861E;--vio:#10201C;--viobg:#F3F5F4;--ink:#10201C;--ink2:#3B4A45;--mute:#586964;--line:#E2E7E5;font-family:'Geist',system-ui,sans-serif;color:var(--mi)}
+main.wrap.firms-pg{max-width:none;padding:20px 32px 80px}
+.firms-pg .firms-search-hero{margin:0 0 10px}
+.firms-pg .firms-qbox{align-items:center;min-height:48px;border:1.5px solid var(--mi);border-radius:12px;padding:6px 12px;box-shadow:none;color:var(--mi);gap:10px}
+.firms-pg .firms-qbox svg{width:18px;height:18px;margin:0;stroke-width:2.2}
+.firms-pg .firms-qfield{gap:6px}
+.firms-pg .firms-qbox input{font:400 15px/1.3 'Geist',system-ui,sans-serif;padding:6px 0}
+.firms-pg .firms-qbox input::placeholder{color:var(--mm)}
+.firms-pg .firms-chip{background:var(--ms);border:1.5px solid var(--mi);border-radius:8px;padding:4px 4px 4px 10px;font:400 14px/1.2 'Geist',system-ui,sans-serif}
+.firms-pg .firms-chip button{font:400 16px/1 'Geist',system-ui,sans-serif;color:var(--mi);width:22px;height:22px;border-radius:6px}
+.firms-pg .firms-chip button:hover{background:#E2E7E5;color:var(--mi)}
+.firms-clear{flex:none;border:0;background:none;padding:0 4px;height:32px;font:400 13px 'Geist',system-ui,sans-serif;color:#10201C;text-decoration:underline;text-underline-offset:3px;cursor:pointer;white-space:nowrap}
+.firms-clear[hidden]{display:none}
+.firms-pg .sidebar-layout{display:block}
+.firms-pg .sidebar{position:static;display:flex;align-items:center;gap:8px;background:none;border:0;border-radius:0;padding:0;margin:0 0 14px;height:auto;top:auto!important}
+.fdrops{display:flex;align-items:center;gap:8px;min-width:0}
+.firms-pg .facet{position:relative;border:0;margin:0;padding:0}
+.firms-pg .fdrop{display:inline-flex;align-items:center;gap:7px;height:40px;margin:0;padding:0 12px 0 14px;border:1px solid #8A9893;border-radius:10px;background:#fff;font:400 14px 'Geist',system-ui,sans-serif;color:var(--mi);white-space:nowrap;cursor:pointer}
+.firms-pg .fdrop:hover{border-color:var(--mi)}
+.firms-pg .facet.on .fdrop{border:1.5px solid var(--mi);background:var(--ms);font-weight:600}
+.firms-pg .facet.open .fdrop{background:var(--mi);border-color:var(--mi);color:#fff}
+.firms-pg .fdrop .facet-badge{background:var(--mi);color:#fff;font:600 11px/18px 'Geist Mono',ui-monospace,monospace;min-width:18px;height:18px;padding:0 5px;border-radius:99px;text-align:center}
+.firms-pg .facet.open .fdrop .facet-badge{background:#fff;color:var(--mi)}
+.fmenu{position:absolute;z-index:8;left:0;top:46px;width:280px;background:#fff;border:1.5px solid #10201C;border-radius:12px;padding:6px;box-shadow:0 12px 32px rgba(16,32,28,.12)}
+.fmenu[hidden]{display:none}
+.fmenu h4{display:none}
+.firms-pg .fmenu label{margin:0;min-height:38px;padding:0 8px;border-radius:8px;font:400 14px 'Geist',system-ui,sans-serif;color:var(--mi);gap:8px}
+.firms-pg .fmenu label:hover{background:var(--ms)}
+.firms-pg .fmenu label.checked{font-weight:600}
+.firms-pg .fmenu label span.optcount{font:400 12px 'Geist Mono',ui-monospace,monospace;color:var(--mm)}
+.firms-pg .fmenu input{accent-color:#10201C}
+.firms-pg .fmenu .show-all{margin:4px 0 0;padding:0 8px;height:36px;width:100%;border-top:1px solid var(--ml);font:600 13px 'Geist',system-ui,sans-serif;color:var(--mi);text-decoration:underline;text-underline-offset:3px}
+.fdrop-caret{font-size:11px}
+.fcount{margin-left:auto;font:400 13px 'Geist Mono',ui-monospace,monospace;color:#586964;text-transform:uppercase;white-space:nowrap}
+.firms-pg .table-toolbar,.firms-pg .filters-open-btn{display:none!important}
+.firms-pg .flist{border:1px solid var(--ml);border-radius:14px;overflow:visible;font-size:14px}
+.firms-pg .frow,.firms-pg .flist.has-activity .frow{grid-template-columns:minmax(150px,1.5fr) minmax(110px,1fr) minmax(170px,1.8fr) 84px minmax(150px,1.3fr) minmax(190px,1.9fr) 116px;gap:0;padding:0;min-height:44px;align-items:stretch;border-bottom:1px solid var(--ml)}
+.firms-pg .flist:not(.has-activity) .frow{grid-template-columns:minmax(150px,1.5fr) minmax(110px,1fr) minmax(170px,1.8fr) 84px minmax(190px,1.9fr) 116px}
+.firms-pg .frow>*{display:flex;align-items:center;min-width:0;padding:0 14px;border-left:1px solid var(--ml);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;justify-self:stretch}
+.firms-pg .frow>*:first-child{border-left:0}
+.firms-pg .frow:hover{background:#F8FAF9}
+.firms-pg .frow:hover b{color:var(--mi);text-decoration:underline;text-underline-offset:3px}
+.firms-pg .frow.h{position:sticky;top:0;z-index:3;background:var(--ms);border-radius:14px 14px 0 0;padding:0;min-height:40px}
+.firms-pg .frow.h button,.firms-pg .frow.h span.hunsortable{font:400 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.06em;color:var(--mm);justify-content:space-between;text-align:left;padding:0 14px}
+.firms-pg .frow.h button.sorted{color:var(--mi);font-weight:600}
+.firms-pg .frow.h button.sorted .arrow{color:var(--mi)}
+.firms-pg .frow.h [data-sort="newest"],.firms-pg .frow.h [data-sort="activity"]{justify-self:stretch;text-align:left;justify-content:space-between}
+.firms-pg .frow.h [data-sort="deals"]{justify-self:stretch;justify-content:flex-end;gap:6px}
+.firms-pg .frow .fnm b{display:block;font:600 15px/1.3 'Geist',system-ui,sans-serif;overflow:hidden;text-overflow:ellipsis}
+.firms-pg .frow .fcity,.firms-pg .frow .finds,.firms-pg .frow .fdeal{font:400 14px/1.3 'Geist',system-ui,sans-serif;color:var(--mi)}
+.fflag{flex:none;margin-right:8px;font-size:16px;line-height:1}
+.firms-pg .frow .finds{gap:12px}
+.find{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.find i{width:9px;height:9px;flex:none;border-radius:50%;border:1.5px solid #10201C;box-sizing:content-box}
+.fmore{flex:none;color:#586964}
+.firms-pg .frow .finv{justify-content:flex-end;justify-self:stretch;font:400 14px 'Geist Mono',ui-monospace,monospace}
+.firms-pg .frow .fact{justify-content:flex-start;justify-self:stretch;text-align:left}
+.firms-pg .frow .alab{background:none!important;color:var(--mi)!important;padding:0;font:400 14px 'Geist',system-ui,sans-serif;gap:8px}
+.firms-pg .frow .alab:before{content:'';width:8px;height:8px;border-radius:50%;background:#A3AEAA;flex:none}
+.firms-pg .frow .alab.act-on:before{background:#1F9D55}
+.firms-pg .frow .alab.act-low:before{background:#E0A526}
+.firms-pg .frow .alab.act-off:before{background:#C4281C}
+.firms-pg .frow .fdeal .dwhen{color:var(--mm);margin-left:.3em}
+.firms-pg .frow .fdeal:empty:before,.firms-pg .frow .fcity:empty:before,.firms-pg .frow .finds:empty:before,.firms-pg a.frow .finv:empty:before{content:'–';color:#A3AEAA}
+.firms-pg .frow .rdt{justify-content:flex-start;text-align:left;font-size:14px;color:var(--mm)}
+.firms-pg .facet-panel{width:420px}
+.firms-pg .facet-panel:before{display:none}
+.firms-pg .facet-panel-box{border:1.5px solid var(--mi);border-radius:14px;box-shadow:0 12px 32px rgba(16,32,28,.12);font-family:'Geist',system-ui,sans-serif}
+.firms-pg .panel-option-grid{grid-template-columns:1fr}
+.firms-pg .facet-panel input{accent-color:#10201C}
+.firms-pg .optlabel{color:var(--mi)!important}
+.firms-pg .panel-bottom .primary{background:var(--mi);border-color:var(--mi);color:#fff}
+@container firms (max-width:900px){
+  .firms-pg .frow,.firms-pg .flist.has-activity .frow,.firms-pg .flist:not(.has-activity) .frow{grid-template-columns:minmax(140px,1.4fr) minmax(100px,1fr) minmax(140px,1.4fr) minmax(170px,1.7fr) 116px}
+}
+@media (max-width:900px){
+  main.wrap.firms-pg{padding:14px 14px 60px}
+  .firms-pg .sidebar{display:flex;position:static;width:auto;height:auto;box-shadow:none;overflow:visible;flex-wrap:wrap}
+  .fdrops{flex-wrap:wrap;flex:1 1 100%}
+  .fcount{margin-left:0}
+}
+@media (max-width:640px){
+  body>nav{padding:0 14px;height:56px}
+  .firms-pg .flist{border:0;border-radius:0}
+  .firms-pg .flist .frow.h,.firms-pg .flist.has-activity .frow.h{display:none}
+  body>nav .r a#signin:not([hidden]){color:#10201C;font-weight:600}
+  .firms-pg .frow,.firms-pg .flist.has-activity .frow,.firms-pg .flist:not(.has-activity) .frow{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:14px;margin:0 0 10px;min-height:0;border:1px solid var(--ml);border-radius:14px}
+  .firms-pg .frow>*{padding:0;border-left:0;white-space:normal}
+  .firms-pg .frow .fdeal:empty:before,.firms-pg .frow .fcity:empty:before,.firms-pg .frow .finds:empty:before,.firms-pg a.frow .finv:empty:before{content:none}
+  .firms-pg .frow .finds{flex-wrap:wrap;gap:4px 12px}
+  .firms-pg a.frow .finv:not(:empty):after{content:' deals';font-family:'Geist',system-ui,sans-serif;color:var(--mm);white-space:pre}
+}
+
+/* ---------- Shared base of the new look, on every page: header and footer (white, ink, Geist, the pill logo). */
+body>nav .r a{color:#10201C}
+body>nav .r a.on{color:#10201C;font-weight:600}
+body>nav .r a#signin:not([hidden]){color:#10201C}
+.ft{font-family:'Geist',system-ui,sans-serif;color:#586964;border-top:1px solid #E2E7E5}
+.ft a{color:#10201C}
+/* The free-credits counter stays in the header (founder), in the new look. */
+body>nav .left{background:#F3F5F4;color:#10201C;font:500 13px 'Geist',system-ui,sans-serif;padding:6px 12px;border-radius:99px}
+.firms-pg .fdrop-caret{font-size:13px}
+
+/* Investors list: signal icons in the Activity column, and the Signals and Deals-this-year menus. */
+.fsigw{display:inline-flex;align-items:center;margin-left:8px;cursor:default}
+.fsig{font-size:15px;line-height:1}
+.fsig.f100{font:700 10.5px/1 'Geist Mono',ui-monospace,monospace;letter-spacing:.02em;border:1.5px solid #10201C;border-radius:5px;padding:2px 4px;color:#10201C}
+.firms-pg .frow .fact{gap:0}
+#facet-signal .fmenu{width:400px}
+.firms-pg #facet-signal .fmenu label{align-items:flex-start;padding:8px;min-height:0}
+.firms-pg #facet-signal .fmenu input{margin-top:2px}
+#facet-signal .optlabel{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px;white-space:normal}
+#facet-signal .optlabel .fsig{width:26px;text-align:center;flex:none}
+#facet-signal .optlabel .fsig.f100{width:auto}
+.optdesc{flex:1 1 100%;font:400 12.5px/1.35 'Geist',system-ui,sans-serif;color:#586964;margin-top:2px}
+@media (max-width:900px){#facet-signal .fmenu{width:min(400px,calc(100vw - 28px))}}
+
+/* ---------- VC (firm) page in the new look. Scoped to main.prof. Design: project docs claude/plans/vc-page.md and
+   claude/plans/vc-page-design-update.md. Structure and cards are unchanged; this block only restyles them. */
+body:has(main.prof){background:#fff}
+main.prof{--vio:#10201C;--viobg:#F3F5F4;--ink:#10201C;--ink2:#3B4A45;--mute:#586964;--line:#E2E7E5;--mint:#1F9D55;--mintbg:#DDEFE3;max-width:1168px;font-family:'Geist',system-ui,sans-serif;color:#10201C}
+main.prof h1,main.prof h2,main.prof h3,main.prof .att b,main.prof .ps0 input,main.prof button,main.prof input,main.prof .btn{font-family:'Geist',system-ui,sans-serif}
+main.prof .sb.big{border:2px solid #10201C;border-radius:18px;box-shadow:none;padding:10px 10px 10px 22px}
+main.prof .ps0 input{font-weight:600;font-size:34px;letter-spacing:-.04em;color:#10201C}
+main.prof .sb.big .btn{background:#10201C;color:#fff;border-radius:12px;height:56px;padding:0 28px;font-weight:600;font-size:17px}
+main.prof .ph{border:1px solid #E2E7E5;border-radius:22px;box-shadow:none;background:#fff}
+main.prof .ph .ph1 h1{font-size:46px;font-weight:600;letter-spacing:-.05em;line-height:1}
+main.prof .ph1 .sv{font-size:0;gap:0;width:36px;height:36px;padding:0;border-radius:50%;border:1px solid #8A9893;background:#fff;color:#10201C;justify-content:center}
+main.prof .ph1 .sv svg{width:16px;height:16px}
+main.prof .ph1 .sv.apply{font-size:14px;font-weight:600;width:auto;padding:0 14px;border-radius:99px;border:1.5px solid #10201C;text-decoration:none}
+main.prof .ph p.m,main.prof .ph p.m a{color:#586964}
+main.prof .ph p.intro{color:#10201C;font-size:15px;line-height:1.45}
+main.prof .sc.soc,main.prof .socp .hp{background:#F3F5F4;color:#10201C;border:0;border-radius:99px;height:34px;padding:0 12px;font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:7px}
+main.prof .htag-l,main.prof .invlab{font:400 13px 'Geist Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#586964}
+main.prof .htag .hp{background:#fff;border:1px solid #C9D1CE;border-radius:9px;padding:5px 11px;font-size:14px;font-weight:400}
+main.prof .att{background:#F3F5F4;border:0;border-radius:14px;color:#10201C}
+main.prof .att.aon{background:#DDEFE3;color:#1C5E3A}
+main.prof .att small{font:400 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#586964}
+main.prof .att b{font-weight:600;letter-spacing:-.04em;color:#10201C}
+main.prof .rgt-tabs{display:none}
+main.prof .mod{background:#F3F5F4;border:0;border-radius:20px;box-shadow:none}
+main.prof .mod h2,main.prof .mod h3{font-weight:600;letter-spacing:-.03em;color:#10201C}
+main.prof a{color:#10201C}
+main.prof .fine{color:#586964}
+main.prof,main.prof *{font-family:'Geist',system-ui,sans-serif}
+main.prof .htag-l,main.prof .invlab,main.prof .att small,main.prof .adh,main.prof .adh *{font-family:'Geist Mono',ui-monospace,monospace}
+main.prof .ph1 .sv:not(.apply){font-size:0!important;color:#10201C}
+main.prof .invlab{margin-top:28px}
+main.prof .mod h3{font-size:22px;font-weight:600;letter-spacing:-.03em}
+main.prof .tcard,main.prof .lgline,main.prof .ipr.ipr-b{background:#fff;border-radius:12px}
+main.prof .lgline{border:0}
+main.prof .ipr.ipr-a{background:#DCE8F7;border-radius:12px}
+main.prof .arv{border-radius:12px}
+main.prof .arv.pos{background:#DDEFE3}
+main.prof .ash{background:none;border:0;color:#10201C;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px;text-align:left}
+main.prof .seg{background:#fff;border:1px solid #8A9893;border-radius:9px}
+main.prof .ad.adh,main.prof .adp{background:transparent;color:#586964;letter-spacing:.06em}
+main.prof .ad{border-color:#D5DCD9}
+main.prof .ad a{text-decoration:none;font-weight:600}
+main.prof .ad a:hover{text-decoration:underline}
+main.prof #reviews>.ash,main.prof #investors>.ash{background:#F3F5F4}
+/* Sector marks: a dot in the industry colour (the map's colours) and ink text. The colour arrives as the element's
+   inline `color`; the text is painted ink with -webkit-text-fill-color so the dot can still read currentColor. */
+main.prof .htag .hp[style],main.prof .arty[style]{-webkit-text-fill-color:#10201C;display:inline-flex;align-items:center;gap:7px}
+main.prof .htag .hp[style]:before,main.prof .arty[style]:before{content:'';width:9px;height:9px;flex:none;border-radius:50%;background:currentColor;box-shadow:0 0 0 1.5px #10201C}
+main.prof .arty{border:0;background:none;padding:0;font-size:14px;font-weight:400}
+.find i{border:0;box-shadow:0 0 0 1.5px #10201C}
+/* Average check reads as its own group beside Stages: its label sits on the label line, above its tag. */
+main.prof .htag-rule{display:none}
+main.prof .htag-k{position:relative;top:-28px;width:0;margin-left:28px;white-space:nowrap;overflow:visible;font:400 13px 'Geist Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#586964}
+main.prof .htag-k+.hp{margin-left:0}
+main.prof .htag .hp[hidden]{display:none}
+main.prof .hp.hmore{background:#fff;border:1.5px solid #10201C;border-radius:9px;padding:5px 11px;font-size:14px;font-weight:600;cursor:pointer}
+main.prof .socp .hp.hmail{cursor:pointer}
+main.prof .socp .hp.hmail[data-reveal]:before{content:'';width:17px;height:13px;flex:none;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 13' fill='none' stroke='%2310201C' stroke-width='1.6' stroke-linejoin='round'%3E%3Crect x='.8' y='.8' width='15.4' height='11.4' rx='2'/%3E%3Cpath d='M1.5 2l7 5.2 7-5.2'/%3E%3C/svg%3E")}
+/* One type family on the firm page: Geist for text, Geist Mono for the small labels. */
+main.prof,main.prof *{font-family:'Geist',system-ui,sans-serif!important}
+main.prof .htag-l,main.prof .htag-k,main.prof .invlab,main.prof .att small,main.prof .adh,main.prof .adh *,main.prof .adp,main.prof .adp *{font-family:'Geist Mono',ui-monospace,monospace!important}
+main.prof .mod h3{font-size:22px!important;font-weight:600!important;letter-spacing:-.03em}
+main.prof .seg{padding:3px;gap:0}
+main.prof .seg button{background:none;color:#10201C;border-radius:6px;box-shadow:none;font-weight:400}
+main.prof .seg button.on{background:#10201C;color:#fff;font-weight:600}
+main.prof .mod [data-fit]>.peek{overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,#000 20%,transparent 100%);mask-image:linear-gradient(to bottom,#000 20%,transparent 100%);pointer-events:none;flex:none}
+main.prof #legal [data-fit]>:not([hidden]):not(.peek):has(+[hidden][data-extra]){max-height:none;-webkit-mask-image:none;mask-image:none}
+main.prof #reviews>[data-fit],main.prof #investors>[data-fit]{-webkit-mask-image:none;mask-image:none}
+main.prof a.ash{display:inline-block;margin-top:auto}
+main.prof .mod.filler .fmap{flex:1;min-height:0;display:block;border-radius:12px;background:#fff;overflow:hidden;margin-bottom:6px}
+main.prof .mod.filler .fmap img{width:100%;height:100%;object-fit:contain;display:block}
+main.prof .adp{border-top:2px solid #10201C;margin-top:10px;padding-top:14px;font-size:12px;text-transform:uppercase}
+main.prof .sb.big .sbx{flex:none;width:56px;height:56px;margin-left:10px;border-radius:12px;border:1px solid #8A9893;background:#fff;color:#10201C;display:flex;align-items:center;justify-content:center}
+main.prof .sb.big .sbx:hover{border-color:#10201C}
+
+/* ---------- The new look on every remaining page (sign in, account, my firms, request a firm, pricing, terms, privacy,
+   how we check, page not found): the old purple tokens become ink and grey, and one type family is used everywhere. */
+:root{--vio:#10201C;--viobg:#F3F5F4;--ink:#10201C;--ink2:#3B4A45;--line:#E2E7E5;--mute:#586964;--mint:#1F9D55;--mintbg:#DDEFE3}
+body{background:#fff;color:#10201C}
+body,body *{font-family:'Geist',system-ui,sans-serif!important}
+.vm-tag,.vm-based,.fcount,.fsig.f100,.firms-pg .frow.h button,.firms-pg .frow.h span.hunsortable,.firms-pg .frow .finv,.firms-pg .fmenu label span.optcount,.firms-pg .fdrop .facet-badge,
+main.prof .htag-l,main.prof .htag-k,main.prof .invlab,main.prof .att small,main.prof .adh,main.prof .adh *,main.prof .adp,main.prof .adp *{font-family:'Geist Mono',ui-monospace,monospace!important}
+h1,h2,h3{letter-spacing:-.03em;font-weight:600}
+.btn{background:#10201C;color:#fff;border-radius:12px;box-shadow:none}
+/* Recent deals card: the companies with no dated deal sit on one line of tags after the line; the rest open with Show all. */
+main.prof #deals .adl{display:flex;flex-wrap:wrap;gap:0 6px}
+main.prof #deals .adl>.ad,main.prof #deals .adl>.adp{flex:0 0 100%;box-sizing:border-box}
+main.prof #deals .adl>.adp{margin-bottom:10px}
+main.prof #deals .adl>.adp~.ad{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 12px;border:0;border-radius:9px;background:#fff;font-size:14px;width:auto;min-width:0}
+main.prof #deals .adl>.adp~.ad[hidden]{display:none}
+main.prof #deals .adl>.adp~.ad>*{display:none}
+main.prof #deals .adl>.adp~.ad>b{display:inline;font-weight:500;order:2}
+main.prof #deals .adl>.adp~.ad>.arty{display:inline-flex;font-size:0;gap:0;order:1}
+main.prof #deals .adl>.pmore{flex:0 0 auto;height:36px;padding:0 12px;border:1.5px solid #10201C;border-radius:9px;background:#fff;font-size:14px;font-weight:600;cursor:pointer}
+
+/* ---------- How we check (pages/how_we_check.py). Everything sits on one 1040px grid; the video is a 9:16 frame. */
+.hw{max-width:1040px;margin:0 auto;padding:48px 24px 72px;display:flex;flex-direction:column;gap:72px;color:#10201C}
+.hw-top{display:flex;gap:56px;align-items:stretch}
+.hw-video{width:360px;aspect-ratio:9/16;flex:none;border-radius:22px;overflow:hidden;background:#C9D1CE}
+.hw-video>*{width:100%;height:100%;display:block;object-fit:cover;border:0}
+.hw-say{flex:1;min-width:0;display:flex;flex-direction:column}
+.hw h1{margin:0;font-size:52px;font-weight:600;letter-spacing:-.05em;line-height:1.02}
+.hw h2{margin:0 0 16px;font-size:30px;font-weight:600;letter-spacing:-.04em;display:flex;align-items:center;gap:12px}
+.hw h2 em{font:400 11px 'Geist Mono',ui-monospace,monospace!important;font-style:normal;letter-spacing:.06em;text-transform:uppercase;border:1.5px solid #10201C;border-radius:6px;padding:2px 7px}
+.hw-steps{list-style:none;margin:36px 0 0;padding:0;border-bottom:1px solid #E2E7E5}
+.hw-steps li{display:flex;align-items:center;gap:16px;height:64px;border-top:1px solid #E2E7E5}
+.hw-steps span{font:400 13px 'Geist Mono',ui-monospace,monospace!important;color:#586964;width:24px}
+.hw-steps b{font-size:20px;font-weight:600;letter-spacing:-.02em}
+.hw-go{margin:auto 0 0;padding-top:24px;display:flex;gap:10px}
+.hw-btn{height:48px;padding:0 20px;border-radius:12px;display:inline-flex;align-items:center;font-weight:600;border:1.5px solid #10201C;color:#10201C;text-decoration:none}
+.hw-btn.on{background:#10201C;color:#fff}
+.hw-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.hw-card{height:190px;background:#F3F5F4;border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;white-space:nowrap}
+.hw-card>div{flex:1;display:flex;align-items:center;justify-content:center}
+.hw-card>b{font-size:16px;font-weight:600;letter-spacing:-.02em}
+.hw-ring{width:84px;height:84px;border-radius:50%;background:conic-gradient(#C4CCF2 0 32%,#8E9BE0 32% 60%,#A9C4E8 60% 78%,#F3D98B 78% 88%,#DADFDD 88% 100%);display:flex;align-items:center;justify-content:center}
+.hw-ring i{width:48px;height:48px;border-radius:50%;background:#F3F5F4}
+.hw-bars{display:flex;align-items:flex-end;gap:6px;height:84px}
+.hw-bars i{width:18px;border-radius:4px 4px 0 0;background:#10201C}
+.hw-chks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;align-items:start}
+.hw-chk{border:1px solid #E2E7E5;border-radius:12px;font-size:14px;line-height:1.25}
+.hw-chk summary{display:flex;align-items:center;gap:10px;min-height:64px;padding:0 14px;cursor:pointer;list-style:none}
+.hw-chk summary::-webkit-details-marker{display:none}
+.hw-chk summary span{font:400 12px 'Geist Mono',ui-monospace,monospace!important;color:#586964}
+.hw-chk summary b{flex:1;font-weight:400}
+.hw-chk summary i{font-style:normal;color:#586964}
+.hw-chk[open] summary i{transform:rotate(45deg)}
+.hw-chk ul{margin:0;padding:0 14px 12px;list-style:none;font-size:13px;line-height:1.4;color:#3B4A45}
+.hw-chk li{padding:6px 0;border-top:1px solid #E2E7E5}
+.hw-chk li b{display:block;color:#10201C;font-weight:600}
+.hw-pills{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.hw-pill{border-top:1px solid #E2E7E5;padding-top:14px}
+.hw-pill span{display:inline-block;padding:4px 12px;border-radius:99px;font-size:14px;font-weight:600;background:#E9EDEB;color:#3B4A45}
+.hw-pill span.c{background:#DDEFE3;color:#1C5E3A}.hw-pill span.r{background:#F7E6B5;color:#6B4E00}.hw-pill span.w{background:#DCE8F7;color:#1F3F6B}
+.hw-pill p{margin:10px 0 0;font-size:14px;line-height:1.4;color:#3B4A45}
+.hw-fine{margin:-40px 0 0;font-size:13px;color:#586964}
+@media (max-width:900px){.hw{gap:48px;padding:24px 16px 56px}.hw-top{flex-direction:column;gap:24px}.hw-video{width:100%}.hw h1{font-size:38px}.hw-cards,.hw-pills{grid-template-columns:repeat(2,minmax(0,1fr))}.hw-chks{grid-template-columns:1fr 1fr}.hw-card{white-space:normal}}
+
+/* ---------- Terms and privacy: the text only, readable. (The old page picked up two unrelated classes, .hp and .lg.) */
+main.hp.lg{display:block;max-width:760px;margin:0 auto;padding:56px 24px 80px;background:none;border:0;border-radius:0;height:auto;font-size:16px;line-height:1.6;color:#10201C;text-align:left}
+main.hp.lg div,main.hp.lg span,main.hp.lg em,main.hp.lg i{display:revert;font-size:inherit;color:inherit;width:auto;height:auto;flex:none;font-weight:inherit;border-radius:0}
+main.hp.lg .ey{display:block;font:400 13px 'Geist Mono',ui-monospace,monospace!important;letter-spacing:.06em;text-transform:uppercase;color:#586964;margin-bottom:10px}
+main.hp.lg h1{font-size:44px;font-weight:600;letter-spacing:-.05em;line-height:1.05;margin:0}
+main.hp.lg h2{font-size:22px;font-weight:600;letter-spacing:-.03em;margin:36px 0 8px}
+main.hp.lg .lead{font-size:18px;margin:12px 0 0}
+main.hp.lg .eff{color:#586964;font-size:14px}
+main.hp.lg .toc{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin:28px 0 12px;padding:18px 20px;background:#F3F5F4;border-radius:14px;font-size:14px;position:static}
+main.hp.lg a{color:#10201C;text-decoration:underline;text-underline-offset:3px}
+main.hp.lg .toc a{text-decoration:none}
+main.hp.lg .toc a:hover{text-decoration:underline}
+
+/* ---------- Sign in (pop-up and /login/): a white card. It works as before. */
+.md.sgm{background:#fff;padding:0;border-radius:22px;border:1.5px solid #10201C;box-shadow:0 24px 60px rgba(16,32,28,.18)}
+.sgi{background:#fff;color:#10201C;border-radius:20px}
+.sgm h2{color:#10201C;font-size:34px;letter-spacing:-.04em}
+.sgm p.s{color:#586964}
+.sg4 b{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#10201C;font-weight:600;letter-spacing:-.05em}
+.sg4 span{color:#586964;font:400 12px 'Geist Mono',ui-monospace,monospace!important;letter-spacing:.06em}
+.sgm .x{background:#F3F5F4;color:#10201C}
+.gbx{background:#10201C;box-shadow:none;border-radius:12px;font-weight:600}
+.gbx:hover,.gbx.ld,.gbx:disabled{background:#22332E}
+.gbx:active,.gbx.prs,.gbx.prs:disabled{background:#10201C;transform:none}
+.sgm .orx{color:#586964}.sgm .orx:before,.sgm .orx:after{background:#E2E7E5}
+.sgm .in{background:#fff;border:1.5px solid #10201C;color:#10201C;border-radius:12px}
+.sgm .btn.o,.sgm .btn{background:#fff;color:#10201C;border:1.5px solid #10201C;border-radius:12px;box-shadow:none}
+.sgm a{color:#10201C}
+.sgm,.sgm *{text-shadow:none}
+.sgi *:not(.gbx):not(.gbx *):not(.btn){color:#10201C!important}
+.sgi input,.sgi .in{background:#fff!important;border:1.5px solid #10201C!important;border-radius:12px}
+.sgi input::placeholder{color:#586964!important}
+.sgi .sudiv,.sgi hr{background:#E2E7E5;border-color:#E2E7E5}
+/* The firm page's search bar matches the Investors list: same height, the firm as a tag, x to clear. */
+main.prof .sb.big{min-height:48px;border-width:1.5px;border-radius:12px;padding:6px 6px 6px 12px;gap:8px;align-items:center}
+main.prof .sb.big .mg{width:18px;height:18px;flex:none}
+main.prof .ps0 input{font-size:15px;font-weight:400;letter-spacing:0;padding:6px 0;min-width:120px}
+main.prof .ps0 input::placeholder{color:#586964}
+main.prof .sb.big .btn{height:36px;padding:0 16px;font-size:14px;border-radius:9px}
+main.prof .sb.big .sbx{width:36px;height:36px;margin-left:0;border-radius:9px}
+.sbtag{display:inline-flex;align-items:center;gap:4px;flex:none;background:#F3F5F4;border:1.5px solid #10201C;border-radius:8px;padding:4px 4px 4px 10px;font-size:14px;line-height:1.2;color:#10201C}
+.sbtag button{width:22px;height:22px;border:0;border-radius:6px;background:none;color:#10201C;font-size:16px;line-height:1;cursor:pointer;padding:0}
+.sbtag button:hover{background:#E2E7E5}
+main.prof .sb.big .btn,main.prof .sb.big .sbx{display:none}
+main.prof .sb.big{padding:6px 12px}
+main.prof .sb.big .firms-clear{margin-left:auto}
+main.prof .ats .att .asig{margin-left:auto;display:inline-flex;align-items:center;gap:8px}
+main.prof .ats .att .asig .fsigw{margin-left:0}
+main.prof .ats .att:first-child{display:flex;align-items:center}
+
+/* ---------- "Am I ready for this firm?": the header button on firm pages and its coming-soon box. */
+.readybtn{height:44px;padding:0 18px;border:0;border-radius:10px;background:#10201C;color:#fff;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap}
+.readybtn:hover{background:#22332E}
+.readybox{position:fixed;inset:0;z-index:60;background:rgba(16,32,28,.4);display:flex;align-items:center;justify-content:center;padding:16px}
+.readycard{position:relative;width:480px;max-width:100%;background:#fff;border:1.5px solid #10201C;border-radius:22px;padding:32px 32px 26px;color:#10201C;box-shadow:0 24px 60px rgba(16,32,28,.18)}
+.readycard h2{margin:8px 0 10px;font-size:30px;font-weight:600;letter-spacing:-.04em;line-height:1.08}
+.readycard p{margin:0;font-size:15px;line-height:1.45;color:#3B4A45}
+.readytag{display:inline-block;font:400 11px 'Geist Mono',ui-monospace,monospace!important;letter-spacing:.06em;text-transform:uppercase;border:1.5px solid #10201C;border-radius:6px;padding:2px 7px;color:#10201C!important}
+.readyx{position:absolute;right:14px;top:14px;width:36px;height:36px;border:0;border-radius:50%;background:#F3F5F4;color:#10201C;font-size:20px;cursor:pointer}
+.readyform{display:flex;gap:8px;margin-top:20px}
+.readyform[hidden]{display:none}
+.readyform input{flex:1;min-width:0;height:52px;border:1.5px solid #10201C;border-radius:12px;padding:0 14px;font-size:15px;color:#10201C;background:#fff}
+.readyform button{height:52px;padding:0 20px;border:0;border-radius:12px;background:#10201C;color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+.readymsg{margin-top:12px!important;min-height:20px;font-weight:600;color:#10201C!important}
+@media (max-width:640px){.readybtn{height:36px;padding:0 12px;font-size:13px}.readyform{flex-direction:column}}
+
+/* ---------- "Who invests around them" card and its pop-up (firm page). */
+main.prof #around .arsub{margin:-4px 0 6px;font-size:13px;color:#586964}
+main.prof #around .arbox{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+main.prof #around .arstage{position:relative;width:509px;height:208px;flex:none;transform-origin:center}
+main.prof #around .arstage svg{position:absolute;left:0;top:0}
+.arb{position:absolute;box-sizing:border-box;border-radius:50%;border:1.5px solid #10201C;display:flex;align-items:center;justify-content:center;font:600 12px 'Geist Mono',ui-monospace,monospace!important;color:#10201C}
+.arl{position:absolute;font-size:13px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#10201C;text-decoration:none}
+.arl:hover{text-decoration:underline}
+.arw{position:absolute;width:140px;text-align:center;font-size:12px;line-height:16px}
+.arw span{background:#F3F5F4;padding:0 4px}
+.arme{position:absolute;width:68px;height:68px;border-radius:50%;background:#10201C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;overflow:hidden}
+.readycard.arcard{width:860px;max-height:calc(100dvh - 32px);overflow:auto}
+.arcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:20px}
+.arcol h3{margin:0 0 4px;padding-bottom:6px;border-bottom:4px solid;font-size:16px;font-weight:600}
+.arcol h3 span{font-size:13px;font-weight:400;color:#586964}
+.arcol a{display:flex;justify-content:space-between;gap:8px;align-items:center;min-height:38px;border-top:1px solid #E2E7E5;font-size:14px;color:#10201C;text-decoration:none}
+.arcol a:first-of-type{border-top:0}
+.arcol a:hover span{text-decoration:underline}
+.arcol a span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arcol a b{font:600 13px 'Geist Mono',ui-monospace,monospace!important}
+@media (max-width:640px){.arcols{grid-template-columns:1fr}main.prof #around .arstage{transform:scale(.62)}}
+main.prof #around .arstage{transform:scale(.84)}
+main.prof #around .arsub{margin-bottom:0}
+main.prof .mod.filler .fmap{display:flex;align-items:center;justify-content:center}
+main.prof .mod.filler .fmapin{position:relative;height:100%;max-width:100%;display:block}
+main.prof .mod.filler .fmapin img{position:absolute;inset:0;width:100%;height:100%}
+main.prof .mod.filler .fmapin i{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#F0861E;border:2px solid #10201C;box-shadow:0 0 0 6px rgba(240,134,30,.25)}
+main.prof .mod.filler .fmapin b{position:absolute;margin:-10px 0 0 16px;padding:1px 7px;border-radius:6px;background:#10201C;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;line-height:18px}
+main.prof .mod.filler .fmapin b.l{margin-left:0;transform:translateX(calc(-100% - 16px))}
+/* The card borrows the map's look: a dotted panel, ring circles with white centres, thin ink arcs, the firm lit in amber. */
+main.prof #around .arbox{background:#fff radial-gradient(#C9D1CE 1px,transparent 1.2px) 0 0/9px 9px;border-radius:12px;margin-bottom:6px}
+main.prof #around .arsub{display:flex;align-items:center;gap:14px;margin:-2px 0 8px;font:400 12px 'Geist Mono',ui-monospace,monospace!important;letter-spacing:.06em;text-transform:uppercase;color:#586964}
+main.prof #around .arsub span,main.prof #around .arsub em{font:inherit!important;font-style:normal;display:inline-flex;align-items:center;gap:6px;color:#10201C}
+main.prof #around .arsub em{margin-left:auto;color:#586964;text-transform:none;letter-spacing:0}
+main.prof #around .arsub i{width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 1.5px #10201C}
+.arb{background:#fff;border-style:solid;box-shadow:0 0 0 1.5px #10201C,inset 0 0 0 1.5px #10201C}
+.arme{background:#10201C;box-shadow:0 0 0 3px #fff,0 0 0 6px #F0861E,0 0 0 14px rgba(240,134,30,.22)}
+.arl{font-weight:500;background:#fff;border-radius:4px;padding:0 4px}
+.arw span{background:#fff;border-radius:4px}
+main.prof #around .arstage{transform:scale(.78)}
+.arl{max-width:132px}
+.arw{display:none}
+.arme{width:60px;height:60px;font-size:11px;box-shadow:0 0 0 3px #fff,0 0 0 5px #F0861E,0 0 0 10px rgba(240,134,30,.22)}
+.arl.arlw{font-size:12px;line-height:16px}
+.arb{text-decoration:none}.arb:hover{box-shadow:0 0 0 1.5px #10201C,inset 0 0 0 1.5px #10201C,0 0 0 5px rgba(16,32,28,.12)}
+
+/* ---------- The map on a phone: one column. Headline and filters, the view and zoom switches, the map at full width,
+   the time bar, then the latest updates. Nothing floats over the map. */
+@media (max-width:900px){
+  .vm{height:auto;min-height:0;overflow:visible;display:flex;flex-direction:column;gap:10px;padding:12px;background:var(--ms)}
+  .vm-col .vm-colwrap{display:contents}
+  .vm-col .vm-head{order:1;padding:16px}
+  .vm-col .vm-head h1{font-size:24px}
+  .vm-picks{flex-wrap:wrap}
+  .vm .vm-views{order:2;position:static;align-self:flex-start;box-shadow:none}
+  .vm-col .vm-zoom{order:3;position:static;align-self:stretch;box-shadow:none;display:flex}
+  .vm-col .vm-zoom button{flex:1;padding:0 8px}
+  .vm-col .vm-map{order:4;position:relative;left:auto;inset:auto;width:100%;height:66vw;min-height:230px;background:#fff;border:1px solid var(--ml);border-radius:16px;overflow:hidden}
+  .vm-col .vm-legend{order:5;position:static;width:auto;margin:0;padding:0 4px}
+  .vm .vm-dock{order:6;position:static;width:auto;left:auto;transform:none;box-shadow:none;flex-wrap:wrap}
+  .vm .vm-dock .vm-time{flex:1 1 100%;min-width:0}
+  .vm-col .vm-side,.vm-col .vm-side.vm-list{order:7;flex:none;max-height:none;overflow:visible}
+  .vm .vm-fp{position:fixed;inset:0;width:auto;height:auto;z-index:40;border-radius:0;overflow:auto}
+}
+/* The site menu on a phone: every link stays reachable; they scroll sideways when they do not fit. */
+@media (max-width:640px){
+  body>nav{gap:12px;height:auto;min-height:56px;padding:8px 14px}
+  body>nav .r{flex:1;min-width:0;justify-content:flex-end;gap:16px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;font-size:14px}
+  body>nav .r::-webkit-scrollbar{display:none}
+  body>nav .r>a{display:inline!important;flex:none}
+  body>nav .logo{font-size:18px;flex:none}
+  body>nav .readybtn{flex:none;order:-1}
+  main.prof .ph1{flex-wrap:nowrap;align-items:center;gap:10px}
+  main.prof .ph .ph1 h1{font-size:34px;min-width:0}
+  main.prof .ph1 .sv{flex:none}
+}
+@media (max-width:640px){
+  body>nav .r{justify-content:flex-start;gap:14px;font-size:13px;margin-left:auto;flex:0 1 auto}
+  body>nav .logo{font-size:17px;gap:7px}
+  body>nav .logo:before{width:22px;height:14px}
+}
+@media (max-width:800px){
+  body:has(main.prof)>nav{flex-wrap:nowrap;padding:8px 14px;gap:12px}
+  body:has(main.prof)>nav .r{flex-wrap:nowrap;gap:14px;font-size:13px}
+  body>nav .readybtn{height:34px;padding:0 12px;font-size:13px}
+}
+@media (max-width:640px){
+  body>nav .logo{font-size:0;gap:0}
+  main.prof #around .arstage{transform:scale(.62)}
+  main.prof #around .arbox{min-height:150px}
+  main.prof #around .arsub{flex-wrap:wrap;gap:6px 12px}
+  main.prof #around .arsub em{margin-left:0;flex:1 1 100%}
+  main.prof .mod.filler .fmap{min-height:190px}
+}
+
+/* Bubbles card: the firm's name in the middle may take two lines. */
+.arme{text-align:center;line-height:1.15;padding:0 3px;box-sizing:border-box}
+
+/* Investors list on a computer: text that does not fit ends in "…" instead of being cut mid-letter. */
+@media (min-width:641px){
+  .firms-pg a.frow .fcity,.firms-pg a.frow .fdeal{display:block;line-height:43px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .firms-pg a.frow .fcity .fflag{display:inline-block;vertical-align:-1px}
+  .firms-pg a.frow .find{display:block;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .firms-pg a.frow .find i{display:inline-block;margin-right:6px;vertical-align:0}
+}
+@media (min-width:641px) and (max-width:1199px){
+  .firms-pg .frow,.firms-pg .flist.has-activity .frow{grid-template-columns:minmax(140px,1.4fr) minmax(128px,1.1fr) minmax(150px,1.2fr) 70px minmax(140px,1.1fr) minmax(170px,1.6fr) 110px}
+  .firms-pg .flist:not(.has-activity) .frow{grid-template-columns:minmax(140px,1.4fr) minmax(128px,1.1fr) minmax(150px,1.2fr) 70px minmax(170px,1.6fr) 110px}
+  .firms-pg .frow>*{padding:0 12px}
+}
+
+/* Firm page: the signal icons in the status tile explain themselves; they never open the tile's link. */
+main.prof .ats .att .asig{cursor:default;align-self:stretch;padding-left:10px}
+main.prof .ats .att .asig .fsigw{cursor:help}
+.sigtip{position:fixed;z-index:60;max-width:260px;padding:8px 11px;border-radius:9px;background:#10201C;color:#fff;font:400 13px/1.35 'Geist',system-ui,sans-serif;box-shadow:0 6px 20px rgba(16,32,28,.18);pointer-events:none}
+
+/* 23 Nov: the sector dot's ring stays whole (it sat flush against the tag's clipped left edge). */
+.firms-pg a.frow .find i{margin-left:2px}
+/* 23 Nov: bigger signal icons in the firm page's status tile. */
+main.prof .ats .att .asig{gap:12px}
+main.prof .ats .att .asig .fsig{font-size:22px}
+
+/* Investors list: hints under the search bar (places, sectors, firms). */
+.firms-pg .firms-search-hero{position:relative}
+.fhints{position:absolute;z-index:40;left:0;right:0;top:calc(100% + 6px);background:#fff;border:1.5px solid #10201C;border-radius:14px;padding:8px;box-shadow:0 14px 34px rgba(16,32,28,.14);text-align:left}
+.fhints[hidden]{display:none}
+.fhints h5{display:flex;justify-content:space-between;margin:0;padding:10px 12px 6px;font:500 11px/1 'Geist Mono',ui-monospace,monospace!important;letter-spacing:.08em;text-transform:uppercase;color:#6B7A76}
+.fhints h5 span{font:inherit;letter-spacing:.02em;text-transform:none;color:#9AA6A2}
+.fhints .fh-row{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0;border-radius:9px;background:none;font-size:15px;color:#10201C;text-align:left;cursor:pointer}
+.fhints .fh-row:hover,.fhints .fh-row.on{background:#F1F3F2}
+.fhints .fh-row b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fhints .fh-row mark{background:#FBE3A6;color:inherit;border-radius:3px;padding:0 1px}
+.fhints .fh-r{margin-left:auto;padding-left:12px;color:#6B7A76;font-size:13.5px;white-space:nowrap}
+.fhints .fh-dot{width:11px;height:11px;border-radius:50%;box-shadow:0 0 0 1.5px #10201C;flex:none;margin:0 3px}
+.fhints .fh-ic{width:17px;height:17px;flex:none;fill:none;stroke:#10201C;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fhints hr{border:0;border-top:1px solid #E6EAE8;margin:6px 4px}
+.fhints .fh-foot{padding:9px 12px 6px;font-size:13px;color:#6B7A76}
+.fhints .fh-foot kbd{font:500 11px/1 'Geist Mono',ui-monospace,monospace!important;border:1px solid #C9D1CE;border-radius:5px;padding:2px 5px;margin-right:6px;color:#10201C;background:#fff}
+
+/* Firm page: "Where they invest" card (circles on the map where the firm's startups are based). */
+main.prof #where .wbox{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 8px}
+main.prof #where .wmap{position:relative;display:block;height:100%;max-width:100%}
+main.prof #where .wmap img{position:absolute;inset:0;width:100%;height:100%;opacity:.9}
+main.prof #where .wmap i{position:absolute;transform:translate(-50%,-50%);border-radius:50%;background:#9FD4C3;box-shadow:0 0 0 1.5px #10201C}
+main.prof #where .wmap b{position:absolute;transform:translateY(-50%);font-size:12.5px;font-weight:600;line-height:1.2;color:#10201C;white-space:nowrap}
+main.prof #where .wmap b span{display:block;font-weight:400;color:#6B7A76}
+main.prof #where .wnote{margin:8px 0 2px;font-size:13px;color:#586964}
+main.prof #where .wmap b{z-index:1;padding:1px 5px;border-radius:5px;background:rgba(243,245,244,.88)}
+
+/* Account: the box for changing the sign-in email is off for now (founder); its form and code stay for later. */
+.ac .sec[hidden]{display:none!important}
+/* My firms: a saved firm wears the firm page's bookmark, not a star. */
+.mfr .star{font-size:0;width:32px;height:32px;border:1px solid #8A9893;border-radius:50%;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310201C' stroke-width='2.2' stroke-linejoin='round'%3E%3Cpath d='M6 3h12v18l-6-4-6 4z'/%3E%3C/svg%3E") center/15px no-repeat}
+.mfr .star.on{border-color:var(--sun);background:var(--sun) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2310201C' stroke='%2310201C' stroke-width='2.2' stroke-linejoin='round'%3E%3Cpath d='M6 3h12v18l-6-4-6 4z'/%3E%3C/svg%3E") center/15px no-repeat}
+/* My firms: no Results column while background checks are off (it was empty for every firm). */
+.mfr{grid-template-columns:36px minmax(0,1.6fr) 140px 150px}
+.mfr>.nc,.mfr>.pls,.mfr.h>span:nth-child(4){display:none}
+@media (max-width:760px){.mfr{grid-template-columns:34px minmax(0,1fr) auto}}
