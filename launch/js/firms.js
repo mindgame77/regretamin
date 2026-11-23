@@ -411,7 +411,7 @@
           + '<input type="checkbox"' + (checked ? ' checked' : '') + (inPanel ? ' data-draft="1"' : '') + '>'
           + '<span class="optlabel"' + (color ? ' style="color:' + color + '"' : '') + (o.desc ? '' : ' title="' + esc(o.label) + '"') + '>' + (o.icon || '') + esc(o.label)
           + (o.desc ? '<small class="optdesc">' + esc(o.desc) + '</small>' : '') + '</span>'
-          + '<span class="optcount">' + o.count + '</span></label>';
+          + '<span class="optcount">' + Number(o.count || 0).toLocaleString('en-US') + '</span></label>';
       }
       // One drop-down per filter group, in a row under the search bar. The menu lists the five biggest options;
       // "Show all" opens the full, searchable panel.
