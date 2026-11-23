@@ -340,9 +340,34 @@
       let tip = g[2];
       if (g[0] === 'up' || g[0] === 'down') tip += ': ' + d.deals_now + ' deals in the last 12 months, ' + d.deals_prev + ' in the 12 before.';
       if (g[0] === 'lead') tip += ': led ' + d.led_now + ' of its ' + d.deals_now + ' deals in the last 12 months.';
-      return '<span class="fsigw" role="img" aria-label="' + esc(g[2]) + '" title="' + esc(tip) + '">'
+      return '<span class="fsigw" role="img" aria-label="' + esc(g[2]) + '" data-tip="' + esc(tip) + '">'
         + (g[1] ? '<span class="fsig" aria-hidden="true">' + g[1] + '</span>' : '<span class="fsig f100" aria-hidden="true">100</span>') + '</span>';
     }).join('');
+  }
+  // The status tile is a link to the source of the latest deal. The icons sit inside it but are not part of that link:
+  // pressing or pointing at one only says what the icon means.
+  function sigTips(box) {
+    let tip = null;
+    const hide = function () { if (tip) { tip.remove(); tip = null; } };
+    const show = function (el) {
+      hide();
+      tip = document.createElement('div');
+      tip.className = 'sigtip';
+      tip.textContent = el.getAttribute('data-tip') || '';
+      document.body.appendChild(tip);
+      const r = el.getBoundingClientRect(), w = tip.offsetWidth;
+      tip.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+      tip.style.top = (r.bottom + 8) + 'px';
+    };
+    box.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      const el = e.target.closest && e.target.closest('.fsigw');
+      if (el) show(el); else hide();
+    });
+    box.addEventListener('mouseover', function (e) { const el = e.target.closest && e.target.closest('.fsigw'); if (el) show(el); });
+    box.addEventListener('mouseleave', hide);
+    document.addEventListener('click', hide);
+    window.addEventListener('scroll', hide, { passive: true });
   }
   function paintSignals(main) {
     const C = window.REGRET || {};
@@ -363,6 +388,7 @@
       box.className = 'asig';
       box.innerHTML = html;
       now.appendChild(box);
+      sigTips(box);
     }).catch(function () { /* no icons is fine */ });
   }
   // A close button on the big search bar goes back to the map (the home page).
