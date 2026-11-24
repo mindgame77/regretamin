@@ -136,7 +136,7 @@
 <aside class="vm-card vm-fp" id="vm-fp" aria-label="Firms" hidden></aside>
 <div class="vm-card vm-views" role="group" aria-label="View"><button type="button" data-view="flow">Money flow</button><button type="button" data-view="hot">Hot right now</button></div>
 <div class="vm-card vm-zoom" role="group" aria-label="Zoom to">${LEVELS.map(([k, t]) => `<button type="button" data-level="${k}">${t}</button>`).join('')}</div>
-<div class="vm-card vm-dock"><div class="vm-period" role="group" aria-label="Compare the last period with the same time before">${[[90, 'Last 90 days'], [180, 'Last 180 days'], [365, 'Last year']].map(([d, t]) => `<button type="button" data-days="${d}">${t}</button>`).join('')}</div><button type="button" class="vm-play" id="vm-play" aria-label="Play"></button><button type="button" class="vm-all" id="vm-all">All years</button>
+<div class="vm-card vm-dock"><div class="vm-period" role="group" aria-label="Compare the last period with the same time before">${[[90, 'Last 90 days'], [180, 'Last 180 days'], [365, 'Last 12 months']].map(([d, t]) => `<button type="button" data-days="${d}">${t}</button>`).join('')}</div><button type="button" class="vm-play" id="vm-play" aria-label="Play"></button><button type="button" class="vm-all" id="vm-all">All years</button>
   <div class="vm-time"><div class="vm-track"><div class="vm-fill" id="vm-fill"></div>${Array.from({ length: NQ + 1 }, (_, i) => `<i class="${i % 4 ? '' : 'vm-y'}" style="left:${i / NQ * 100}%"></i>`).join('')}
     <input type="range" id="vm-q0" min="0" max="${NQ}" step="1" aria-label="From quarter"><input type="range" id="vm-q1" min="0" max="${NQ}" step="1" aria-label="To quarter"></div>
     <div class="vm-years">${Array.from({ length: Math.ceil(NQ / 4) }, (_, i) => `<span style="left:${i * 4 / NQ * 100}%;width:${Math.min(4, NQ - i * 4) / NQ * 100}%">${2021 + i}</span>`).join('')}</div></div></div>
@@ -391,7 +391,7 @@
     const t = $('#vm-tip'); if (!t) return;
     if (!p) { t.hidden = true; return; }
     if (S.view === 'hot') {
-      const per = S.days === 365 ? 'year' : S.days + ' days';
+      const per = S.days === 365 ? '12 months' : S.days + ' days';
       // each fact on its own line, with its numbers kept together on the right so nothing breaks mid-number
       t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-tr"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${per}</span></span><span class="vm-tr"><span>${toneHtml(p)}</span>${p.tone === 'few' ? '' : `<span class="vm-pc vm-mu">${num(p.pv)} before</span>`}</span>${hotOf(p) ? `<span class="vm-tr vm-rule"><span><i class="${toneCls(toneOf(hotOf(p)[1], hotOf(p)[2]))}"></i><b>${esc(hotOf(p)[0])}</b></span><span class="vm-pc">${num(hotOf(p)[1])} vs ${num(hotOf(p)[2])}</span></span>` : ''}${coldOf(p) ? `<span class="vm-tr${hotOf(p) ? '' : ' vm-rule'}"><span><i class="${toneCls(toneOf(coldOf(p)[1], coldOf(p)[2]))}"></i><b>${esc(coldOf(p)[0])}</b></span><span class="vm-pc">${num(coldOf(p)[1])} vs ${num(coldOf(p)[2])}</span></span>` : ''}`;
     } else {
@@ -426,7 +426,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   // ---------- headline card
   // sector names inside a sentence: lower case, except the ones that start with an abbreviation
   const inSentence = (name) => (/^AI /.test(name) ? name : name.toLowerCase()), PLURAL = ['AI agents', 'AI models', 'Developer tools'];
-  const perText = () => (S.days === 365 ? 'year' : S.days + ' days');
+  const perText = () => (S.days === 365 ? '12 months' : S.days + ' days');
   function drawHotHead() {
     const where = S.level === 'us' ? ' in the US' : S.level === 'eu' ? ' in Europe' : '', t = (S.data.totals || {})[S.level] || { deals: 0, prev: 0 };
     const sec = S.sectors.length === 1 ? inSentence(S.sectors[0]) : S.sectors.length ? 'these sectors' : '';
@@ -459,12 +459,8 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   const day = (s) => { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : MONTHS[d.getMonth()] + ' ' + d.getDate() + (d.getFullYear() === now.getFullYear() ? '' : ', ' + d.getFullYear()); };
   // The chosen place's own numbers, shown above its firms in the column layout.
   function placeFacts(p, ofSector) {
-    if (S.view === 'hot') {
-      // in the firms panel, with one sector opened, the line is about that sector in this place
-      const row = ofSector && S.list && S.list.sector && S.list.det ? (S.list.det.sectors || []).find((r) => r[0] === S.list.sector) : null;
-      const o = row ? Object.assign({ d: row[1] }, toneOf(row[1], row[2])) : p;
-      return `<div class="vm-facts"><span class="vm-mu">${num(o.d)} deal${o.d === 1 ? '' : 's'} in the last ${perText()} · ${toneHtml(o)}</span></div>`;
-    }
+    // Hot right now has no line here: hovering the circle already says it (founder, 23 Nov: nothing that repeats what the design shows).
+    if (S.view === 'hot') return '';
     const tot = p.tot || 1, top = p.top || [], one = S.sectors.length === 1, sector = S.sectors.length > 0;
     if (one || !top.length) return `<div class="vm-facts"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'}</span></div>`;
     const rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
@@ -476,6 +472,12 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     if (P) {
       q.push('zoom=' + S.level, 'place=' + encodeURIComponent(P.p), 'pname=' + encodeURIComponent(P.n));
       // With a place open, the list shows the same firms this map counted: it gets the period (and the "which firms" choice) too.
+      if (S.view === 'hot') q.push('days=' + S.days, 'from=' + iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - S.days + 1)), 'to=' + iso(now));
+      else q.push('from=' + iso(qStart(S.q0)), 'to=' + iso(qEnd(S.q1)));
+      if (who() !== 'all') q.push('who=' + who());
+    } else if (S.level === 'us' || S.level === 'eu') {
+      // No circle open on the US or Europe view: the list shows that whole view, the same firms this map counted (founder, 23 Nov).
+      q.push('zoom=' + S.level);
       if (S.view === 'hot') q.push('days=' + S.days, 'from=' + iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - S.days + 1)), 'to=' + iso(now));
       else q.push('from=' + iso(qStart(S.q0)), 'to=' + iso(qEnd(S.q1)));
       if (who() !== 'all') q.push('who=' + who());
@@ -509,7 +511,7 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
       const L = S.list;
       side.className = 'vm-card vm-side vm-list';
       side.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
-<div class="vm-facts"><span class="vm-mu">${esc(L.place.n)} · ${num(L.place.d)} deal${L.place.d === 1 ? '' : 's'}</span></div><div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
+<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
 <a class="vm-more" href="${listUrl()}">Open the full investors list</a>`;
       $('#vm-close').onclick = closeList;
       return;

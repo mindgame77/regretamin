@@ -438,7 +438,7 @@ Items .1 to .5 in each block follow the 2026-10-27 snapshot layout: 1 what is dr
   - **B6e.9.5** Deals with no sector are not counted and get no pill.
   - **B6e.9.6** The pills count all of the firm's deals, not only the last 12 months.
   - **B6e.9.7** The summary shows only when the firm has 10 or more deals in total; with fewer, it is hidden on the page and in the pop-up. The same rules apply to the pop-up header.
-  - **B6e.9.8** "Deals, this year" is a separate number on the page: deals in the current calendar year, including year-only deals ([B6b](#b6b)). Sectors and Rounds use This year / All time. Deals announced has no toggle and shows all time, one bar per calendar year. A year-only deal sits in that year's bar. (Alex, t4679s14391)
+  - **B6e.9.8** "Deals, this year" is a separate number on the page: deals in the current calendar year, including year-only deals ([B6b](#b6b)). Sectors and Rounds use This year / Since 2021. Deals announced has no toggle and shows all time, one bar per calendar year. A year-only deal sits in that year's bar. (Alex, t4679s14391)
   - **B6e.9.9** A sector name is at most 2 words and 25 characters (Alex, 2026-10-28). Longer names are mapped to a short standard name.
 - **B6e.10** Sector pills: no data that has passed its check means the block is hidden from users (no empty box, no "No data" text). It appears by itself once data passes. (Alex, 2026-10-28)
 

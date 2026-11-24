@@ -169,7 +169,10 @@ def firm_head(F, full=False):
     # /full/ and firms not ready for Google (indexable false) are noindex, follow
     return (('<meta name="robots" content="noindex, follow">' if full or F.get('indexable') is False else '') + f'<meta name="description" content="{d}"><link rel="canonical" href="{url}">'
             f'<meta property="og:type" content="website"><meta property="og:site_name" content="{S["brand"]}"><meta property="og:title" content="{title}">'
-            f'<meta property="og:description" content="{d}"><meta property="og:url" content="{url}"><meta name="twitter:card" content="summary">'
+            f'<meta property="og:description" content="{d}"><meta property="og:url" content="{url}">'
+            # The firm share card is drawn on request by functions/share/vc/[slug].js. Keep identical to launch/edge/firm.mjs.
+            f'<meta property="og:image" content="{SITE}share/vc/{F["slug"]}.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
+            f'<meta name="twitter:card" content="summary_large_image">'
             f'<script type="application/ld+json">{ldj}</script>')
 
 # Server-rendered facts in the first HTML: only facts the page already shows. js/company.js replaces both blocks on load.
@@ -353,6 +356,9 @@ def load_firm(slug):
     rows = _rpc('firm_meta', {'p_slug': slug})
     return rows[0] if rows else None
 
+PROBE_PAGE = 'a16z'   # scripts/pages_deploy.sh and tests read site-launch/vc/a16z/
+PAGES_WRITTEN = 10    # how many firm pages a normal build writes (pages_deploy.sh expects ten in a lab build)
+LIVE_SLUGS = []       # every live slug from firm_sitemap, filled by launch_firms(); empty when building from snapshots
 def launch_firms():
     """Firms that get a page. With SUPABASE_URL/ANON_KEY, walk firm_sitemap and load firm_meta
     for each slug. Those RPCs read v2_firm_live joined to v2_firms, so a firm that goes live
@@ -370,14 +376,23 @@ def launch_firms():
         slugs += [(r['slug'], r.get('updated_at')) for r in rows]
         if len(rows) < 1000: break
         page_n += 1
+    # The live site draws every /vc/<slug>/ when it is opened (functions/vc/[[path]].js: one template, firm_meta
+    # per request), so a normal build only writes the few firm pages the release checks read, not all of them.
+    # That was 5,660 database calls and 17,000 files on every run (14 minutes). LAB_ONLY=0 (the manual full
+    # rollout) still writes a page for every firm.
+    want = slugs
+    if os.environ.get('LAB_ONLY', '1') != '0':
+        first = [x for x in slugs if x[0] == PROBE_PAGE] + [x for x in slugs if x[0] != PROBE_PAGE]
+        want = first[:PAGES_WRITTEN]
     firms = []
-    for slug, added in slugs:
+    for slug, added in want:
         row = load_firm(slug)
         if row:
             # firm_sitemap.updated_at is v2_firm_live.live_since, the date the public page appeared.
             row['added'] = added
             firms.append(row)
     if not firms: raise SystemExit('launch build: firm_sitemap returned no firms firm_meta can open')
+    LIVE_SLUGS[:] = [slug for slug, _ in slugs]
     return firms
 
 def main():
@@ -386,6 +401,15 @@ def main():
     shutil.copytree(os.path.join(HERE, 'fav'), os.path.join(OUT, 'fav'))
     shutil.copytree(os.path.join(HERE, 'assets', 'video'), os.path.join(OUT, 'assets', 'video'))
     shutil.copytree(os.path.join(HERE, 'assets', 'map'), os.path.join(OUT, 'assets', 'map'))  # backgrounds and coordinates for /map/ (tools/map/gen_assets.cjs)
+    # The "Where they invest" card on a firm page shows the same maps as solid grey land, not dots (founder, 23 Nov:
+    # the dotted map did not show on the grey card). Made here from the dotted files: each dot becomes a square that
+    # fills its grid cell (the grid step is 8 for the world and the US, 6 for Europe).
+    for level, step in (('world', 8), ('us', 8), ('eu', 6)):
+        svg = open(os.path.join(HERE, 'assets', 'map', level + '.svg')).read()
+        solid = svg.replace('stroke-width="3"', f'stroke-width="{step + 0.6}"').replace('stroke-linecap="round"', 'stroke-linecap="square"').replace('stroke="#C9D1CE"', 'stroke="#C4CDC9"')
+        if solid == svg or 'stroke-linecap="square"' not in solid: raise SystemExit('launch build: ' + level + '.svg is not the dotted map this step expects')
+        open(os.path.join(OUT, 'assets', 'map', level + '-solid.svg'), 'w').write(solid)
+    shutil.copytree(os.path.join(HERE, 'assets', 'fonts'), os.path.join(OUT, 'assets', 'fonts'))  # Geist files the firm share card is drawn with (edge/card/share.mjs)
     shutil.copytree(os.path.join(HERE, 'assets', 'share'), os.path.join(OUT, 'assets', 'share'))  # the picture for shared links (og:image)
     # Email templates load this from https://regretamin.com/assets/logo/lockup-light@2x.png
     logo_dir = os.path.join(OUT, 'assets', 'logo')
@@ -414,10 +438,11 @@ def main():
                    'hq': F.get('hq') or None, 'added': F.get('added')}
                   for F in built if F.get('slug') and F.get('name')]
     }, ensure_ascii=False, separators=(',', ':')))
-    live_slugs = ','.join(sorted(F['slug'] for F in built))
+    all_slugs = LIVE_SLUGS or [F['slug'] for F in built]  # every live firm, with or without a written page
+    live_slugs = ','.join(sorted(all_slugs))
     open(os.path.join(OUT, '_tpl', 'version.txt'), 'w').write(hashlib.sha256((edge + tpl['summary'] + tpl['full'] + tpl['checks'] + '\n' + live_slugs + '\n' + live_token).encode()).hexdigest()[:12])
+    firms.extend(all_slugs)  # sitemap.xml lists every live firm
     for F in built:
-        firms.append(F['slug'])
         for v, sub in (('summary', ''), ('full', 'full'), ('checks', 'checks')):
             d = os.path.join(OUT, 'vc', F['slug'], sub); os.makedirs(d, exist_ok=True)
             open(os.path.join(d, 'index.html'), 'w').write(fill(tpl[v], F, v == 'full'))
@@ -448,6 +473,6 @@ def main():
         '/map.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/firms.json\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/style.css\n  Cache-Control: public, max-age=0, must-revalidate\n')
-    print('built', len(firms), 'firms', '->', OUT)
+    print('built', len(built), 'firm pages for', len(firms), 'live firms', '->', OUT)
 
 if __name__ == '__main__': main()

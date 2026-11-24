@@ -2248,7 +2248,7 @@
     const h = activity(P); box.innerHTML = h; box.hidden = !h;
   }
 
-  // Sectors and Rounds share This year / All time. Deals announced is all time, one bar per year.
+  // Sectors and Rounds share This year / Since 2021. Deals announced is all time, one bar per year.
   let CHART_PERIOD = 'year', CHART_P = null;
   const RC = { 'Series A': '#2F70F2', 'Undisclosed': '#9A97AD', 'Seed': '#1F9D6A', 'Series B': '#D9822B', 'Series C+': '#7952D8', 'Pre-seed': '#D968A0' };
   function pacificYear() {
@@ -2302,7 +2302,7 @@
   }
   function segHtml() {
     return '<div class="seg" role="group" aria-label="Time range for Sectors and Rounds">'
-      + [['year', 'This year'], ['all', 'All time']].map(([v, l]) => '<button type="button" data-range="' + v + '" aria-pressed="' + (CHART_PERIOD === v ? 'true' : 'false') + '" class="' + (CHART_PERIOD === v ? 'on' : '') + '">' + l + '</button>').join('')
+      + [['year', 'This year'], ['all', 'Since 2021']].map(([v, l]) => '<button type="button" data-range="' + v + '" aria-pressed="' + (CHART_PERIOD === v ? 'true' : 'false') + '" class="' + (CHART_PERIOD === v ? 'on' : '') + '">' + l + '</button>').join('')
       + '</div>';
   }
   function chartShell(id, title, k) {
@@ -2561,6 +2561,14 @@
     const w = String(name || '').trim().split(/\s+/);
     return w.length > 1 && w[0].length <= 8 && w[1].length <= 8 ? esc(w[0]) + '<br>' + esc(w[1]) : esc(w[0] || '');
   }
+  // "Who invests around them" and "Where they invest" sit together as the third row of cards (founder, 23 Nov):
+  // after the first four cards, or after the first two when a firm has fewer. Returns the card they go in front of.
+  function thirdRow(grid) {
+    const plain = Array.from(grid.children).filter(el => el.classList && el.classList.contains('mod') && !el.classList.contains('span2')
+      && !el.classList.contains('filler') && !el.hidden && el.id !== 'around' && el.id !== 'where');
+    const at = Math.min(4, Math.floor(plain.length / 2) * 2);
+    return plain[at] || grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2');
+  }
   function drawAround(root, d) {
     const grid = root.querySelector('.bento');
     const total = ['before', 'with', 'after'].reduce((n, k) => n + ((d[k] && d[k].firms) || 0), 0);
@@ -2592,7 +2600,7 @@
       + '<div class="arbox"><div class="arstage"><svg aria-hidden="true" width="' + W + '" height="' + H + '">' + svg + '</svg>' + html
       + '<span class="arme" style="left:' + (CX - 30) + 'px;top:' + (CY - 30) + 'px">' + centreName(name) + '</span></div></div>'
       + '<button type="button" class="ash" data-around>Show all ' + total + ' firms</button>';
-    grid.insertBefore(card, grid.querySelector('#where') || grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
+    grid.insertBefore(card, grid.querySelector('#where') || thirdRow(grid));
     card.querySelector('[data-around]').addEventListener('click', function () { openAround(name, d); });
   }
   function openAround(name, d) {
@@ -2674,34 +2682,64 @@
       const spots = d.places.map(p => ({ n: Number(p.n) || 0, s: g.places && g.places[p.p] })).filter(x => x.s && x.n > 0);
       if (!spots.length) return;
       const placed = spots.reduce((a, x) => a + x.n, 0), big = spots[0].n, rest = Math.max(0, (Number(d.known) || 0) - placed);
-      const rad = n => Math.round(4 + Math.sqrt(n / big) * 18);
+      // The world picture is small, so its circles are smaller: neighbours (the three US regions) stay apart.
+      const rad = n => Math.round(level === 'world' ? 3 + Math.sqrt(n / big) * 12 : 4 + Math.sqrt(n / big) * 18);
       const pos = x => 'left:' + (x.s.x / g.w * 100).toFixed(2) + '%;top:' + (x.s.y / g.h * 100).toFixed(2) + '%';
-      // Names for the biggest places only, and never two names on top of each other.
-      const named = [];
-      spots.slice(0, 5).forEach(x => {
-        if (named.length >= 3) return;
-        if (named.some(o => Math.abs(o.s.y - x.s.y) / g.h < 0.13 && Math.abs(o.s.x - x.s.x) / g.w < 0.3)) return;
-        named.push(x);
-      });
-      const label = x => {
-        const left = x.s.x / g.w < 0.5, gap = rad(x.n) + 7;
-        const side = left ? 'left:calc(' + (x.s.x / g.w * 100).toFixed(2) + '% + ' + gap + 'px)' : 'right:calc(' + (100 - x.s.x / g.w * 100).toFixed(2) + '% + ' + gap + 'px);text-align:right';
-        return '<b style="' + side + ';top:' + (x.s.y / g.h * 100).toFixed(2) + '%">' + esc(x.s.n) + '<span>' + x.n.toLocaleString('en-US') + (x.n === 1 ? ' startup' : ' startups') + '</span></b>';
-      };
+      // Names for the biggest places. Each name is placed by its real size once the card is on the page (place() below):
+      // right of its circle, else left, above, below; a name that would touch another name or any circle is not drawn.
+      const cand = spots.slice(0, 5);
+      const words = x => esc(x.s.n) + '<span>' + x.n.toLocaleString('en-US') + (x.n === 1 ? ' startup' : ' startups') + '</span>';
+      const label = x => '<b style="visibility:hidden">' + words(x) + '</b>';
       const out = ' elsewhere';  // other countries, or towns the map has no place for
       const href = ROOT + (level === 'world' ? '' : '?zoom=' + level);
       const card = document.createElement('article');
       card.className = 'mod';
       card.id = 'where';
       card.innerHTML = '<div class="mh"><h3>Where they invest</h3></div>'
-        + '<div class="wbox"><span class="wmap" style="aspect-ratio:' + g.w + '/' + g.h + '"><img src="' + ROOT + 'assets/map/' + level + '.svg" alt="" loading="lazy">'
-        + spots.map(x => '<i style="' + pos(x) + ';width:' + rad(x.n) * 2 + 'px;height:' + rad(x.n) * 2 + 'px"></i>').join('')
-        + named.map(label).join('') + '</span></div>'
+        + '<div class="wbox"><span class="wmap" style="aspect-ratio:' + g.w + '/' + g.h + '"><img src="' + ROOT + 'assets/map/' + level + '-solid.svg" alt="" loading="lazy">'
+        + spots.map(x => '<i title="' + esc(x.s.n) + ' · ' + x.n.toLocaleString('en-US') + (x.n === 1 ? ' startup' : ' startups') + '" style="' + pos(x) + ';width:' + rad(x.n) * 2 + 'px;height:' + rad(x.n) * 2 + 'px"></i>').join('')
+        + cand.map(label).join('') + '</span></div>'
         + '<p class="wnote">Where ' + placed.toLocaleString('en-US') + ' of their ' + (Number(d.startups) || placed).toLocaleString('en-US') + ' startups are based.'
         + (rest ? ' ' + rest.toLocaleString('en-US') + ' more ' + (rest === 1 ? 'is' : 'are') + out + '.' : '') + '</p>'
         + '<a class="ash" href="' + href + '">Open the map</a>';
-      grid.insertBefore(card, grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
+      grid.insertBefore(card, thirdRow(grid));
       evenCards(root);
+      const place = function () {
+        const map = card.querySelector && card.querySelector('.wmap'), wrap = card.querySelector && card.querySelector('.wbox');
+        if (!map || !wrap || !map.getBoundingClientRect) return;
+        const box = map.getBoundingClientRect(), lim = wrap.getBoundingClientRect();
+        if (!box.width || !box.height) return;
+        const circles = spots.map(x => ({ x: x.s.x / g.w * box.width, y: x.s.y / g.h * box.height, r: rad(x.n) }));
+        const edge = { l: lim.left - box.left, r: lim.right - box.left, t: lim.top - box.top, b: lim.bottom - box.top };
+        const onCircle = (q, own) => circles.some((c, k) => {
+          if (k === own) return false;
+          const nx = Math.max(q.l, Math.min(c.x, q.r)), ny = Math.max(q.t, Math.min(c.y, q.b));
+          return (nx - c.x) * (nx - c.x) + (ny - c.y) * (ny - c.y) < (c.r + 3) * (c.r + 3);
+        });
+        const onName = (q, o) => q.l < o.r + 6 && q.r > o.l - 6 && q.t < o.b + 3 && q.b > o.t - 3;
+        const done = [];
+        Array.prototype.forEach.call(map.querySelectorAll('b'), function (el, k) {
+          el.style.display = ''; el.style.left = '0'; el.style.top = '0';
+          const w = el.offsetWidth, h = el.offsetHeight, c = circles[k], gap = c.r + 6;
+          const tries = [[c.x + gap, c.y - h / 2, 'left'], [c.x - gap - w, c.y - h / 2, 'right'], [c.x - w / 2, c.y - gap - h, 'center'], [c.x - w / 2, c.y + gap, 'center']];
+          let ok = null;
+          if (done.length < 3) for (let t = 0; t < tries.length && !ok; t++) {
+            const q = { l: tries[t][0], t: tries[t][1], r: tries[t][0] + w, b: tries[t][1] + h, a: tries[t][2] };
+            if (q.l < edge.l || q.r > edge.r || q.t < edge.t || q.b > edge.b) continue;
+            if (done.some(o => onName(q, o)) || onCircle(q, k)) continue;
+            ok = q;
+          }
+          if (!ok) { el.style.display = 'none'; return; }
+          el.style.left = ok.l + 'px'; el.style.top = ok.t + 'px'; el.style.textAlign = ok.a; el.style.visibility = 'visible';
+          done.push(ok);
+        });
+      };
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(function () { requestAnimationFrame(place); });
+        if (document.fonts && document.fonts.ready && document.fonts.ready.then) document.fonts.ready.then(place);
+        let rt = 0;
+        window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(place, 150); });
+      }
     };
     if (GEO) return paint();
     fetch(ROOT + 'assets/map/places.json').then(r => r.json()).then(g => { GEO = g; paint(); mapCard(root); }).catch(function () {});

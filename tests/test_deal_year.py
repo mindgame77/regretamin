@@ -24,7 +24,7 @@ def test_door_accepts_a_bare_year_without_touching_the_page_function():
 def test_rulebook_matches_this_year_and_the_year_bar():
     guide = GUIDE.read_text(encoding="utf-8")
     assert "Deals, this year" in guide
-    assert "This year / All time" in guide
+    assert "This year / Since 2021" in guide
     assert "one bar per calendar year" in guide
     assert "A date may be a bare year" in guide
     assert "v2_firm_page` itself is not changed" in guide
