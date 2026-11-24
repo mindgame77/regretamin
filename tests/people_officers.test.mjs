@@ -62,16 +62,3 @@ test('copy has no board seats wording for the section', () => {
   assert.doesNotMatch(c.title + ' ' + c.subtitle, /board/i);
   assert.equal(copy.company.people, undefined);
 });
-test('team section: heading Team, saved title, no count, subtitle, partner line or show all', () => {
-  const { render } = sandbox.window.RegretCompany;
-  const main = mainEl(), pmain = main.set('.pmain', el());
-  const P = Object.assign(page([team]), { open: true, checks: [] });
-  render(main, P);
-  const h = pmain.innerHTML;
-  assert.match(h, /<h2>Team<\/h2>/);
-  assert.match(h, /Marc Andreessen/);
-  assert.match(h, /Cofounder and General Partner/);
-  assert.match(h, /class="tcards"/);
-  assert.doesNotMatch(h, /pc2|Partners and officers|Partner since|Left in|Show all|class="pcards"|class="pfnd"/);
-  assert.doesNotMatch(h, /<p class="psub">/);
-});

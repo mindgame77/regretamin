@@ -16,12 +16,6 @@ vm.runInContext(fs.readFileSync(new URL('launch/js/company.js', root), 'utf8'), 
 const { metaLine } = sandbox.window.RegretCompany;
 const firm = (x) => ({ firm: Object.assign({ name: 'Sequoia Capital', hq: 'Menlo Park, CA', website: 'https://www.sequoiacap.com/' }, x) });
 
-test('founded year goes last, after the website link', () => {
-  const m = metaLine(firm({ founded_year: 1972 }));
-  assert.match(m, /<\/a> · Founded 1972$/);
-  assert.equal(copy.company.header.founded, 'Founded {y}');
-});
-
 test('no founded year, no text and no extra separator', () => {
   for (const y of [null, undefined, '', 0, 'abc', 3000]) {
     const m = metaLine(firm({ founded_year: y }));

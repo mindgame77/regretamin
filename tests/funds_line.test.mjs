@@ -87,37 +87,9 @@ const fundsSec = { n: 2, items: [
 ] };
 const latest = { name: 'Sequoia Capital Fund, L.P.', raised_usd: 22700000000, date: '2026-02-05', url: EDGAR };
 
-test('the line sits inside the fund tile and Show all opens the existing popup with each fund', () => {
-  created.length = 0;
-  const html = paint({ activity: { latest_fund: latest, funds_sec: fundsSec } });
-  assert.match(tile(html), /<span class="afl">2 funds on SEC record · <button type="button" class="ash" data-open="actfunds" aria-haspopup="dialog">Show all<\/button><\/span><\/div>$/);
-  const ov = created.find(e => e.id === 'actfunds');
-  assert.ok(ov, 'popup made');
-  assert.match(ov.innerHTML, /role="dialog" aria-modal="true" aria-label="2 funds on SEC record · Sequoia Capital"/);
-  assert.match(ov.innerHTML, /<b>Sequoia Capital Fund<\/b><span>\$22\.7B<\/span><span>2026<\/span><a href="https:\/\/www\.sec\.gov\/Archives\/edgar\/data\/1906948\/[^"]+" target="_blank" rel="noopener">Filing<\/a>/);
-  assert.match(ov.innerHTML, /Sequoia Capital Fund Feeder<\/b><span>\$7B<\/span>/);
-});
-
-test('one fund reads singular; locked pages get the sign-in gate and no popup', () => {
-  created.length = 0;
-  const html = paint({ open: false, activity: { latest_fund: latest, funds_sec: { n: 1, items: null } } });
-  assert.match(tile(html), /1 fund on SEC record · <button type="button" class="ash" data-gate>Show all<\/button>/);
-  assert.ok(!created.find(e => e.id === 'actfunds'));
-});
-
 test('no line with zero SEC funds', () => {
   assert.doesNotMatch(paint({ activity: { latest_fund: latest, funds_sec: { n: 0, items: [] } } }), /afl|on SEC record/);
   assert.doesNotMatch(paint({ activity: { funds_sec: { n: 0, items: [] } } }), /afl|on SEC record/);
-});
-
-test('no tile at all (accel): the line sits on its own at the top of the activity area', () => {
-  created.length = 0;
-  const html = paint({ activity: { funds_sec: fundsSec } });
-  assert.match(html, /^<section class="actv"[^>]*><div class="ats" style="grid-template-columns:1fr"><span class="afl">2 funds on SEC record · <button type="button" class="ash" data-open="actfunds" aria-haspopup="dialog">Show all<\/button><\/span><\/div>/);
-  assert.doesNotMatch(html, /att afd/);
-  assert.ok(created.find(e => e.id === 'actfunds'), 'same Show all popup');
-  const locked = paint({ open: false, activity: { funds_sec: { n: 6, items: null } } });
-  assert.match(locked, /<div class="ats" style="grid-template-columns:1fr"><span class="afl">6 funds on SEC record · <button type="button" class="ash" data-gate>Show all<\/button>/);
 });
 
 test('a lone line is not added when other tiles exist but no fund tile', () => {

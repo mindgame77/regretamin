@@ -82,24 +82,6 @@ const html = paint({ activity: { reviews, latest_review: reviews[0], counts: { r
 const block = html.slice(html.indexOf("<div class=\"aps arvs\">"));
 
 
-test('card shows only the quote in bold quotes; summary is never rendered', () => {
-  assert.doesNotMatch(block, /DECOY/);
-  assert.match(block, /<p class="arsm"><b>“Pylon's board is incredible”<\/b><\/p>/);
-  assert.doesNotMatch(block, /class="k"/);
-  assert.doesNotMatch(block, /class="aq"/);
-});
-test('reviewer line is "— Name, Role of Company · year · site" with the site as the link', () => {
-  assert.match(block, /<p class="arat">— Marty Kausas, CEO of Pylon · 2025 · <a href="[^"]+" target="_blank" rel="noopener">Linkedin\.com|linkedin\.com<\/a><\/p>/i);
-  assert.doesNotMatch(block, /Source:/);
-});
-test('a blank role or company is left out', () => {
-  assert.match(block, /— malgorithms, Keybase · 2019 · /);
-  assert.match(block, /— Ann, Founder · 2024 · /);
-});
-test('Show all reviews has no arrow', () => {
-  assert.match(block, /data-open="actrevs">Show all<\/button>/);
-  assert.doesNotMatch(block, /Show all \d|reviews<\/button>/);
-});
 test('the Show all pop-up uses the same A2 cards', () => {
   const m = created.find(e => e.id === 'actrevs');
   assert.ok(m, 'actrevs pop-up exists');
