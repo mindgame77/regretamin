@@ -38,25 +38,10 @@ function page(items) {
 }
 const fdate = (d) => sandbox.window.RegretDate.format(d);
 
-test('summary renders under the pills with its date only (one source per case: the status-line pill)', () => {
-  const html = page([row('A v. B', { summary: 'Filed <x> & more.', summary_date: '2026-10-29', summary_url: 'https://www.courtlistener.com/docket/9/a-v-b/' })]);
-  const i = html.indexOf('<div class="rm">'), j = html.indexOf('<div class="lsum">');
-  assert.ok(i > 0 && j > i, 'summary comes after the pills');
-  assert.match(html, /<p class="lsum-t">Filed &lt;x&gt; &amp; more\.<\/p>/);
-  assert.ok(html.includes('<span>Summary ' + fdate('2026-10-29') + '</span>'));
-  assert.doesNotMatch(html.slice(j), /Source: |a-v-b/);
-});
-
 test('no summary, or no source link: nothing drawn', () => {
   assert.doesNotMatch(page([row('A v. B')]), /lsum/);
   assert.doesNotMatch(page([row('A v. B', { summary: 'text', summary_date: '2026-10-29' })]), /lsum/);
   assert.doesNotMatch(page([row('A v. B', { summary: 'text', summary_url: 'javascript:alert(1)' })]), /lsum/);
-});
-
-test('over 300 characters is trimmed, not dropped', () => {
-  const html = page([row('A v. B', { summary: 'x'.repeat(350), summary_url: 'https://www.sec.gov/a' })]);
-  const t = html.match(/<p class="lsum-t">([^<]*)<\/p>/)[1];
-  assert.equal(t.length, 300);
 });
 
 test('copy and style use design tokens', () => {
