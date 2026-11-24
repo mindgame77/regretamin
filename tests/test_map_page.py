@@ -57,11 +57,58 @@ def test_which_firms_filter():
     # the filter is sent only when it is on, so the first versions of the functions keep serving the plain view
     assert "a.p_firms = who()" in js and "p_firms: who()" in js
     for mode in ("top", "focused", "new"):
-        assert f"'{mode}'" in sql and f"['{mode}'," in js
+        assert f"'{mode}'" in sql
+    for mode in ("top", "focused", "first", "fresh"):
+        assert f"['{mode}'," in js
     assert "v2_map_hot(text, int, text[], text[])" in sql
     assert "v2_top_firms" in sql and (ROOT / "docs/top-firms.md").exists()
     # a link can carry the view, but the page never rewrites its own address
     assert "qs.get('firms')" in js and "history.pushState" not in js and "history.replaceState" not in js
+
+
+def test_new_investors_and_fresh_funds_choices():
+    """Founder, 23 Nov: "New investors" = first deal ever (one meaning), "Fresh funds" = raised a fund in the last
+    12 months, and while a choice is picked its meaning takes the colour key's place in the corner of the map."""
+    js = (ROOT / "launch/js/map.js").read_text()
+    firms = (ROOT / "launch/js/firms.js").read_text()
+    css = (ROOT / "launch/style.css").read_text()
+    mig = (ROOT / "supabase/migrations/20261124064028_map_firms_choice_fresh_funds_and_first_deal_ever.sql").read_text()
+    assert "['first', 'New investors'], ['fresh', 'Fresh funds']" in js and "'New entrants']" not in js
+    # old links and saved views that say "new" open as "New investors"
+    assert "const whoKey = (k) => (k === 'new' ? 'first' : k);" in js
+    # each choice has its line, and "Top firms" follows the zoom (the US list is an outside ranking)
+    for line in ("The 100 top-ranked US firms of 2026", "Led the most rounds in the last 3 years",
+                 "Most of their deals are in one sector", "Made their first deal in this period",
+                 "Raised a new fund in the last 12 months"):
+        assert line in js
+    # it replaces the colour key (founder: "not appear in a new spot"); "All firms" shows the key
+    assert "$('#vm-legend').innerHTML = note ? `<span class=\"vm-whonote\">" in js and 'id="vm-whonote"' not in js
+    assert ".vm-whonote{display:block" in css and "position:absolute;left:24px;bottom:18px" not in css
+    # the investors list passes the two new words on to the same database rule
+    assert "['top', 'focused', 'first', 'fresh'].indexOf(who1)" in firms and "who === 'new' ? 'first' : who" in firms
+    # rule (founder): every filter the map hands over shows in the list as a label that can be removed
+    assert "WHO_LABEL = { top: 'Top firms', focused: 'Focused funds', first: 'New investors', fresh: 'Fresh funds' }" in firms
+    assert "data-who-x" in firms and "if (deal) deal.who = null;" in firms
+    for key, name in re.findall(r"\['(\w+)', '([^']+)'\]", js.split("const WHO = ")[1].split(";")[0]):
+        assert key == 'all' or f"{key}: '{name}'" in firms  # the list uses the map's own names
+    # the database: additive (old words answer as before), and the fund list is not open to visitors directly
+    assert "v2_fresh_fund_firms" in mig and "revoke all on function public.v2_fresh_fund_firms() from public, anon, authenticated" in mig
+    assert "cfg.mode = 'first' or exists" in mig and "p_firms in ('top', 'focused', 'new', 'first', 'fresh')" in mig
+
+
+def test_investors_list_deals_column_shows_known_and_all():
+    """Founder, 24 Nov: the Deals column shows the deals we know in detail and, in brackets, every investment
+    found ("9 (228)", "0 (404)"); one number when they are the same. The header stays "Deals"."""
+    firms = (ROOT / "launch/js/firms.js").read_text()
+    css = (ROOT / "launch/style.css").read_text()
+    assert "function dealsCell(f)" in firms and "const investments = dealsCell(f);" in firms
+    assert "kn + ' <span class=\"finv-all\" title=" in firms and "(' + all + ')</span>'" in firms and "if (known >= allN) return all;" in firms
+    assert ".frow .finv .finv-all{font-weight:400" in css
+    assert "headerCell('deals', pageCopy.col_investments || 'Deals')" in firms
+    # it sorts by the first number: a sort word of its own in the database, the old one untouched
+    mig = (ROOT / "supabase/migrations/20261124175712_investors_list_sort_by_known_deals.sql").read_text()
+    assert "p_sort: sort === 'deals' ? 'known' : sort," in firms and "(known(a) - known(b)) || (count(a) - count(b))" in firms
+    assert "'deals', 'known', 'activity')" in mig and "v_sort = 'known' and not v_asc then coalesce(m.deals, 0) end desc" in mig
 
 
 def test_hot_view_sectors_first_switch_and_lines():

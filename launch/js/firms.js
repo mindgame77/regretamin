@@ -180,6 +180,18 @@
     if (!Number.isFinite(n) || n <= 0) return '';
     return Math.trunc(n).toLocaleString('en-US');
   }
+  // The Deals column shows both numbers (founder, 24 Nov): the deals we know in detail, then in brackets every
+  // investment we found, e.g. "9 (228)" or "0 (404)". One number when they are the same. The rest of the site
+  // (status, latest deal, the maps) counts the first number, so a row can no longer say "400" next to "Not active".
+  function dealsCell(f) {
+    const all = investmentCount(f);
+    if (!all) return '';
+    const k = Number(f && f.deals), known = Number.isFinite(k) && k > 0 ? Math.trunc(k) : 0;
+    const allN = Number(String(all).replace(/,/g, ''));
+    if (known >= allN) return all;
+    const kn = known.toLocaleString('en-US');
+    return kn + ' <span class="finv-all" title="' + kn + ' deals with a date and a round. ' + all + ' investments found in total">(' + all + ')</span>';
+  }
   function activityOf(f) {
     const rule = window.RegretActivity;
     if (!rule) return null;
@@ -250,7 +262,7 @@
     const date = fmtDate(f.added);
     const city = cityLabel(f);
     const inds = invests(f, window.innerWidth < 1200 ? 1 : 2);  // a narrow window has room for one sector and the "+N"
-    const investments = investmentCount(f);
+    const investments = dealsCell(f);
     const dealMain = (f.latest_company && f.latest_deal_date)
       ? [f.latest_company, roundName(f.latest_round)].filter(Boolean).join(' · ') : '';
     const dealDate = (f.latest_company && f.latest_deal_date) ? fmtDate(f.latest_deal_date) : '';
@@ -261,7 +273,7 @@
       + '<span class="fnm"><b>' + esc(f.name) + '</b></span>'
       + '<span class="fcity">' + (city ? flagOf(f) : '') + esc(city) + '</span>'
       + '<span class="finds">' + inds + '</span>'
-      + '<span class="finv">' + esc(investments) + '</span>'
+      + '<span class="finv">' + investments + '</span>'
       + activityHtml(f)
       + '<span class="fdeal">' + dealHtml + '</span>'
       + (date ? '<span class="rdt">' + esc(date) + '</span>' : '<span class="rdt"></span>')
@@ -491,7 +503,9 @@
             };
             const blank = cmpBlankLast(count(a), count(b));
             if (blank) return blank;
-            const d = count(a) - count(b);
+            // The column sorts by its first number, the deals we know in detail; all investments found break ties.
+            const known = function (row) { const n = Number(row && row.deals); return Number.isFinite(n) && n > 0 ? n : 0; };
+            const d = (known(a) - known(b)) || (count(a) - count(b));
             return d ? d * dir : String(a.name || '').localeCompare(String(b.name || ''));
           }
           if (sort === 'activity') {
@@ -683,6 +697,8 @@
         const o = (GROUPS[key].options || []).filter(function (x) { return x.value === val; })[0];
         return (o && (o.tag || o.label)) || val;
       }
+      // The map's "which firms" choice, by the word the map sends. Same names as in the map's drop-down.
+      const WHO_LABEL = { top: 'Top firms', focused: 'Focused funds', first: 'New investors', fresh: 'Fresh funds' };
       function renderChips() {
         const el = document.getElementById('firms-chips');
         if (!el) return;
@@ -691,6 +707,9 @@
           + '<button type="button" data-place-x aria-label="Remove ' + esc(place.name) + '">×</button></span>');
         if (dealOn()) tags.push('<span class="firms-chip firms-tag"><span class="firms-chip-text">' + esc(deal.label) + '</span>'
           + '<button type="button" data-deal-x aria-label="Remove ' + esc(deal.label) + '">×</button></span>');
+        // Rule (founder, 23 Nov): every filter the map hands over with "See the investors" shows here as a label.
+        if (dealOn() && deal.who && WHO_LABEL[deal.who]) tags.push('<span class="firms-chip firms-tag"><span class="firms-chip-text">' + esc(WHO_LABEL[deal.who]) + '</span>'
+          + '<button type="button" data-who-x aria-label="Remove ' + esc(WHO_LABEL[deal.who]) + '">×</button></span>');
         Object.keys(active).forEach(function (key) {
           active[key].forEach(function (val) {
             const label = filterLabel(key, val);
@@ -838,7 +857,7 @@
         const body = {
           p_limit: PAGE,
           p_offset: offset,
-          p_sort: sort,
+          p_sort: sort === 'deals' ? 'known' : sort,  // 'known' = by deals with a date and a round, then by all found
           p_asc: asc,
           p_search: searchTerms(),
           p_region: mapRegions ? [] : active.region,
@@ -1319,6 +1338,14 @@
           draw();
           return;
         }
+        if (e.target.closest('[data-who-x]')) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (deal) deal.who = null;  // the place and the period stay; only the "which firms" choice goes
+          updateBadge();
+          draw();
+          return;
+        }
         if (e.target.closest('[data-place-x]')) {
           e.preventDefault();
           e.stopPropagation();
@@ -1407,7 +1434,8 @@
             const names = {};
             many('sectors').forEach(function (v) { names[v.toLowerCase()] = v; });
             const who = from.get('who');
-            deal = { from: df, to: dt, names: names, who: ['top', 'focused', 'new'].indexOf(who) !== -1 ? who : null,
+            const who1 = who === 'new' ? 'first' : who;  // "new" was the old name of "New investors"
+            deal = { from: df, to: dt, names: names, who: ['top', 'focused', 'first', 'fresh'].indexOf(who1) !== -1 ? who1 : null,
               label: days === 365 ? 'Last 12 months' : days > 0 && days < 1000 ? 'Last ' + days + ' days' : mon(df) + ' – ' + mon(dt) };
           }
         }
