@@ -6,6 +6,7 @@
   const el = document.getElementById('vm');
   if (!el) return;
   const C = window.REGRET || {}, ROOT = window.REGRET_ROOT || '';
+  const MAPV = C.mapv ? '?v=' + C.mapv : '';  // map files keep their names; this changes when they do, so no browser shows an old one
   const sb = C.url && C.key && window.supabase ? window.supabase.createClient(C.url, C.key) : null;
   const qs = new URLSearchParams(location.search);
   // Local preview only: ?fixture=<saved v2_map_summary answer>&fx_firms=<saved v2_map_firms>&fx_updates=<saved v2_map_updates>.
@@ -331,11 +332,11 @@
   function draw(from) {  // from: where the new circles fly out of when zooming in ({ parentPlace: {x, y} } in page pixels)
     if (!S.data || !S.geo) return;
     const g = S.geo[S.level], rows = placesNow(), lit = litPlace(), sector = S.sectors.length > 0;
-    const bg = $('#vm-bg'), pls = $('#vm-pls'), src = `${ROOT}assets/map/${S.level}-land.svg`;  // smooth grey land, made by build.py from the dotted file (founder, 23 Nov)
+    const bg = $('#vm-bg'), pls = $('#vm-pls'), src = `${ROOT}assets/map/${S.level}-land.svg${MAPV}`;  // smooth grey land, made by build.py from the dotted file (founder, 23 Nov)
     if (bg.dataset.l !== S.level) {
       bg.dataset.l = S.level; bg.style.opacity = 0; bg.onload = () => { bg.style.opacity = 1; };
       bg.src = src; bg.width = g.w; bg.height = g.h;
-      $('#vm-wave').style.webkitMaskImage = $('#vm-wave').style.maskImage = `url(${ROOT}assets/map/${S.level}.svg)`;  // the dots the land dissolves into while loading
+      $('#vm-wave').style.webkitMaskImage = $('#vm-wave').style.maskImage = `url(${ROOT}assets/map/${S.level}.svg${MAPV})`;  // the dots the land dissolves into while loading
       els.forEach((b) => b.remove()); els.clear();
     }
     fit();
@@ -610,7 +611,7 @@ ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.m
   drawPicks(); drawTime(); drawSide(); marks();
   // The map's places, its numbers and the latest updates are asked for at the same time, not one after another.
   // draw() does nothing until both the places and the numbers are in, so the order they arrive in does not matter.
-  const places = fetch(ROOT + 'assets/map/places.json').then((r) => r.json()).then((g) => { S.geo = g; });
+  const places = fetch(ROOT + 'assets/map/places.json' + MAPV).then((r) => r.json()).then((g) => { S.geo = g; });
   // The side panel is drawn again once the numbers are in: the updates can arrive first and draw it empty.
   Promise.all([places, refresh()]).then(() => { draw(); if (!S.list) drawSide(); reopen(); });
   loadUpdates();

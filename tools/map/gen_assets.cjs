@@ -9,12 +9,19 @@ const atlas = JSON.parse(fs.readFileSync(process.env.ATLAS || require.resolve('w
 const OUT = path.join(__dirname, '..', '..', 'launch', 'assets', 'map');
 const land = topo.feature(atlas, atlas.objects.land);
 const usa = topo.feature(atlas, atlas.objects.countries).features.find((f) => f.id === '840');
+// The Europe view shows no Russian territory (founder, 23 Nov): its land, Kaliningrad included, is left out.
+// Crimea is Ukraine and stays on the map; the atlas files it under Russia, so it is named here by its box.
+const russia = topo.feature(atlas, atlas.objects.countries).features.find((f) => f.id === '643');
+const crimea = ([lon, lat]) => lon > 32.3 && lon < 36.6 && lat > 44.3 && lat < 46.3;
+const inRussia = (ll) => d3.geoContains(russia, ll) && !crimea(ll);
+// The frame reaches east to the Caspian so Georgia, Armenia and Azerbaijan are on the map; the corner of Kazakhstan that would float above them is left out.
+const kazakhstan = topo.feature(atlas, atlas.objects.countries).features.find((f) => f.id === '398');
 
 const VIEWS = {
   world: { w: 1060, h: 620, step: 8, proj: d3.geoNaturalEarth1().fitExtent([[20, 70], [1040, 580]], { type: 'MultiPoint', coordinates: [[-170, -52], [180, 72], [-170, 72], [180, -52]] }), inside: (ll) => d3.geoContains(land, ll) },
   us: { w: 900, h: 540, step: 8, proj: d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], usa), inside: (ll) => d3.geoContains(usa, ll) },
-  // Europe is framed tightly, Iceland (top left) to Cyprus (bottom right), so the countries are as big as they can be.
-  eu: { w: 720, h: 600, step: 6, proj: d3.geoMercator().fitExtent([[0, 0], [720, 600]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [37, 34.5], [-25, 67], [37, 67]] }), inside: (ll) => d3.geoContains(land, ll) },
+  // Europe is framed from Iceland (top left) to the Caspian (right), at the same scale as before the frame was widened (23 Nov).
+  eu: { w: 876, h: 600, step: 6, proj: d3.geoMercator().fitExtent([[0, 0], [876, 600]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [50.5, 34.5], [-25, 67], [50.5, 67]] }), inside: (ll) => d3.geoContains(land, ll) && !inRussia(ll) && !d3.geoContains(kazakhstan, ll) },
 };
 // [lat, lon] per place. World regions are hand-placed; the rest are city or country centres.
 const PLACES = {
@@ -37,6 +44,20 @@ const PLACES = {
     HU: ['Hungary', 47.2, 19.4], RO: ['Romania', 45.8, 25], HR: ['Croatia', 45.2, 16.3], CY: ['Cyprus', 35, 33], RS: ['Serbia', 44, 21], MT: ['Malta', 35.9, 14.4], MC: ['Monaco', 43.7, 7.4],
     LI: ['Liechtenstein', 47.2, 9.5], AD: ['Andorra', 42.5, 1.5], GG: ['Guernsey', 49.45, -2.6], JE: ['Jersey', 49.2, -2.1], IM: ['Isle of Man', 54.2, -4.5] },
 };
+// Thin white lines over the smooth land: country borders on the Europe view, state borders on the US view (founder, 23 Nov).
+// No border is drawn against Russia, so nothing cuts Crimea off from Ukraine. Needs us-atlas for the states (US_ATLAS=path).
+const usStates = (() => { try { return JSON.parse(fs.readFileSync(process.env.US_ATLAS || require.resolve('us-atlas/states-10m.json'))); } catch (e) { return null; } })();
+const lines = {};
+{
+  const eu = VIEWS.eu, proj = d3.geoMercator().fitExtent([[0, 0], [eu.w, eu.h]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [50.5, 34.5], [-25, 67], [50.5, 67]] }).clipExtent([[0, 0], [eu.w, eu.h]]);
+  lines.eu = d3.geoPath(proj).digits(1)(topo.mesh(atlas, atlas.objects.countries, (a, b) => a !== b && a.id !== '643' && b.id !== '643' && a.id !== '398' && b.id !== '398')) || '';
+  // World view: every country border, minus the stretch the atlas draws between Crimea and the rest of Ukraine.
+  const all = topo.mesh(atlas, atlas.objects.countries, (a, b) => a !== b), kept = [];
+  for (const line of all.coordinates) { let run = []; for (const pt of line) { if (crimea(pt)) { if (run.length > 1) kept.push(run); run = []; } else run.push(pt); } if (run.length > 1) kept.push(run); }
+  lines.world = d3.geoPath(VIEWS.world.proj).digits(1)({ type: 'MultiLineString', coordinates: kept }) || '';
+  if (usStates) lines.us = d3.geoPath(VIEWS.us.proj).digits(1)(topo.mesh(usStates, usStates.objects.states, (a, b) => a !== b)) || '';
+}
+fs.writeFileSync(path.join(OUT, 'lines.json'), JSON.stringify(lines) + '\n');
 const places = {};
 for (const [k, v] of Object.entries(VIEWS)) {
   let d = '';
