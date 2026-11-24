@@ -169,7 +169,10 @@ def firm_head(F, full=False):
     # /full/ and firms not ready for Google (indexable false) are noindex, follow
     return (('<meta name="robots" content="noindex, follow">' if full or F.get('indexable') is False else '') + f'<meta name="description" content="{d}"><link rel="canonical" href="{url}">'
             f'<meta property="og:type" content="website"><meta property="og:site_name" content="{S["brand"]}"><meta property="og:title" content="{title}">'
-            f'<meta property="og:description" content="{d}"><meta property="og:url" content="{url}"><meta name="twitter:card" content="summary">'
+            f'<meta property="og:description" content="{d}"><meta property="og:url" content="{url}">'
+            # The firm share card is drawn on request by functions/share/vc/[slug].js. Keep identical to launch/edge/firm.mjs.
+            f'<meta property="og:image" content="{SITE}share/vc/{F["slug"]}.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">'
+            f'<meta name="twitter:card" content="summary_large_image">'
             f'<script type="application/ld+json">{ldj}</script>')
 
 # Server-rendered facts in the first HTML: only facts the page already shows. js/company.js replaces both blocks on load.
@@ -398,6 +401,7 @@ def main():
     shutil.copytree(os.path.join(HERE, 'fav'), os.path.join(OUT, 'fav'))
     shutil.copytree(os.path.join(HERE, 'assets', 'video'), os.path.join(OUT, 'assets', 'video'))
     shutil.copytree(os.path.join(HERE, 'assets', 'map'), os.path.join(OUT, 'assets', 'map'))  # backgrounds and coordinates for /map/ (tools/map/gen_assets.cjs)
+    shutil.copytree(os.path.join(HERE, 'assets', 'fonts'), os.path.join(OUT, 'assets', 'fonts'))  # Geist files the firm share card is drawn with (edge/card/share.mjs)
     shutil.copytree(os.path.join(HERE, 'assets', 'share'), os.path.join(OUT, 'assets', 'share'))  # the picture for shared links (og:image)
     # Email templates load this from https://regretamin.com/assets/logo/lockup-light@2x.png
     logo_dir = os.path.join(OUT, 'assets', 'logo')

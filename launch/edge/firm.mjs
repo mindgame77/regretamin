@@ -86,7 +86,10 @@ export function firmHead(F, full = false) {
   // Firms not ready for Google (v2_firm_seo.seo_indexable false: not researched or too few facts) are noindex, follow too, and not in the sitemaps.
   return (full || F.indexable === false ? '<meta name="robots" content="noindex, follow">' : '') + `<meta name="description" content="${d}"><link rel="canonical" href="${url}">` +
     `<meta property="og:type" content="website"><meta property="og:site_name" content="${BRAND}"><meta property="og:title" content="${title}">` +
-    `<meta property="og:description" content="${d}"><meta property="og:url" content="${url}"><meta name="twitter:card" content="summary">` +
+    `<meta property="og:description" content="${d}"><meta property="og:url" content="${url}">` +
+    // The firm share card is drawn on request by functions/share/vc/[slug].js. Keep identical to launch/build.py.
+    `<meta property="og:image" content="${SITE}share/vc/${F.slug}.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">` +
+    `<meta name="twitter:card" content="summary_large_image">` +
     `<script type="application/ld+json">${ldj}</script>`;
 }
 
