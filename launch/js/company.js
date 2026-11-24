@@ -2561,6 +2561,14 @@
     const w = String(name || '').trim().split(/\s+/);
     return w.length > 1 && w[0].length <= 8 && w[1].length <= 8 ? esc(w[0]) + '<br>' + esc(w[1]) : esc(w[0] || '');
   }
+  // "Who invests around them" and "Where they invest" sit together as the third row of cards (founder, 23 Nov):
+  // after the first four cards, or after the first two when a firm has fewer. Returns the card they go in front of.
+  function thirdRow(grid) {
+    const plain = Array.from(grid.children).filter(el => el.classList && el.classList.contains('mod') && !el.classList.contains('span2')
+      && !el.classList.contains('filler') && !el.hidden && el.id !== 'around' && el.id !== 'where');
+    const at = Math.min(4, Math.floor(plain.length / 2) * 2);
+    return plain[at] || grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2');
+  }
   function drawAround(root, d) {
     const grid = root.querySelector('.bento');
     const total = ['before', 'with', 'after'].reduce((n, k) => n + ((d[k] && d[k].firms) || 0), 0);
@@ -2592,7 +2600,7 @@
       + '<div class="arbox"><div class="arstage"><svg aria-hidden="true" width="' + W + '" height="' + H + '">' + svg + '</svg>' + html
       + '<span class="arme" style="left:' + (CX - 30) + 'px;top:' + (CY - 30) + 'px">' + centreName(name) + '</span></div></div>'
       + '<button type="button" class="ash" data-around>Show all ' + total + ' firms</button>';
-    grid.insertBefore(card, grid.querySelector('#where') || grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
+    grid.insertBefore(card, grid.querySelector('#where') || thirdRow(grid));
     card.querySelector('[data-around]').addEventListener('click', function () { openAround(name, d); });
   }
   function openAround(name, d) {
@@ -2700,7 +2708,7 @@
         + '<p class="wnote">Where ' + placed.toLocaleString('en-US') + ' of their ' + (Number(d.startups) || placed).toLocaleString('en-US') + ' startups are based.'
         + (rest ? ' ' + rest.toLocaleString('en-US') + ' more ' + (rest === 1 ? 'is' : 'are') + out + '.' : '') + '</p>'
         + '<a class="ash" href="' + href + '">Open the map</a>';
-      grid.insertBefore(card, grid.querySelector('.mod.filler') || grid.querySelector('.mod.span2'));
+      grid.insertBefore(card, thirdRow(grid));
       evenCards(root);
     };
     if (GEO) return paint();
