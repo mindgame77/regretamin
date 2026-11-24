@@ -182,12 +182,19 @@
     // the chosen range is read from the handles; it is also spoken for screen readers
     $('#vm-q0').setAttribute('aria-valuetext', `${MONTHS[a.getMonth()]} ${a.getFullYear()}`); $('#vm-q1').setAttribute('aria-valuetext', today ? 'today' : `${MONTHS[b.getMonth()]} ${b.getFullYear()}`);
     $('#vm-play').classList.toggle('vm-on', !!S.playing); $('#vm-play').setAttribute('aria-label', S.playing ? 'Pause' : 'Play');
+    // The button offers the other view: "This year" while the line shows every year, "All years" once it is narrowed (founder, 23 Nov).
+    $('#vm-all').textContent = S.q0 === 0 && S.q1 === NQ - 1 ? 'This year' : 'All years';
   }
   let timer = null;
   const later = () => { clearTimeout(timer); timer = setTimeout(refresh, 180); };
   q0.addEventListener('input', () => { stop(); S.q0 = Math.min(+q0.value, S.q1); closeList(); drawTime(); later(); });
   q1.addEventListener('input', () => { stop(); S.q1 = Math.max(+q1.value - 1, S.q0); closeList(); drawTime(); later(); });
-  $('#vm-all').addEventListener('click', () => { stop(); S.q0 = 0; S.q1 = NQ - 1; closeList(); drawTime(); refresh(); });
+  $('#vm-all').addEventListener('click', () => {
+    stop();
+    if (S.q0 === 0 && S.q1 === NQ - 1) S.q0 = Math.min((now.getFullYear() - 2021) * 4, NQ - 1);  // from January of this year to today
+    else { S.q0 = 0; S.q1 = NQ - 1; }
+    closeList(); drawTime(); refresh();
+  });
   function stop() { if (S.playing) { S.playing = null; drawTime(); } }
   $('#vm-play').addEventListener('click', async () => {
     if (S.playing) return stop();

@@ -9,7 +9,12 @@ def render(c, root='../'):
     v = c._v('js/map.js')
     return ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
             '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">'
-            '<main class="vm" id="vm"><noscript><p class="vm-msg">The map needs JavaScript.</p></noscript></main>'
+            # The headline and one line of text are in the page source for search engines and for the moment before the
+            # map draws; js/map.js replaces everything inside <main> with the map, which shows the same headline.
+            '<main class="vm" id="vm"><div class="vm-seo"><h1>What VCs are investing in.</h1>'
+            '<p>A live map of venture capital: where VC firms are based, which sectors they back and where it is heating up. '
+            'Pick a place to see its investors, then research any firm before you take the meeting or the money.</p></div>'
+            '<noscript><p class="vm-msg">The map needs JavaScript.</p></noscript></main>'
             f'<script defer src="{root}map.js?v={v}"></script>')
 
 

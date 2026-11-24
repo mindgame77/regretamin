@@ -55,6 +55,9 @@ def nav_links(site, root, group, active=''):
 def footer_links(site, root):
     return nav_links(site, root, 'footer')
 
+SHARE_IMAGE = 'assets/share/map.png'
+
+
 def page_head(spec, site, base):
     m = metadata(spec, site)
     url = base + (spec.slug + '/' if spec.slug else '')
@@ -74,5 +77,8 @@ def page_head(spec, site, base):
             + f'<meta property="og:type" content="website"><meta property="og:site_name" content="{E(site["brand"], quote=True)}">'
             + f'<meta property="og:title" content="{E(m["title"], quote=True)}">'
             + f'<meta property="og:description" content="{E(m["description"], quote=True)}">'
-            + f'<meta property="og:url" content="{E(url, quote=True)}"><meta name="twitter:card" content="summary">'
+            + f'<meta property="og:url" content="{E(url, quote=True)}">'
+            # A picture of the map for links shared on social sites (ordinary pages only; firm pages keep their own head).
+            + f'<meta property="og:image" content="{E(base + SHARE_IMAGE, quote=True)}"><meta property="og:image:width" content="1200">'
+            + '<meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image">'
             + redirect)

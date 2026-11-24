@@ -1782,3 +1782,33 @@ main.prof #where .wmap b{z-index:1;padding:1px 5px;border-radius:5px;background:
 .mfr{grid-template-columns:36px minmax(0,1.6fr) 140px 150px}
 .mfr>.nc,.mfr>.pls,.mfr.h>span:nth-child(4){display:none}
 @media (max-width:760px){.mfr{grid-template-columns:34px minmax(0,1fr) auto}}
+
+/* Home page: the headline and line of text in the page source, shown only until the map draws (it then replaces them). */
+.vm>.vm-seo{max-width:520px;padding:28px 24px;color:#10201C}
+.vm>.vm-seo h1{margin:0 0 10px;font-size:27px;font-weight:600;letter-spacing:-.02em}
+.vm>.vm-seo p{margin:0;font-size:15px;line-height:1.5;color:#586964}
+
+/* Firm page type standard (founder, 23 Nov): two families, two weights (400 and 600), five sizes.
+   Title (the name, big numbers) · Heading 22 (card titles) · Body 15 · Small 13 · Label: Geist Mono 12, capitals.
+   Numbers drawn inside charts and circles keep their own size so they fit their shapes. */
+main.prof b,main.prof strong,main.prof em,main.prof th,main.prof h1,main.prof h2,main.prof h3{font-weight:600!important}
+main.prof .ph .hp,main.prof .ph .htag .hp,main.prof .ph .intro{font-size:15px!important;font-weight:400!important}
+main.prof .ph .hp.hmail,main.prof .ph .hp.hmore{font-weight:600!important}
+main.prof .ash{font-size:13px!important;font-weight:600!important}
+main.prof .trole{font-size:13px!important}
+main.prof .seg button,main.prof .mod button:not(.ash):not(.sv){font-size:13px}
+main.prof .seg button{font-weight:400!important}main.prof .seg button.on{font-weight:600!important}
+main.prof .cs{font-size:13px!important;font-weight:600!important}
+main.prof .arl{font-weight:600!important;font-size:13px!important}
+main.prof .htag-l,main.prof .invlab,main.prof .iplab,main.prof .ats small,main.prof #deals .mfh span,main.prof #deals .dh span{font-family:'Geist Mono',ui-monospace,monospace!important;font-size:12px!important;font-weight:400!important;text-transform:uppercase;letter-spacing:.06em}
+main.prof .soc b,main.prof .ad b,main.prof .ad b a,main.prof .ad a.co,main.prof .arat a{font-size:13px!important;font-weight:600!important}
+main.prof .ad .arty{font-size:13px!important}
+main.prof .sbtag>span{font-size:15px!important}
+main.prof .lgt,main.prof .ips{font-weight:600!important}
+main.prof .ad.adh span{font-weight:400!important}
+main.prof svg text{font-weight:400}main.prof .dw svg text[font-weight="700"],main.prof .dw svg text[style*="700"]{font-weight:600!important}
+main.prof #around .arsub em{font-family:'Geist',system-ui,sans-serif!important;font-size:13px!important;font-style:normal;font-weight:400!important}
+/* The save button sits on the middle of the firm's name, with a fixed gap (it was 5px low). */
+main.prof .ph1{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+main.prof .ph1 h1{margin:0}
+main.prof .ph .ph1 .sv{position:relative;top:-.06em;margin:0;flex:none}
