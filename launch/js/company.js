@@ -2248,7 +2248,7 @@
     const h = activity(P); box.innerHTML = h; box.hidden = !h;
   }
 
-  // Sectors and Rounds share This year / All time. Deals announced is all time, one bar per year.
+  // Sectors and Rounds share This year / Since 2021. Deals announced is all time, one bar per year.
   let CHART_PERIOD = 'year', CHART_P = null;
   const RC = { 'Series A': '#2F70F2', 'Undisclosed': '#9A97AD', 'Seed': '#1F9D6A', 'Series B': '#D9822B', 'Series C+': '#7952D8', 'Pre-seed': '#D968A0' };
   function pacificYear() {
@@ -2302,7 +2302,7 @@
   }
   function segHtml() {
     return '<div class="seg" role="group" aria-label="Time range for Sectors and Rounds">'
-      + [['year', 'This year'], ['all', 'All time']].map(([v, l]) => '<button type="button" data-range="' + v + '" aria-pressed="' + (CHART_PERIOD === v ? 'true' : 'false') + '" class="' + (CHART_PERIOD === v ? 'on' : '') + '">' + l + '</button>').join('')
+      + [['year', 'This year'], ['all', 'Since 2021']].map(([v, l]) => '<button type="button" data-range="' + v + '" aria-pressed="' + (CHART_PERIOD === v ? 'true' : 'false') + '" class="' + (CHART_PERIOD === v ? 'on' : '') + '">' + l + '</button>').join('')
       + '</div>';
   }
   function chartShell(id, title, k) {

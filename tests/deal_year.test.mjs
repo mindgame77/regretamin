@@ -1,4 +1,4 @@
-// Deals, this year. Year-only dates show the year. Sectors and Rounds use This year / All time.
+// Deals, this year. Year-only dates show the year. Sectors and Rounds use This year / Since 2021.
 // Deals announced is all time, one bar per year. node --test tests/deal_year.test.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -99,7 +99,7 @@ test('Sectors and Rounds have This year \/ All time, and Deals announced is all 
   });
   const [sectors, rounds, announced] = charts;
   assert.match(sectors.sw.innerHTML, /This year/);
-  assert.match(sectors.sw.innerHTML, /All time/);
+  assert.match(sectors.sw.innerHTML, /Since 2021/);
   assert.doesNotMatch(sectors.sw.innerHTML, /12 months/);
   assert.match(rounds.sw.innerHTML, /This year/);
   assert.equal(announced.sw.innerHTML, '');
