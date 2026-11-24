@@ -18,7 +18,11 @@ V = {k: _v(f) for k, f in (('company', 'js/company.js'), ('app', 'js/app.js'), (
 COPY = json.load(open(os.path.join(HERE, 'copy.json')))
 S = COPY['site']
 NOINDEX = os.environ.get('REGRET_NOINDEX') == '1'
-CFG = {'url': os.environ.get('SUPABASE_URL', ''), 'key': os.environ.get('SUPABASE_ANON_KEY', ''), 'copy': {**COPY, 'site': {k: v for k, v in S.items() if k not in ('legal', 'pages')}}}
+# Map pictures keep their names, and browsers hold a static file for four hours on this domain, so the pages ask for
+# them with ?v=<this>: it changes whenever a map file (or the recipe for the smooth land, LAND_RECIPE) changes.
+LAND_RECIPE = 'smooth-2-lines'
+MAPV = hashlib.sha1(b''.join(open(os.path.join(HERE, 'assets', 'map', f), 'rb').read() for f in ('world.svg', 'us.svg', 'eu.svg', 'places.json', 'lines.json')) + LAND_RECIPE.encode()).hexdigest()[:10]
+CFG = {'url': os.environ.get('SUPABASE_URL', ''), 'key': os.environ.get('SUPABASE_ANON_KEY', ''), 'mapv': MAPV, 'copy': {**COPY, 'site': {k: v for k, v in S.items() if k not in ('legal', 'pages')}}}
 GLOGO = '''<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>'''
 
 def billing():  # Monthly|Yearly toggle for both pricing popups; their plan cards are drawn by js/app.js (drawPlans) from copy.json plans
@@ -405,12 +409,16 @@ def main():
     # the dots did not show at that size, and square blocks looked ugly). Made here from the dotted files: each dot
     # becomes a square that fills its grid cell (step 8 for the world and the US, 6 for Europe), then a blur and a
     # hard edge round the corners off.
+    MAP_LINES = json.load(open(os.path.join(HERE, 'assets', 'map', 'lines.json')))
     for level, step in (('world', 8), ('us', 8), ('eu', 6)):
         svg = open(os.path.join(HERE, 'assets', 'map', level + '.svg')).read()
         solid = svg.replace('stroke-width="3"', f'stroke-width="{step + 0.6}"').replace('stroke-linecap="round"', 'stroke-linecap="square"').replace('stroke="#C9D1CE"', 'stroke="#C4CDC9"')
         smooth = (f'<filter id="s" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="{step * 0.62:.2f}"/>'
                   '<feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -12"/></filter>')
         solid = solid.replace('<path ', smooth + '<path filter="url(#s)" ', 1)
+        # thin white border lines over the land: countries on the Europe view, states on the US view (assets/map/lines.json, tools/map/gen_assets.cjs)
+        if MAP_LINES.get(level):
+            solid = solid.replace('</svg>', f'<path d="{MAP_LINES[level]}" fill="none" stroke="#fff" stroke-width="{1.5 if level == "us" else 1.3 if level == "eu" else 1.1}" stroke-linejoin="round" stroke-linecap="round"/></svg>')
         if 'stroke-linecap="square"' not in solid or 'filter="url(#s)"' not in solid: raise SystemExit('launch build: ' + level + '.svg is not the dotted map this step expects')
         open(os.path.join(OUT, 'assets', 'map', level + '-land.svg'), 'w').write(solid)
     shutil.copytree(os.path.join(HERE, 'assets', 'fonts'), os.path.join(OUT, 'assets', 'fonts'))  # Geist files the firm share card is drawn with (edge/card/share.mjs)

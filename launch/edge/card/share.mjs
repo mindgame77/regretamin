@@ -4,7 +4,7 @@ import { satori, initSatori, initYoga, Resvg, initResvg } from './lib.mjs';
 import { cardTree, W, H } from './card.mjs';
 import { sectorColor } from './sectors.mjs';
 
-export const FALLBACK = '/assets/share/map.png';  // the site's general share picture, when a card cannot be drawn
+export const FALLBACK = '/assets/share/home.png';  // the site's general share picture, when a card cannot be drawn
 const FONTS = [['Geist', 400, '/assets/fonts/Geist-Regular.ttf'], ['Geist', 600, '/assets/fonts/Geist-SemiBold.ttf'], ['Geist Mono', 400, '/assets/fonts/GeistMono-Regular.ttf']];
 
 export function slugOf(param) {

@@ -2671,6 +2671,8 @@
       drawWhere(root, d);
     }).catch(function () { /* no card is fine */ });
   }
+  // Map files keep their names; this changes when they do, so no browser shows an old one.
+  const MAPV = (window.REGRET && window.REGRET.mapv) ? '?v=' + window.REGRET.mapv : '';
   function drawWhere(root, d) {
     const grid = root.querySelector('.bento');
     if (!grid || grid.querySelector('#where')) return;
@@ -2696,7 +2698,7 @@
       card.className = 'mod';
       card.id = 'where';
       card.innerHTML = '<div class="mh"><h3>Where they invest</h3></div>'
-        + '<div class="wbox"><span class="wmap" style="aspect-ratio:' + g.w + '/' + g.h + '"><img src="' + ROOT + 'assets/map/' + level + '-land.svg" alt="" loading="lazy">'
+        + '<div class="wbox"><span class="wmap" style="aspect-ratio:' + g.w + '/' + g.h + '"><img src="' + ROOT + 'assets/map/' + level + '-land.svg' + MAPV + '" alt="" loading="lazy">'
         + spots.map(x => '<i title="' + esc(x.s.n) + ' · ' + x.n.toLocaleString('en-US') + (x.n === 1 ? ' startup' : ' startups') + '" style="' + pos(x) + ';width:' + rad(x.n) * 2 + 'px;height:' + rad(x.n) * 2 + 'px"></i>').join('')
         + cand.map(label).join('') + '</span></div>'
         + '<p class="wnote">Where ' + placed.toLocaleString('en-US') + ' of their ' + (Number(d.startups) || placed).toLocaleString('en-US') + ' startups are based.'
@@ -2742,7 +2744,7 @@
       }
     };
     if (GEO) return paint();
-    fetch(ROOT + 'assets/map/places.json').then(r => r.json()).then(g => { GEO = g; paint(); mapCard(root); }).catch(function () {});
+    fetch(ROOT + 'assets/map/places.json' + MAPV).then(r => r.json()).then(g => { GEO = g; paint(); mapCard(root); }).catch(function () {});
   }
   function evenCards(root) {
     const grid = root.querySelector && root.querySelector('.bento');
@@ -2776,14 +2778,14 @@
       const href = ROOT + (level === 'world' ? '' : '?zoom=' + level);
       card.innerHTML = '<div class="mh"><h3>On the map</h3></div>'
         + '<a class="fmap" href="' + href + '" aria-label="Open the map' + (label ? ' at ' + esc(label) : '') + '">'
-        + '<span class="fmapin" style="aspect-ratio:' + (g ? g.w + '/' + g.h : '1060/620') + '"><img src="' + ROOT + 'assets/map/' + level + '-land.svg" alt="" loading="lazy">'
+        + '<span class="fmapin" style="aspect-ratio:' + (g ? g.w + '/' + g.h : '1060/620') + '"><img src="' + ROOT + 'assets/map/' + level + '-land.svg' + MAPV + '" alt="" loading="lazy">'
         + (spot ? '<i style="left:' + (spot.x / g.w * 100).toFixed(2) + '%;top:' + (spot.y / g.h * 100).toFixed(2) + '%"></i><b style="left:' + (spot.x / g.w * 100).toFixed(2) + '%;top:' + (spot.y / g.h * 100).toFixed(2) + '%" class="' + (spot.x / g.w > 0.6 ? 'l' : '') + '">' + esc(label) + '</b>' : '')
         + '</span></a><a class="ash" href="' + href + '">' + (label ? 'Open the map: ' + esc(where) : 'Open the map') + '</a>';
     };
     if (GEO) return draw();
     draw();
     if (typeof fetch !== 'function') return;
-    fetch(ROOT + 'assets/map/places.json').then(r => r.json()).then(g => { GEO = g; draw(); }).catch(function () {});
+    fetch(ROOT + 'assets/map/places.json' + MAPV).then(r => r.json()).then(g => { GEO = g; draw(); }).catch(function () {});
   }
   if (window.addEventListener) window.addEventListener('resize', () => {
     const main = document.querySelector && document.querySelector('main.prof');

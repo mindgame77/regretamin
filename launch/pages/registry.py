@@ -55,7 +55,7 @@ def nav_links(site, root, group, active=''):
 def footer_links(site, root):
     return nav_links(site, root, 'footer')
 
-SHARE_IMAGE = 'assets/share/map.png'
+SHARE_IMAGE = 'assets/share/home.png'
 
 
 def page_head(spec, site, base):
