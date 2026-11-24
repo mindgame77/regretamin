@@ -17,9 +17,13 @@ const inRussia = (ll) => d3.geoContains(russia, ll) && !crimea(ll);
 // The frame reaches east to the Caspian so Georgia, Armenia and Azerbaijan are on the map; the corner of Kazakhstan that would float above them is left out.
 const kazakhstan = topo.feature(atlas, atlas.objects.countries).features.find((f) => f.id === '398');
 
+// The US view is drawn from the detailed US outline (us-atlas, 1:10m), the same data the state lines come from, so coast
+// and lines agree; the 110m world outline was too rough for it (founder, 23 Nov: "not accurate, looks weird").
+const usDetail = (() => { try { return JSON.parse(fs.readFileSync(process.env.US_ATLAS || require.resolve('us-atlas/states-10m.json'))); } catch (e) { return null; } })();
+const usNation = usDetail ? topo.feature(usDetail, usDetail.objects.nation) : null;
 const VIEWS = {
   world: { w: 1060, h: 620, step: 8, proj: d3.geoNaturalEarth1().fitExtent([[20, 70], [1040, 580]], { type: 'MultiPoint', coordinates: [[-170, -52], [180, 72], [-170, 72], [180, -52]] }), inside: (ll) => d3.geoContains(land, ll) },
-  us: { w: 900, h: 540, step: 8, proj: d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], usa), inside: (ll) => d3.geoContains(usa, ll) },
+  us: { w: 900, h: 540, step: 8, proj: d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], usa), inside: (ll) => d3.geoContains(usNation || usa, ll) },
   // Europe is framed from Iceland (top left) to the Caspian (right), at the same scale as before the frame was widened (23 Nov).
   eu: { w: 876, h: 600, step: 6, proj: d3.geoMercator().fitExtent([[0, 0], [876, 600]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [50.5, 34.5], [-25, 67], [50.5, 67]] }), inside: (ll) => d3.geoContains(land, ll) && !inRussia(ll) && !d3.geoContains(kazakhstan, ll) },
 };
@@ -46,7 +50,7 @@ const PLACES = {
 };
 // Thin white lines over the smooth land: country borders on the Europe view, state borders on the US view (founder, 23 Nov).
 // No border is drawn against Russia, so nothing cuts Crimea off from Ukraine. Needs us-atlas for the states (US_ATLAS=path).
-const usStates = (() => { try { return JSON.parse(fs.readFileSync(process.env.US_ATLAS || require.resolve('us-atlas/states-10m.json'))); } catch (e) { return null; } })();
+const usStates = usDetail;
 const lines = {};
 {
   const eu = VIEWS.eu, proj = d3.geoMercator().fitExtent([[0, 0], [eu.w, eu.h]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [50.5, 34.5], [-25, 67], [50.5, 67]] }).clipExtent([[0, 0], [eu.w, eu.h]]);
@@ -58,6 +62,10 @@ const lines = {};
   if (usStates) lines.us = d3.geoPath(VIEWS.us.proj).digits(1)(topo.mesh(usStates, usStates.objects.states, (a, b) => a !== b)) || '';
 }
 fs.writeFileSync(path.join(OUT, 'lines.json'), JSON.stringify(lines) + '\n');
+// Exact land shapes, where we have them: the build draws these instead of the smoothed dots.
+const landShapes = {};
+if (usNation) landShapes.us = d3.geoPath(VIEWS.us.proj).digits(1)(usNation) || '';
+fs.writeFileSync(path.join(OUT, 'land.json'), JSON.stringify(landShapes) + '\n');
 const places = {};
 for (const [k, v] of Object.entries(VIEWS)) {
   let d = '';
