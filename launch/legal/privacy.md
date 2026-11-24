@@ -1,7 +1,7 @@
 # Privacy Policy
 
 What we collect, why, and what you can do about it.
-Effective October 25, 2026 · See also [Terms of Service](../terms/)
+Effective November 24, 2026 · See also [Terms of Service](../terms/)
 
 ## 1. Who we are
 Regretamin (regretamin.com) shows founders information about venture capital, private equity and hedge fund firms from public sources. It is operated by **Know Your Group INC.**, a Delaware corporation ("we", "us"), which is responsible for the personal data described here. Questions or requests: **malytskyyo@gmail.com**.
@@ -21,7 +21,7 @@ This policy covers two groups of people: **users** of the site (sections 2–7) 
 ## 3. Free searches and your device
 Without an account you get 2 free credits on your device. To count them, your browser stores a random ID in its local storage (`regretamin.anon`), and our database keeps the count against that ID. It does not contain your name or email. A new account gets its own 4 credits. Device credits are not transferred. Signing in also stores a session token in your browser, and starting a purchase stores a short-lived note of the plan you picked. Clearing your browser storage removes all of these.
 
-We don't use advertising cookies, ad trackers or analytics tools.
+We don't use advertising cookies or ad trackers. We use **Google Analytics** to count visits and see which pages are useful. Its cookies are set only if you press Accept on the cookie bar. If you decline or don't choose, Google receives only cookieless signals (such as a page view or a click on a button) with nothing stored on your device. To change your choice, clear this site's data in your browser and the bar will ask again.
 
 ## 4. How we use user data
 - To run the service: sign-in, credits, unlocking firms, saved firms and purchases.
@@ -35,7 +35,7 @@ We don't sell your personal data, don't share it for advertising, and don't show
 ## 5. Services we use
 - **Supabase:** our database and sign-in (accounts, credits, saved firms). Sign-in link emails are sent through Supabase.
 - **Stripe:** payments, subscriptions and promo codes.
-- **Google:** only if you choose Google sign-in. Our pages also load fonts from Google Fonts, which receives your IP address.
+- **Google:** Google Analytics (visit counts, see section 3), Google sign-in if you choose it, and Google Fonts, which receives your IP address when our pages load fonts.
 - **Resend:** sends the email telling you a firm you requested is ready.
 - **GitHub Pages:** hosts the website. Page code also loads from the jsDelivr content network.
 
