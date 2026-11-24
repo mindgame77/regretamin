@@ -865,9 +865,7 @@
     }
    ],
    "video": {
-    "src": "/assets/video/startup-team.mp4",
-    "poster": "/assets/video/startup-team.jpg",
-    "type": "video/mp4"
+    "src": "https://youtube.com/shorts/pZrvd7fzCqg"
    }
   },
   "my_firms": {
