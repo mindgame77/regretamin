@@ -266,7 +266,7 @@ test('investments column shows deals after industries and sorts like latest deal
     },
   });
   await flush();
-  assert.equal(calls[1].p_sort, 'deals');
+  assert.equal(calls[1].p_sort, 'known');
   assert.equal(calls[1].p_asc, false);
   els['firms-list'].listeners.click[0]({
     preventDefault() {},
@@ -278,7 +278,7 @@ test('investments column shows deals after industries and sorts like latest deal
     },
   });
   await flush();
-  assert.equal(calls[2].p_sort, 'deals');
+  assert.equal(calls[2].p_sort, 'known');
   assert.equal(calls[2].p_asc, true);
   const a16z = html.slice(html.indexOf('Andreessen Horowitz'));
   const finds = a16z.indexOf('class="finds"');

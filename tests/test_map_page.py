@@ -105,6 +105,10 @@ def test_investors_list_deals_column_shows_known_and_all():
     assert "kn + ' <span class=\"finv-all\" title=" in firms and "(' + all + ')</span>'" in firms and "if (known >= allN) return all;" in firms
     assert ".frow .finv .finv-all{font-weight:400" in css
     assert "headerCell('deals', pageCopy.col_investments || 'Deals')" in firms
+    # it sorts by the first number: a sort word of its own in the database, the old one untouched
+    mig = (ROOT / "supabase/migrations/20261124175712_investors_list_sort_by_known_deals.sql").read_text()
+    assert "p_sort: sort === 'deals' ? 'known' : sort," in firms and "(known(a) - known(b)) || (count(a) - count(b))" in firms
+    assert "'deals', 'known', 'activity')" in mig and "v_sort = 'known' and not v_asc then coalesce(m.deals, 0) end desc" in mig
 
 
 def test_hot_view_sectors_first_switch_and_lines():

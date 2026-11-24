@@ -503,7 +503,9 @@
             };
             const blank = cmpBlankLast(count(a), count(b));
             if (blank) return blank;
-            const d = count(a) - count(b);
+            // The column sorts by its first number, the deals we know in detail; all investments found break ties.
+            const known = function (row) { const n = Number(row && row.deals); return Number.isFinite(n) && n > 0 ? n : 0; };
+            const d = (known(a) - known(b)) || (count(a) - count(b));
             return d ? d * dir : String(a.name || '').localeCompare(String(b.name || ''));
           }
           if (sort === 'activity') {
@@ -855,7 +857,7 @@
         const body = {
           p_limit: PAGE,
           p_offset: offset,
-          p_sort: sort,
+          p_sort: sort === 'deals' ? 'known' : sort,  // 'known' = by deals with a date and a round, then by all found
           p_asc: asc,
           p_search: searchTerms(),
           p_region: mapRegions ? [] : active.region,
