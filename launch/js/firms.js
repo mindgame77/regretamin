@@ -1408,7 +1408,7 @@
             many('sectors').forEach(function (v) { names[v.toLowerCase()] = v; });
             const who = from.get('who');
             deal = { from: df, to: dt, names: names, who: ['top', 'focused', 'new'].indexOf(who) !== -1 ? who : null,
-              label: days > 0 && days < 1000 ? 'Last ' + days + ' days' : mon(df) + ' – ' + mon(dt) };
+              label: days === 365 ? 'Last 12 months' : days > 0 && days < 1000 ? 'Last ' + days + ' days' : mon(df) + ' – ' + mon(dt) };
           }
         }
       } catch (e) { /* no address to read: start with no filters */ }
