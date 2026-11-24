@@ -14,12 +14,14 @@ def test_terms_and_privacy_render_the_approved_pages():
     for page in (terms, privacy):
         assert page.startswith('<main class="hp lg"><span class="ey">Legal</span><h1>')
         assert '<p class="lead">' in page and '<p class="eff">' in page and '<div class="toc">' in page
-        assert "October 25, 2026" in page
+        assert "[DATE]" not in page
         assert "[DATE]" not in page and "{{" not in page
         assert "Know Your Group INC." in page
         assert 'href="mailto:malytskyyo@gmail.com"' in page
         assert page.count("<h2>") >= 10
         assert page.count('<a href="#') == page.count("<h2>")
+    assert "October 25, 2026" in terms
+    assert "November 24, 2026" in privacy and "Google Analytics" in privacy  # cookie bar, batch 8
     assert "Terms of Service" in terms and 'href="../privacy/"' in terms
     assert "Privacy Policy" in privacy and 'href="../terms/"' in privacy
     assert "not a consumer reporting agency" in terms
