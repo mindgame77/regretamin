@@ -1251,6 +1251,13 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-col.vm-hotview .vm-legend{top:auto;bottom:16px;left:auto;right:24px;width:150px;font-size:12px;line-height:1.7}
 .vm-hotview .vm-keys i{display:inline-block;margin-left:0}
 .vm-hotview .vm-keys{display:flex;flex-direction:column}
+/* What the picked firms choice means (Top firms, Focused funds, New investors, Fresh funds): bottom-left corner of the map,
+   the one corner that is free on the world, US and Europe maps. Not shown for "All firms". */
+.vm-whonote{position:absolute;left:24px;bottom:18px;width:190px;margin:0;line-height:1.35;z-index:3;pointer-events:none}
+.vm-col .vm-whonote{left:448px}
+.vm-whonote[hidden]{display:none}
+.vm-whonote b{display:block;font-size:13px;font-weight:600;color:var(--mi);margin-bottom:2px}
+.vm-whonote span{display:block;font-size:12px;color:var(--mm);text-wrap:balance}
 .vm-period{display:none;align-items:center;gap:6px;font-size:14px;color:var(--mm);margin:0 auto;white-space:nowrap}
 .vm-period button{border:1px solid #8A9893;color:var(--mi)}
 .vm-hotview .vm-period{display:flex}
@@ -1692,6 +1699,9 @@ main.prof #around .arstage{transform:scale(.78)}
   .vm-col .vm-zoom{order:3;position:static;align-self:stretch;box-shadow:none;display:flex}
   .vm-col .vm-zoom button{flex:1;padding:0 8px}
   .vm-col .vm-map{order:4;position:relative;left:auto;inset:auto;width:100%;height:66vw;min-height:230px;background:#fff;border:1px solid var(--ml);border-radius:16px;overflow:hidden}
+  .vm .vm-whonote{order:5;position:static;width:auto;padding:0 4px}
+  .vm .vm-whonote b,.vm .vm-whonote span{display:inline}
+  .vm .vm-whonote b{margin-right:6px}
   .vm-col .vm-legend{order:5;position:static;width:auto;margin:0;padding:0 4px}
   .vm .vm-dock{order:6;position:static;width:auto;left:auto;transform:none;box-shadow:none;flex-wrap:wrap}
   .vm .vm-dock .vm-time{flex:1 1 100%;min-width:0}

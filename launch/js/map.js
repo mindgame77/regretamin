@@ -38,7 +38,17 @@
   // "Which firms" in the Hot right now view.
   const KEEP = 'regretamin.map.view';
   let BACK = null;  // the place (and firms list) that was open when the map was left; reopened once after the first load
-  const WHO = [['all', 'All firms'], ['top', 'Top firms'], ['focused', 'Focused funds'], ['new', 'New entrants']];
+  const WHO = [['all', 'All firms'], ['top', 'Top firms'], ['focused', 'Focused funds'], ['first', 'New investors'], ['fresh', 'Fresh funds']];
+  // 'new' was this choice's old name ("New entrants": first deal in the picked sectors). Old links and saved views open as "New investors".
+  const whoKey = (k) => (k === 'new' ? 'first' : k);
+  // What each choice means, shown in the bottom-left corner of the map while it is picked (founder, 23 Nov).
+  // "Top firms" in the US is an outside ranking, everywhere else our own (rounds led), so its line follows the zoom.
+  const whoNote = () => ({
+    top: S.level === 'us' ? 'The 100 top-ranked US firms of 2026' : 'Led the most rounds in the last 3 years',
+    focused: 'Most of their deals are in one sector',
+    first: 'Made their first deal in this period',
+    fresh: 'Raised a new fund in the last 12 months',
+  })[who()] || '';
   const who = () => (S.view === 'hot' ? S.who : 'all');
   // A link can carry the view in its address (view, days, zoom, sectors, stages, firms). The page never rewrites its own address.
   (() => {
@@ -47,7 +57,7 @@
     if ([90, 180, 365].includes(num('days'))) S.days = num('days');
     if (['us', 'eu'].includes(qs.get('zoom'))) S.level = qs.get('zoom');
     S.sectors = list('sectors', SECTORS); S.stages = list('stages', STAGES);
-    if (WHO.some(([k]) => k === qs.get('firms'))) S.who = qs.get('firms');
+    if (WHO.some(([k]) => k === whoKey(qs.get('firms')))) S.who = whoKey(qs.get('firms'));
     const a = num('from'), b = num('to'); if (a !== null && b !== null && a <= b && b < NQ) { S.q0 = a; S.q1 = b; }
     // No view in the address: come back to the map as it was left in this tab (after opening a firm and closing it, say).
     if (['view', 'days', 'zoom', 'sectors', 'stages', 'firms', 'from', 'to'].some((k) => qs.has(k))) return;
@@ -59,7 +69,7 @@
       if (['world', 'us', 'eu'].includes(m.level)) S.level = m.level;
       if (Array.isArray(m.sectors)) S.sectors = m.sectors.filter((v) => SECTORS.includes(v));
       if (Array.isArray(m.stages)) S.stages = m.stages.filter((v) => STAGES.includes(v));
-      if (WHO.some(([k]) => k === m.who)) S.who = m.who;
+      if (WHO.some(([k]) => k === whoKey(m.who))) S.who = whoKey(m.who);
       if (m.unit === 'pct' || m.unit === 'num') S.unit = m.unit;
       if (Number.isInteger(m.q0) && Number.isInteger(m.q1) && m.q0 >= 0 && m.q0 <= m.q1 && m.q1 < NQ) { S.q0 = m.q0; S.q1 = m.q1; }
       if (m.open && m.open.p != null) BACK = m.open;
@@ -141,6 +151,7 @@
   <div class="vm-time"><div class="vm-track"><div class="vm-fill" id="vm-fill"></div>${Array.from({ length: NQ + 1 }, (_, i) => `<i class="${i % 4 ? '' : 'vm-y'}" style="left:${i / NQ * 100}%"></i>`).join('')}
     <input type="range" id="vm-q0" min="0" max="${NQ}" step="1" aria-label="From quarter"><input type="range" id="vm-q1" min="0" max="${NQ}" step="1" aria-label="To quarter"></div>
     <div class="vm-years">${Array.from({ length: Math.ceil(NQ / 4) }, (_, i) => `<span style="left:${i * 4 / NQ * 100}%;width:${Math.min(4, NQ - i * 4) / NQ * 100}%">${2021 + i}</span>`).join('')}</div></div></div>
+<p class="vm-whonote" id="vm-whonote" hidden></p>
 <p class="vm-legend" id="vm-legend"></p>
 <div class="vm-msg" id="vm-msg" hidden></div>`;
   const stage = $('#vm-stage'), mapBox = $('#vm-map');
@@ -443,6 +454,9 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     $('#vm-h1').textContent = sec ? `Where ${sec} ${S.sectors.length === 1 && !PLURAL.includes(S.sectors[0]) ? 'is' : 'are'} heating up${where}.` : `Where it is heating up${where}.`;
     S.countId = (S.countId || 0) + 1; S.shown = null;
     $('#vm-based').textContent = '';  // no text under the filters in this view (founder); a question mark may come later
+    const note = whoNote(), nb = $('#vm-whonote');
+    nb.hidden = !note;
+    nb.innerHTML = note ? `<b>${esc(WHO.find(([k]) => k === who())[1])}</b><span>${esc(note)}</span>` : '';
     $('#vm-legend').innerHTML = '<span class="vm-keys"><span><i class="vm-up"></i>up 10% or more</span><span><i class="vm-flat"></i>steady</span><span><i class="vm-down"></i>down 10% or more</span><span><i class="vm-few"></i>too few to call</span></span>';
   }
   function drawHead() {
@@ -462,6 +476,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
       if (k < 1) requestAnimationFrame(step);
     };
     step(t0);
+    $('#vm-whonote').hidden = true;
     $('#vm-legend').innerHTML = '';  // no note over the map in this view: it only repeated what the map shows (founder, 23 Nov)
   }
 
