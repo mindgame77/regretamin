@@ -459,12 +459,8 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   const day = (s) => { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? '' : MONTHS[d.getMonth()] + ' ' + d.getDate() + (d.getFullYear() === now.getFullYear() ? '' : ', ' + d.getFullYear()); };
   // The chosen place's own numbers, shown above its firms in the column layout.
   function placeFacts(p, ofSector) {
-    if (S.view === 'hot') {
-      // in the firms panel, with one sector opened, the line is about that sector in this place
-      const row = ofSector && S.list && S.list.sector && S.list.det ? (S.list.det.sectors || []).find((r) => r[0] === S.list.sector) : null;
-      const o = row ? Object.assign({ d: row[1] }, toneOf(row[1], row[2])) : p;
-      return `<div class="vm-facts"><span class="vm-mu">${num(o.d)} deal${o.d === 1 ? '' : 's'} in the last ${perText()} · ${toneHtml(o)}</span></div>`;
-    }
+    // Hot right now has no line here: hovering the circle already says it (founder, 23 Nov: nothing that repeats what the design shows).
+    if (S.view === 'hot') return '';
     const tot = p.tot || 1, top = p.top || [], one = S.sectors.length === 1, sector = S.sectors.length > 0;
     if (one || !top.length) return `<div class="vm-facts"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'}</span></div>`;
     const rest = Math.max(0, 100 - top.reduce((a, [, v]) => a + Math.round(v / tot * 100), 0));
@@ -509,7 +505,7 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
       const L = S.list;
       side.className = 'vm-card vm-side vm-list';
       side.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
-<div class="vm-facts"><span class="vm-mu">${esc(L.place.n)} · ${num(L.place.d)} deal${L.place.d === 1 ? '' : 's'}</span></div><div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
+<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
 <a class="vm-more" href="${listUrl()}">Open the full investors list</a>`;
       $('#vm-close').onclick = closeList;
       return;
