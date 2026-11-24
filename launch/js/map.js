@@ -331,7 +331,7 @@
   function draw(from) {  // from: where the new circles fly out of when zooming in ({ parentPlace: {x, y} } in page pixels)
     if (!S.data || !S.geo) return;
     const g = S.geo[S.level], rows = placesNow(), lit = litPlace(), sector = S.sectors.length > 0;
-    const bg = $('#vm-bg'), pls = $('#vm-pls'), src = `${ROOT}assets/map/${S.level}-solid.svg`;  // smooth grey land, made by build.py from the dotted file (founder, 23 Nov)
+    const bg = $('#vm-bg'), pls = $('#vm-pls'), src = `${ROOT}assets/map/${S.level}-land.svg`;  // smooth grey land, made by build.py from the dotted file (founder, 23 Nov)
     if (bg.dataset.l !== S.level) {
       bg.dataset.l = S.level; bg.style.opacity = 0; bg.onload = () => { bg.style.opacity = 1; };
       bg.src = src; bg.width = g.w; bg.height = g.h;

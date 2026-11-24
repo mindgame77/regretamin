@@ -2696,7 +2696,7 @@
       card.className = 'mod';
       card.id = 'where';
       card.innerHTML = '<div class="mh"><h3>Where they invest</h3></div>'
-        + '<div class="wbox"><span class="wmap" style="aspect-ratio:' + g.w + '/' + g.h + '"><img src="' + ROOT + 'assets/map/' + level + '-solid.svg" alt="" loading="lazy">'
+        + '<div class="wbox"><span class="wmap" style="aspect-ratio:' + g.w + '/' + g.h + '"><img src="' + ROOT + 'assets/map/' + level + '-land.svg" alt="" loading="lazy">'
         + spots.map(x => '<i title="' + esc(x.s.n) + ' · ' + x.n.toLocaleString('en-US') + (x.n === 1 ? ' startup' : ' startups') + '" style="' + pos(x) + ';width:' + rad(x.n) * 2 + 'px;height:' + rad(x.n) * 2 + 'px"></i>').join('')
         + cand.map(label).join('') + '</span></div>'
         + '<p class="wnote">Where ' + placed.toLocaleString('en-US') + ' of their ' + (Number(d.startups) || placed).toLocaleString('en-US') + ' startups are based.'
@@ -2776,7 +2776,7 @@
       const href = ROOT + (level === 'world' ? '' : '?zoom=' + level);
       card.innerHTML = '<div class="mh"><h3>On the map</h3></div>'
         + '<a class="fmap" href="' + href + '" aria-label="Open the map' + (label ? ' at ' + esc(label) : '') + '">'
-        + '<span class="fmapin" style="aspect-ratio:' + (g ? g.w + '/' + g.h : '1060/620') + '"><img src="' + ROOT + 'assets/map/' + level + '-solid.svg" alt="" loading="lazy">'
+        + '<span class="fmapin" style="aspect-ratio:' + (g ? g.w + '/' + g.h : '1060/620') + '"><img src="' + ROOT + 'assets/map/' + level + '-land.svg" alt="" loading="lazy">'
         + (spot ? '<i style="left:' + (spot.x / g.w * 100).toFixed(2) + '%;top:' + (spot.y / g.h * 100).toFixed(2) + '%"></i><b style="left:' + (spot.x / g.w * 100).toFixed(2) + '%;top:' + (spot.y / g.h * 100).toFixed(2) + '%" class="' + (spot.x / g.w > 0.6 ? 'l' : '') + '">' + esc(label) + '</b>' : '')
         + '</span></a><a class="ash" href="' + href + '">' + (label ? 'Open the map: ' + esc(where) : 'Open the map') + '</a>';
     };

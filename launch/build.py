@@ -412,7 +412,7 @@ def main():
                   '<feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -12"/></filter>')
         solid = solid.replace('<path ', smooth + '<path filter="url(#s)" ', 1)
         if 'stroke-linecap="square"' not in solid or 'filter="url(#s)"' not in solid: raise SystemExit('launch build: ' + level + '.svg is not the dotted map this step expects')
-        open(os.path.join(OUT, 'assets', 'map', level + '-solid.svg'), 'w').write(solid)
+        open(os.path.join(OUT, 'assets', 'map', level + '-land.svg'), 'w').write(solid)
     shutil.copytree(os.path.join(HERE, 'assets', 'fonts'), os.path.join(OUT, 'assets', 'fonts'))  # Geist files the firm share card is drawn with (edge/card/share.mjs)
     shutil.copytree(os.path.join(HERE, 'assets', 'share'), os.path.join(OUT, 'assets', 'share'))  # the picture for shared links (og:image)
     # Email templates load this from https://regretamin.com/assets/logo/lockup-light@2x.png
@@ -476,6 +476,8 @@ def main():
         '/firms.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/map.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/firms.json\n  Cache-Control: public, max-age=0, must-revalidate\n'
+        # Map pictures keep one path too; a browser must not hold an old one for hours (the smooth land replaced a blocky file of the same name).
+        '/assets/map/*\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/style.css\n  Cache-Control: public, max-age=0, must-revalidate\n')
     print('built', len(built), 'firm pages for', len(firms), 'live firms', '->', OUT)
 
