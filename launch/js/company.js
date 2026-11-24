@@ -2696,7 +2696,7 @@
       card.className = 'mod';
       card.id = 'where';
       card.innerHTML = '<div class="mh"><h3>Where they invest</h3></div>'
-        + '<div class="wbox"><span class="wmap" style="aspect-ratio:' + g.w + '/' + g.h + '"><img src="' + ROOT + 'assets/map/' + level + '.svg" alt="" loading="lazy">'
+        + '<div class="wbox"><span class="wmap" style="aspect-ratio:' + g.w + '/' + g.h + '"><img src="' + ROOT + 'assets/map/' + level + '-solid.svg" alt="" loading="lazy">'
         + spots.map(x => '<i title="' + esc(x.s.n) + ' · ' + x.n.toLocaleString('en-US') + (x.n === 1 ? ' startup' : ' startups') + '" style="' + pos(x) + ';width:' + rad(x.n) * 2 + 'px;height:' + rad(x.n) * 2 + 'px"></i>').join('')
         + cand.map(label).join('') + '</span></div>'
         + '<p class="wnote">Where ' + placed.toLocaleString('en-US') + ' of their ' + (Number(d.startups) || placed).toLocaleString('en-US') + ' startups are based.'

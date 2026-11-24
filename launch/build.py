@@ -401,6 +401,14 @@ def main():
     shutil.copytree(os.path.join(HERE, 'fav'), os.path.join(OUT, 'fav'))
     shutil.copytree(os.path.join(HERE, 'assets', 'video'), os.path.join(OUT, 'assets', 'video'))
     shutil.copytree(os.path.join(HERE, 'assets', 'map'), os.path.join(OUT, 'assets', 'map'))  # backgrounds and coordinates for /map/ (tools/map/gen_assets.cjs)
+    # The "Where they invest" card on a firm page shows the same maps as solid grey land, not dots (founder, 23 Nov:
+    # the dotted map did not show on the grey card). Made here from the dotted files: each dot becomes a square that
+    # fills its grid cell (the grid step is 8 for the world and the US, 6 for Europe).
+    for level, step in (('world', 8), ('us', 8), ('eu', 6)):
+        svg = open(os.path.join(HERE, 'assets', 'map', level + '.svg')).read()
+        solid = svg.replace('stroke-width="3"', f'stroke-width="{step + 0.6}"').replace('stroke-linecap="round"', 'stroke-linecap="square"').replace('stroke="#C9D1CE"', 'stroke="#C4CDC9"')
+        if solid == svg or 'stroke-linecap="square"' not in solid: raise SystemExit('launch build: ' + level + '.svg is not the dotted map this step expects')
+        open(os.path.join(OUT, 'assets', 'map', level + '-solid.svg'), 'w').write(solid)
     shutil.copytree(os.path.join(HERE, 'assets', 'fonts'), os.path.join(OUT, 'assets', 'fonts'))  # Geist files the firm share card is drawn with (edge/card/share.mjs)
     shutil.copytree(os.path.join(HERE, 'assets', 'share'), os.path.join(OUT, 'assets', 'share'))  # the picture for shared links (og:image)
     # Email templates load this from https://regretamin.com/assets/logo/lockup-light@2x.png
