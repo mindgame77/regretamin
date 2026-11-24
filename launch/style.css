@@ -1115,7 +1115,14 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-stage{position:absolute;left:0;top:0;transform-origin:0 0}
 .vm-bg{position:absolute;left:0;top:0;transition:opacity .45s}
 .vm-bg{filter:brightness(1.04)}  /* the land a touch lighter on the white page, as in the share picture */
-.vm-wave{background-image:linear-gradient(90deg,transparent,rgba(16,32,28,.16),transparent)}  /* the loading sweep was made for dots; on solid land it is a soft shade, not a dark stripe */
+/* While new numbers load, the smooth land dissolves into its dots and comes back, slowly, like breathing (founder, 23 Nov).
+   .vm-wave is the dots (the dotted map file as a mask); nothing sweeps across any more. */
+.vm-wave{background:#8E9A96;animation:none}
+@keyframes vm-dots{0%,100%{opacity:0}50%{opacity:1}}
+@keyframes vm-land{0%,100%{opacity:1}50%{opacity:0}}
+.vm-busy .vm-wave{animation:vm-dots 3.2s ease-in-out infinite}
+.vm-busy .vm-bg{animation:vm-land 3.2s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.vm-wave{background:#8E9A96}.vm-busy .vm-wave{animation:none;opacity:0}.vm-busy .vm-bg{animation:none}}
 .vm-wave{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:linear-gradient(90deg,transparent,rgba(16,32,28,.7),transparent) no-repeat;background-size:30% 100%;-webkit-mask-size:100% 100%;mask-size:100% 100%;animation:vm-wave 1.15s linear infinite}
 .vm-busy .vm-wave{opacity:1}
 @keyframes vm-wave{from{background-position:-45% 0}to{background-position:145% 0}}

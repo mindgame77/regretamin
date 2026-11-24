@@ -335,7 +335,7 @@
     if (bg.dataset.l !== S.level) {
       bg.dataset.l = S.level; bg.style.opacity = 0; bg.onload = () => { bg.style.opacity = 1; };
       bg.src = src; bg.width = g.w; bg.height = g.h;
-      $('#vm-wave').style.webkitMaskImage = $('#vm-wave').style.maskImage = `url(${src})`;
+      $('#vm-wave').style.webkitMaskImage = $('#vm-wave').style.maskImage = `url(${ROOT}assets/map/${S.level}.svg)`;  // the dots the land dissolves into while loading
       els.forEach((b) => b.remove()); els.clear();
     }
     fit();
