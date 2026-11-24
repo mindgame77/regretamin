@@ -1819,3 +1819,7 @@ main.prof .dmeta span{font-family:'Geist Mono',ui-monospace,monospace!important;
 main.prof .dmeta b,main.prof .dmeta b.arty{font-size:13px!important;font-weight:600!important}
 main.prof .adp{font-weight:400!important}
 main.prof #where .wmap b{font-size:13px}
+/* "Where they invest": names are placed by js/company.js from their real size, so no shift here; the dotted map is
+   darker so it shows on the grey card (founder, 23 Nov: "I don't see the world map at all"). */
+main.prof #where .wmap b{transform:none;padding:0 3px;background:none}
+main.prof #where .wmap img{opacity:1;filter:brightness(.6)}
