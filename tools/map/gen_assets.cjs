@@ -51,10 +51,20 @@ const PLACES = {
 // Thin white lines over the smooth land: country borders on the Europe view, state borders on the US view (founder, 23 Nov).
 // No border is drawn against Russia, so nothing cuts Crimea off from Ukraine. Needs us-atlas for the states (US_ATLAS=path).
 const usStates = usDetail;
+const atlas50 = (() => { try { return JSON.parse(fs.readFileSync(process.env.ATLAS50 || require.resolve('world-atlas/countries-50m.json'))); } catch (e) { return null; } })();
+let euLand = null, euPath = null;
 const lines = {};
 {
   const eu = VIEWS.eu, proj = d3.geoMercator().fitExtent([[0, 0], [eu.w, eu.h]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [50.5, 34.5], [-25, 67], [50.5, 67]] }).clipExtent([[0, 0], [eu.w, eu.h]]);
-  lines.eu = d3.geoPath(proj).digits(1)(topo.mesh(atlas, atlas.objects.countries, (a, b) => a !== b && a.id !== '643' && b.id !== '643' && a.id !== '398' && b.id !== '398')) || '';
+  // Europe is drawn from the 1:50m atlas (land and lines from the same data, so they agree); the world from 1:110m.
+  const A = atlas50 || atlas, out = (g) => g.id === '643' || g.id === '398';
+  lines.eu = d3.geoPath(proj).digits(1)(topo.mesh(A, A.objects.countries, (a, b) => a !== b && !out(a) && !out(b))) || '';
+  // Europe's land: every country but Russia and Kazakhstan, as one shape, plus Crimea (the atlas keeps it as a separate piece of Russia).
+  const ru = topo.feature(A, A.objects.countries).features.find((f) => f.id === '643');
+  const pieces = ru ? (ru.geometry.type === 'MultiPolygon' ? ru.geometry.coordinates : [ru.geometry.coordinates]).filter((poly) => crimea(d3.geoCentroid({ type: 'Polygon', coordinates: poly }))) : [];
+  euLand = { type: 'GeometryCollection', geometries: [topo.merge(A, A.objects.countries.geometries.filter((g) => !out(g))), { type: 'MultiPolygon', coordinates: pieces }] };
+  euPath = d3.geoPath(proj).digits(1);
+  console.log('crimea pieces kept:', pieces.length);
   // World view: every country border, minus the stretch the atlas draws between Crimea and the rest of Ukraine.
   const all = topo.mesh(atlas, atlas.objects.countries, (a, b) => a !== b), kept = [];
   for (const line of all.coordinates) { let run = []; for (const pt of line) { if (crimea(pt)) { if (run.length > 1) kept.push(run); run = []; } else run.push(pt); } if (run.length > 1) kept.push(run); }
@@ -65,6 +75,9 @@ fs.writeFileSync(path.join(OUT, 'lines.json'), JSON.stringify(lines) + '\n');
 // Exact land shapes, where we have them: the build draws these instead of the smoothed dots.
 const landShapes = {};
 if (usNation) landShapes.us = d3.geoPath(VIEWS.us.proj).digits(1)(usNation) || '';
+if (euLand) landShapes.eu = euPath(euLand) || '';
+// The world's land and its lines both come from the 1:110m atlas; the frame cuts off what lies outside the picture.
+landShapes.world = d3.geoPath(d3.geoNaturalEarth1().fitExtent([[20, 70], [1040, 580]], { type: 'MultiPoint', coordinates: [[-170, -52], [180, 72], [-170, 72], [180, -52]] }).clipExtent([[0, 0], [VIEWS.world.w, VIEWS.world.proj([0, -58])[1]]])).digits(1)(land) || '';  // the frame ends above Antarctica
 fs.writeFileSync(path.join(OUT, 'land.json'), JSON.stringify(landShapes) + '\n');
 const places = {};
 for (const [k, v] of Object.entries(VIEWS)) {
