@@ -162,8 +162,8 @@ test('the last page shows the end of the list and does not ask for another', asy
   intersect();
   await flush();
   assert.equal(calls.length, 1);
-  assert.equal(els['firms-more'].hidden, false);
-  assert.equal(els['firms-more'].textContent, 'End of the list');
+  assert.equal(els['firms-more'].hidden, true);  // the "End of the list" line was removed (founder, 24 Nov)
+  assert.equal(els['firms-more'].textContent, '');
   assert.match(els['firms-list'].innerHTML, /Y Combinator/);
 });
 

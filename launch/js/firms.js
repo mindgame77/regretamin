@@ -774,16 +774,12 @@
       let searchTimer = 0;
       const moreEl = document.getElementById('firms-more');
       const loadingText = (moreEl && moreEl.getAttribute('data-loading')) || pageCopy.loading || 'Loading more investors';
-      const endText = (moreEl && moreEl.getAttribute('data-end')) || pageCopy.end || 'End of the list';
       function showStatus() {
         if (!moreEl) return;
         if (loading) {
           moreEl.hidden = false;
           moreEl.textContent = loadingText;
-        } else if (done && total > 0) {
-          moreEl.hidden = false;
-          moreEl.textContent = endText;
-        } else {
+        } else {  // no "End of the list" line when the last row is reached (founder, 24 Nov)
           moreEl.hidden = true;
           moreEl.textContent = '';
         }

@@ -22,7 +22,7 @@ def render(c):
 <p class="msg" id="firms-miss-msg"></p>
 </div>
 <div id="firms-sentinel" class="firms-sentinel" aria-hidden="true"></div>
-<p class="hint" id="firms-more" hidden data-loading="{E(F["loading"])}" data-end="{E(F["end"])}"></p>
+<p class="hint" id="firms-more" hidden data-loading="{E(F["loading"])}"></p>
 </div>
 </div>
 <div class="filters-backdrop" id="filters-backdrop" hidden></div>
