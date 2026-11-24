@@ -35,7 +35,7 @@ const json = (b: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(b), { status, headers: { ...CORS, "content-type": "application/json", ...extra } });
 const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
   .map((b) => b.toString(16).padStart(2, "0")).join("");
-const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"missing\",\"firm_id\":N} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]} or {\"action\":\"lookup\",\"firm\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"startup\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"founder\":{\"name\",\"linkedin_url\"}} or {\"action\":\"add_founder\",\"startup_id\":N,\"founder\":{\"name\",\"linkedin_url\"},\"role\":{\"source_url\"},\"facts\":[]} or {\"action\":\"claim_next_founder_startups\",\"count\":1} or {\"action\":\"finish_founder_startup\",\"startup_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
+const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"missing\",\"firm_id\":N} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]} or {\"action\":\"lookup\",\"firm\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"startup\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"founder\":{\"name\",\"linkedin_url\"}} or {\"action\":\"add_founder\",\"startup_id\":N,\"founder\":{\"name\",\"linkedin_url\"},\"role\":{\"source_url\"},\"facts\":[]} or {\"action\":\"claim_next_founder_startups\",\"count\":1} or {\"action\":\"finish_founder_startup\",\"startup_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}; a v2_deals fact may add \"co_investors\":[\"Firm name\" or firm_id] (other VCs in the round: known firms are added to the round, unknown names are only noted, never added as firms); max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
 const LOOKUP_HINT = "{\"action\":\"lookup\",\"firm\":{\"name\":\"All Aboard Fund\",\"website\":\"allaboard.vc\"}} or {\"action\":\"lookup\",\"startup\":{\"name\":\"Rivercell\",\"website\":\"rivercell.ai\"}} or {\"action\":\"lookup\",\"founder\":{\"name\":\"Ada Lovelace\",\"linkedin_url\":\"https://www.linkedin.com/in/ada\"}}; firm and startup take a name, a website, or both; a founder takes a name, a LinkedIn link, or both";
 const ROUND_HINT = "Round list: {\"action\":\"add_round\",\"round\":{\"startup_name\",\"startup_website\",\"country\",\"round\",\"round_date\":\"YYYY-MM-DD\",\"source_url\"}} or {\"action\":\"claim_next_round\",\"count\":1} or {\"action\":\"finish_round\",\"round_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
 const FOUNDER_HINT = "{\"action\":\"add_founder\",\"startup_id\":10,\"founder\":{\"name\":\"Ada Lovelace\",\"linkedin_url\":\"https://www.linkedin.com/in/ada\",\"founder_id\":7},\"role\":{\"value\":\"CEO\",\"source_url\":\"https://example.com/about\"},\"facts\":[{\"fact\":\"current_country\",\"value\":\"GB\",\"source_url\":\"https://example.com/about\"},{\"fact\":\"past_job\",\"value\":\"Babbage Co\",\"role\":\"Mathematician\",\"company_website\":\"https://babbage.example\",\"source_url\":\"https://news.example/ada\"},{\"fact\":\"founded_before\",\"value\":\"yes: Analytical Kids\",\"exit_outcome\":\"acquired\",\"exit_acquirer\":\"Babbage Co\",\"exit_source_url\":\"https://news.example/ada\"}]}";
@@ -554,10 +554,37 @@ Deno.serve(async (req) => {
     if (body.action !== "submit") return json({ error: "action must be submit, add_firm, claim, done, results, deals, missing, next_firm, firm_done, notes, notes_ack, lookup, list_queue or verdict, or add_founder, claim_next_founder_startups or finish_founder_startup, or fill_startup_location, claim_next_location_startups or finish_location_startup", hint: HINT }, 400);
     if (!Array.isArray(body.items) || body.items.length === 0) return json({ error: "items must be a non-empty array", hint: HINT }, 400);
     if (body.dry_run !== undefined && typeof body.dry_run !== "boolean") return json({ error: "dry_run must be true or false" }, 400);
-    const { data, error } = await db.rpc("v2_research_submit", { p_key_id: auth.key_id, p_items: body.items, p_dry_run: body.dry_run === true });
+    // Optional co_investors on a deal fact: taken out before the save, added to the round after it (never blocks the save).
+    const coInv: Record<number, unknown[]> = {};
+    let items = body.items;
+    if (items.some((it: any) => isObj(it) && it.table === "v2_deals" && isObj(it.fact) && it.fact.co_investors !== undefined)) {
+      items = [];
+      for (let i = 0; i < body.items.length; i++) {
+        const it = body.items[i];
+        if (isObj(it) && it.table === "v2_deals" && isObj(it.fact) && it.fact.co_investors !== undefined) {
+          const c = it.fact.co_investors;
+          if (!Array.isArray(c) || c.length > 20 || !c.every((x: unknown) => (typeof x === "string" && x.trim().length > 0 && x.length <= 200) || (Number.isInteger(x) && (x as number) > 0))) {
+            return json({ error: `item ${i}: co_investors must be a list of up to 20 firm names or firm ids`, hint: HINT }, 400);
+          }
+          const { co_investors: _drop, ...fact } = it.fact;
+          if (c.length) coInv[i] = c;
+          items.push({ ...it, fact });
+        } else items.push(it);
+      }
+    }
+    const { data, error } = await db.rpc("v2_research_submit", { p_key_id: auth.key_id, p_items: items, p_dry_run: body.dry_run === true });
     if (error || !data) return json({ error: "server error" }, 500);
     bot = data.bot_id ?? "";
     if (!data.ok) return json({ error: data.error }, String(data.error).startsWith("Key frozen") ? 403 : 400);
+    if (!data.dry_run && Object.keys(coInv).length && Array.isArray(data.results)) {
+      for (const r of data.results) {
+        if (!r || !(r.index in coInv) || !r.submission_id || r.status !== "Accepted") continue;
+        try {
+          const { data: ci, error: cerr } = await db.rpc("v2_event_add_co_investors", { p_key_id: auth.key_id, p_submission_id: r.submission_id, p_names: coInv[r.index] });
+          r.co_investors = cerr || !ci ? { ok: false, error: "co_investors not added" } : ci;
+        } catch (_e) { r.co_investors = { ok: false, error: "co_investors not added" }; }
+      }
+    }
     const sameAs = Array.isArray(data.results) && data.results.some((r: any) => r && Array.isArray(r.same_as));
     return json(data, data.accepted + data.held > 0 || data.dry_run ? 200 : sameAs ? 409 : 422);
   })();
