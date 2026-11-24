@@ -1823,3 +1823,4 @@ main.prof #where .wmap b{font-size:13px}
    solid grey land (assets/map/<level>-solid.svg, made by build.py), not dots: the dots did not show on the grey card. */
 main.prof #where .wmap b{transform:none;padding:0 3px;background:none}
 main.prof #where .wmap img{opacity:1}
+main.prof #where .wmap b span{color:#46544F}  /* the count under a name can sit on grey land: darker so it reads */
