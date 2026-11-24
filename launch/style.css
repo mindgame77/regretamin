@@ -1834,3 +1834,10 @@ main.prof #where .wmap b{font-size:13px}
 main.prof #where .wmap b{transform:none;padding:0 3px;background:none}
 main.prof #where .wmap img{opacity:1}
 main.prof #where .wmap b span{color:#46544F}  /* the count under a name can sit on grey land: darker so it reads */
+/* Cookie bar (js/ga.js): bottom-left card, shown until the visitor picks Accept or Decline */
+.ckbar{position:fixed;left:20px;bottom:20px;z-index:60;max-width:420px;display:flex;flex-direction:column;gap:12px;background:#fff;color:#10201C;border:1px solid #E4E7E5;border-radius:14px;padding:16px 18px;box-shadow:0 8px 28px rgba(16,32,28,.12);font:400 13px/1.45 Geist,sans-serif}
+.ckbar a{color:#10201C;text-decoration:underline}
+.ckbar .ckb{display:flex;gap:8px;justify-content:flex-end}
+.ckbar button{font:600 13px Geist,sans-serif;border-radius:99px;padding:8px 16px;cursor:pointer;border:1px solid #D5DAD8;background:#fff;color:#10201C}
+.ckbar .ckyes{background:#10201C;border-color:#10201C;color:#fff}
+@media (max-width:520px){.ckbar{left:12px;right:12px;bottom:12px;max-width:none}}
