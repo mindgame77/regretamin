@@ -111,6 +111,26 @@ def test_investors_list_deals_column_shows_known_and_all():
     assert "'deals', 'known', 'activity')" in mig and "v_sort = 'known' and not v_asc then coalesce(m.deals, 0) end desc" in mig
 
 
+def test_latest_updates_follow_the_map_and_carry_the_amount():
+    """Founder, 24 Nov: press United States and the updates are US ones; pick a sector or a stage and they follow;
+    a round's amount is written into the line when we know it."""
+    js = (ROOT / "launch/js/map.js").read_text()
+    css = (ROOT / "launch/style.css").read_text()
+    mig = (ROOT / "supabase/migrations/20261124182941_v2_map_updates_for.sql").read_text()
+    # asked again whenever the zoom or a filter changes, never for the timeline
+    assert "const updKey = () => [S.level === 'world' ? '' : S.level, S.sectors.join('|'), S.stages.join('|')].join('~');" in js
+    assert "if (S.view !== 'hot') loadUpdates();" in js and "sb.rpc('v2_map_updates_for', { p_level: S.level === 'world' ? null : S.level" in js
+    # the opening view still shows its ready-made answer at once, and the old function is the fallback
+    assert "sb.rpc('v2_map_cached', { p_key: 'updates' })" in js and "sb.rpc('v2_map_updates', { p_limit: n })" in js
+    # the line under the title names the pick; nothing on the world view with no filter
+    assert "'United States' : S.level === 'eu' ? 'Europe' : ''" in js and 'class="vm-tag vm-upfor"' in js and ".vm-side .vm-lh .vm-upfor{flex:1 0 100%" in css
+    # the amount, and "a round" instead of "a Other round"
+    assert "u.round !== 'Other' ? u.round + ' ' : ''" in js and "m.article + ' ' + m.text" in js and "(u.approx ? '~' : '') + sym + n" in js
+    # the database: a new read-only function, open to visitors; the old one is not touched
+    assert "create or replace function public.v2_map_updates_for(" in mig and "to anon, authenticated" in mig
+    assert "having bool_or(here)" in mig and "current_date - 365" in mig and "create or replace function public.v2_map_updates(" not in mig
+
+
 def test_hot_view_sectors_first_switch_and_lines():
     js = (ROOT / "launch/js/map.js").read_text()
     sql = (ROOT / "docs/map_hot_detail.sql").read_text()
