@@ -683,6 +683,8 @@
         const o = (GROUPS[key].options || []).filter(function (x) { return x.value === val; })[0];
         return (o && (o.tag || o.label)) || val;
       }
+      // The map's "which firms" choice, by the word the map sends. Same names as in the map's drop-down.
+      const WHO_LABEL = { top: 'Top firms', focused: 'Focused funds', first: 'New investors', fresh: 'Fresh funds' };
       function renderChips() {
         const el = document.getElementById('firms-chips');
         if (!el) return;
@@ -691,6 +693,9 @@
           + '<button type="button" data-place-x aria-label="Remove ' + esc(place.name) + '">×</button></span>');
         if (dealOn()) tags.push('<span class="firms-chip firms-tag"><span class="firms-chip-text">' + esc(deal.label) + '</span>'
           + '<button type="button" data-deal-x aria-label="Remove ' + esc(deal.label) + '">×</button></span>');
+        // Rule (founder, 23 Nov): every filter the map hands over with "See the investors" shows here as a label.
+        if (dealOn() && deal.who && WHO_LABEL[deal.who]) tags.push('<span class="firms-chip firms-tag"><span class="firms-chip-text">' + esc(WHO_LABEL[deal.who]) + '</span>'
+          + '<button type="button" data-who-x aria-label="Remove ' + esc(WHO_LABEL[deal.who]) + '">×</button></span>');
         Object.keys(active).forEach(function (key) {
           active[key].forEach(function (val) {
             const label = filterLabel(key, val);
@@ -1319,6 +1324,14 @@
           draw();
           return;
         }
+        if (e.target.closest('[data-who-x]')) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (deal) deal.who = null;  // the place and the period stay; only the "which firms" choice goes
+          updateBadge();
+          draw();
+          return;
+        }
         if (e.target.closest('[data-place-x]')) {
           e.preventDefault();
           e.stopPropagation();
@@ -1407,7 +1420,8 @@
             const names = {};
             many('sectors').forEach(function (v) { names[v.toLowerCase()] = v; });
             const who = from.get('who');
-            deal = { from: df, to: dt, names: names, who: ['top', 'focused', 'new', 'first', 'fresh'].indexOf(who) !== -1 ? who : null,
+            const who1 = who === 'new' ? 'first' : who;  // "new" was the old name of "New investors"
+            deal = { from: df, to: dt, names: names, who: ['top', 'focused', 'first', 'fresh'].indexOf(who1) !== -1 ? who1 : null,
               label: days === 365 ? 'Last 12 months' : days > 0 && days < 1000 ? 'Last ' + days + ' days' : mon(df) + ' – ' + mon(dt) };
           }
         }

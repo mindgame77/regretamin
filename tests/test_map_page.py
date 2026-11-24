@@ -85,7 +85,12 @@ def test_new_investors_and_fresh_funds_choices():
     assert "$('#vm-legend').innerHTML = note ? `<span class=\"vm-whonote\">" in js and 'id="vm-whonote"' not in js
     assert ".vm-whonote{display:block" in css and "position:absolute;left:24px;bottom:18px" not in css
     # the investors list passes the two new words on to the same database rule
-    assert "['top', 'focused', 'new', 'first', 'fresh']" in firms
+    assert "['top', 'focused', 'first', 'fresh'].indexOf(who1)" in firms and "who === 'new' ? 'first' : who" in firms
+    # rule (founder): every filter the map hands over shows in the list as a label that can be removed
+    assert "WHO_LABEL = { top: 'Top firms', focused: 'Focused funds', first: 'New investors', fresh: 'Fresh funds' }" in firms
+    assert "data-who-x" in firms and "if (deal) deal.who = null;" in firms
+    for key, name in re.findall(r"\['(\w+)', '([^']+)'\]", js.split("const WHO = ")[1].split(";")[0]):
+        assert key == 'all' or f"{key}: '{name}'" in firms  # the list uses the map's own names
     # the database: additive (old words answer as before), and the fund list is not open to visitors directly
     assert "v2_fresh_fund_firms" in mig and "revoke all on function public.v2_fresh_fund_firms() from public, anon, authenticated" in mig
     assert "cfg.mode = 'first' or exists" in mig and "p_firms in ('top', 'focused', 'new', 'first', 'fresh')" in mig
