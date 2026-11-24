@@ -1114,6 +1114,15 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-map{position:absolute;inset:0}
 .vm-stage{position:absolute;left:0;top:0;transform-origin:0 0}
 .vm-bg{position:absolute;left:0;top:0;transition:opacity .45s}
+.vm-bg{filter:brightness(1.04)}  /* the land a touch lighter on the white page, as in the share picture */
+/* While new numbers load, the smooth land dissolves into its dots and comes back, slowly, like breathing (founder, 23 Nov).
+   .vm-wave is the dots (the dotted map file as a mask); nothing sweeps across any more. */
+.vm .vm-wave{background:#8E9A96;animation:none}  /* ".vm .vm-wave" so it wins over the old sweep rule just below */
+@keyframes vm-dots{0%,100%{opacity:0}50%{opacity:1}}
+@keyframes vm-land{0%,100%{opacity:1}50%{opacity:0}}
+.vm.vm-busy .vm-wave{animation:vm-dots 3.2s ease-in-out infinite}
+.vm.vm-busy .vm-bg{animation:vm-land 3.2s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.vm .vm-wave{background:#8E9A96}.vm.vm-busy .vm-wave{animation:none;opacity:0}.vm.vm-busy .vm-bg{animation:none}}
 .vm-wave{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:linear-gradient(90deg,transparent,rgba(16,32,28,.7),transparent) no-repeat;background-size:30% 100%;-webkit-mask-size:100% 100%;mask-size:100% 100%;animation:vm-wave 1.15s linear infinite}
 .vm-busy .vm-wave{opacity:1}
 @keyframes vm-wave{from{background-position:-45% 0}to{background-position:145% 0}}
@@ -1170,6 +1179,7 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-new{display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:var(--ma);box-shadow:0 0 0 3px rgba(240,134,30,.28)}
 .vm-all{height:44px;flex:none;padding:0 14px;border-radius:10px;border:1px solid #8A9893;background:#fff;font-size:14px}
 .vm-time{flex:1;min-width:0;padding-top:8px;display:flex;flex-direction:column;gap:14px}
+.vm-time{cursor:pointer}  /* a click on the line moves the nearer handle there */
 .vm-track{position:relative;height:6px;border-radius:3px;background:var(--ml)}
 .vm-fill{position:absolute;top:0;bottom:0;background:var(--mi);border-radius:3px}
 .vm-track i{position:absolute;top:10px;width:1px;height:4px;background:#8A9893}

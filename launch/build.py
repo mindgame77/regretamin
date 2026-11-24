@@ -401,13 +401,17 @@ def main():
     shutil.copytree(os.path.join(HERE, 'fav'), os.path.join(OUT, 'fav'))
     shutil.copytree(os.path.join(HERE, 'assets', 'video'), os.path.join(OUT, 'assets', 'video'))
     shutil.copytree(os.path.join(HERE, 'assets', 'map'), os.path.join(OUT, 'assets', 'map'))  # backgrounds and coordinates for /map/ (tools/map/gen_assets.cjs)
-    # The "Where they invest" card on a firm page shows the same maps as solid grey land, not dots (founder, 23 Nov:
-    # the dotted map did not show on the grey card). Made here from the dotted files: each dot becomes a square that
-    # fills its grid cell (the grid step is 8 for the world and the US, 6 for Europe).
+    # The "Where they invest" card on a firm page shows the same maps as smooth grey land, not dots (founder, 23 Nov:
+    # the dots did not show at that size, and square blocks looked ugly). Made here from the dotted files: each dot
+    # becomes a square that fills its grid cell (step 8 for the world and the US, 6 for Europe), then a blur and a
+    # hard edge round the corners off.
     for level, step in (('world', 8), ('us', 8), ('eu', 6)):
         svg = open(os.path.join(HERE, 'assets', 'map', level + '.svg')).read()
         solid = svg.replace('stroke-width="3"', f'stroke-width="{step + 0.6}"').replace('stroke-linecap="round"', 'stroke-linecap="square"').replace('stroke="#C9D1CE"', 'stroke="#C4CDC9"')
-        if solid == svg or 'stroke-linecap="square"' not in solid: raise SystemExit('launch build: ' + level + '.svg is not the dotted map this step expects')
+        smooth = (f'<filter id="s" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="{step * 0.62:.2f}"/>'
+                  '<feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -12"/></filter>')
+        solid = solid.replace('<path ', smooth + '<path filter="url(#s)" ', 1)
+        if 'stroke-linecap="square"' not in solid or 'filter="url(#s)"' not in solid: raise SystemExit('launch build: ' + level + '.svg is not the dotted map this step expects')
         open(os.path.join(OUT, 'assets', 'map', level + '-solid.svg'), 'w').write(solid)
     shutil.copytree(os.path.join(HERE, 'assets', 'fonts'), os.path.join(OUT, 'assets', 'fonts'))  # Geist files the firm share card is drawn with (edge/card/share.mjs)
     shutil.copytree(os.path.join(HERE, 'assets', 'share'), os.path.join(OUT, 'assets', 'share'))  # the picture for shared links (og:image)

@@ -2776,7 +2776,7 @@
       const href = ROOT + (level === 'world' ? '' : '?zoom=' + level);
       card.innerHTML = '<div class="mh"><h3>On the map</h3></div>'
         + '<a class="fmap" href="' + href + '" aria-label="Open the map' + (label ? ' at ' + esc(label) : '') + '">'
-        + '<span class="fmapin" style="aspect-ratio:' + (g ? g.w + '/' + g.h : '1060/620') + '"><img src="' + ROOT + 'assets/map/' + level + '.svg" alt="" loading="lazy">'
+        + '<span class="fmapin" style="aspect-ratio:' + (g ? g.w + '/' + g.h : '1060/620') + '"><img src="' + ROOT + 'assets/map/' + level + '-solid.svg" alt="" loading="lazy">'
         + (spot ? '<i style="left:' + (spot.x / g.w * 100).toFixed(2) + '%;top:' + (spot.y / g.h * 100).toFixed(2) + '%"></i><b style="left:' + (spot.x / g.w * 100).toFixed(2) + '%;top:' + (spot.y / g.h * 100).toFixed(2) + '%" class="' + (spot.x / g.w > 0.6 ? 'l' : '') + '">' + esc(label) + '</b>' : '')
         + '</span></a><a class="ash" href="' + href + '">' + (label ? 'Open the map: ' + esc(where) : 'Open the map') + '</a>';
     };
