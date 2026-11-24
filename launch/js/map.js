@@ -127,15 +127,39 @@
     if (error) return null;
     detCache.set(key, data); return data;
   }
+  // "Latest updates" follows what the map shows (founder, 24 Nov): United States or Europe when one of them is open,
+  // and the sector and stage filters. The timeline does not move it: it is always the newest rounds.
+  const updKey = () => [S.level === 'world' ? '' : S.level, S.sectors.join('|'), S.stages.join('|')].join('~');
+  let updAsked = null;
   async function loadUpdates() {
-    let data = null;
-    if (FX_UPDATES) data = await fetch(FX_UPDATES).then((r) => r.json());
-    else if (!FIXTURE && sb) {
-      const c = await sb.rpc('v2_map_cached', { p_key: 'updates' });  // prepared ahead of time; live when it is missing
-      if (!c.error && Array.isArray(c.data)) data = c.data;
-      else { const r = await sb.rpc('v2_map_updates', { p_limit: COL ? 6 : 3 }); if (!r.error) data = r.data; }
-    }
-    if (Array.isArray(data)) { S.updates = data.slice(0, COL ? 6 : 3); drawSide(); draw(); }
+    const key = updKey(), n = COL ? 6 : 3;
+    if (key === updAsked) return;
+    updAsked = key;
+    const show = (d) => { if (key !== updAsked || !Array.isArray(d)) return false; S.updates = d.slice(0, n); S.updKey = key; drawSide(); draw(); return true; };
+    if (FX_UPDATES) { show(await fetch(FX_UPDATES).then((r) => r.json())); return; }
+    if (FIXTURE || !sb) return;
+    drawSide();  // the old list fades while the new one is on its way
+    // The opening view has a ready-made answer, shown at once; the live answer that follows adds the amounts.
+    if (key === '~~') { const c = await sb.rpc('v2_map_cached', { p_key: 'updates' }); if (!c.error) show(c.data); }
+    const r = await sb.rpc('v2_map_updates_for', { p_level: S.level === 'world' ? null : S.level, p_sectors: S.sectors.length ? S.sectors : null, p_stages: S.stages.length ? S.stages : null, p_limit: n });
+    if (!r.error && show(r.data)) return;
+    if (key === '~~' && S.updKey !== key) { const o = await sb.rpc('v2_map_updates', { p_limit: n }); if (!o.error) show(o.data); }
+  }
+  // A round's amount as it is written in news: $90M, $1.75B, €26M, ~$5M when the source gave it roughly.
+  const CUR = { USD: '$', EUR: '€', GBP: '£', JPY: '¥', INR: '₹', AUD: 'A$', CAD: 'C$', SGD: 'S$', CNY: 'CN¥', KRW: '₩' };
+  function roundAmount(u) {
+    const a = Number(u && u.amount);
+    if (!u || u.amount == null || !isFinite(a) || a < 1000) return null;
+    const cut = (v, d) => String(+v.toFixed(d));
+    const n = a >= 1e9 ? cut(a / 1e9, 2) + 'B' : a >= 1e6 ? cut(a / 1e6, a >= 1e8 ? 0 : 1) + 'M' : cut(a / 1e3, 0) + 'K';
+    const c = u.currency || 'USD', sym = CUR[c] || c + ' ';
+    // "an $8M round", "an $11M round", "an $18M round"; every other amount takes "a"
+    const an = ['USD', 'EUR', 'GBP'].includes(c) && !u.approx && /^(8|11(\D|$)|18(\D|$))/.test(n);
+    return { text: (u.approx ? '~' : '') + sym + n, article: an ? 'an' : 'a' };
+  }
+  function updateLine(u, who) {
+    const m = roundAmount(u), kind = u.round && u.round !== 'Other' ? u.round + ' ' : '';  // an unnamed round is just "a round"
+    return `${who} ${u.led ? 'led' : 'joined'} ${m ? m.article + ' ' + m.text + ' ' : 'a '}${kind}round in ${u.startup}`;
   }
 
   // ---------- page shell
@@ -562,10 +586,15 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
       const all = $('#vm-allsec'); if (all) all.onclick = () => { S.sectors = []; drawPicks(); refresh().then(drawSide); };
       return;
     }
-    side.innerHTML = `<div class="vm-lh"><h2>Latest updates</h2><span class="vm-tag">new rounds</span></div>${S.updates.length ? S.updates.map((u, i) => {
+    loadUpdates();  // the zoom buttons redraw without asking the database again, so the updates are asked for from here too
+    // What the list is for, under the title: the place and the filters. Nothing on the world view with no filter.
+    const few = (a, word) => (a.length > 2 ? a.length + ' ' + word : a.join(', '));
+    const upFor = [S.level === 'us' ? 'United States' : S.level === 'eu' ? 'Europe' : '', few(S.sectors, 'sectors'), few(S.stages, 'stages')].filter(Boolean).join(' · ');
+    side.classList.toggle('vm-updwait', !FX_UPDATES && S.updKey != null && S.updKey !== updKey());
+    side.innerHTML = `<div class="vm-lh"><h2>Latest updates</h2><span class="vm-tag">new rounds</span>${upFor ? `<span class="vm-tag vm-upfor">${esc(upFor)}</span>` : ''}</div>${S.updates.length ? S.updates.map((u, i) => {
       const names = (u.firms || []).map((f) => f.name), who = names.length > 1 && (u.leads > 1 || !u.led) ? names[0] + ' and ' + names[1] : names[0] || '';
       const slug = u.firms && u.firms[0] && u.firms[0].slug;
-      return `<a class="${i ? '' : 'vm-first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="vm-tag">${i ? '' : '<i class="vm-new" title="Newest update: its place is lit up on the map"></i>'}${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span class="vm-line" title="${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}">${esc(who)} ${u.led ? 'led' : 'joined'} a ${esc(u.round)} round in ${esc(u.startup)}</span></a>`;
+      return `<a class="${i ? '' : 'vm-first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="vm-tag">${i ? '' : '<i class="vm-new" title="Newest update: its place is lit up on the map"></i>'}${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span class="vm-line" title="${esc(updateLine(u, who))}">${esc(updateLine(u, who))}</span></a>`;
     }).join('') : '<p class="vm-mu">No updates to show yet.</p>'}`;
   }
   // 'Hot right now': the firms behind a place (or one of its sectors) open in a panel of their own, so the sectors stay in view.
@@ -611,6 +640,7 @@ ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.m
   let asked = 0;
   async function refresh() {
     remember();
+    if (S.view !== 'hot') loadUpdates();  // asked alongside the map's numbers; does nothing when the pick has not changed
     const mine = ++asked, msg = $('#vm-msg');
     const busy = setTimeout(() => { if (mine === asked) el.classList.add('vm-busy'); }, 120);  // the scan runs only when the answer is not instant
     const d = await summary();

@@ -1156,6 +1156,10 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-side.vm-list{bottom:150px;width:380px;padding-bottom:0;gap:10px;overflow:hidden}
 .vm-lh{display:flex;justify-content:space-between;align-items:center}
 .vm-lh h2{margin:0;font-size:20px}
+/* Latest updates: the line under the title that says what the list is for ("United States · AI agents · Seed") */
+.vm-side .vm-lh{flex-wrap:wrap}
+.vm-side .vm-lh .vm-upfor{flex:1 0 100%;margin-top:4px}
+.vm-side.vm-updwait > a{opacity:.45;transition:opacity .15s}
 .vm-x{width:44px;height:44px;margin:-10px -10px -10px 0;border:0;background:none;position:relative}
 .vm-x:before,.vm-x:after{content:"";position:absolute;left:14px;top:21px;width:16px;height:2px;background:var(--mi);transform:rotate(45deg)}
 .vm-x:after{transform:rotate(-45deg)}
