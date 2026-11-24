@@ -96,6 +96,17 @@ def test_new_investors_and_fresh_funds_choices():
     assert "cfg.mode = 'first' or exists" in mig and "p_firms in ('top', 'focused', 'new', 'first', 'fresh')" in mig
 
 
+def test_investors_list_deals_column_shows_known_and_all():
+    """Founder, 24 Nov: the Deals column shows the deals we know in detail and, in brackets, every investment
+    found ("9 (228)", "0 (404)"); one number when they are the same. The header stays "Deals"."""
+    firms = (ROOT / "launch/js/firms.js").read_text()
+    css = (ROOT / "launch/style.css").read_text()
+    assert "function dealsCell(f)" in firms and "const investments = dealsCell(f);" in firms
+    assert "kn + ' <span class=\"finv-all\" title=" in firms and "(' + all + ')</span>'" in firms and "if (known >= allN) return all;" in firms
+    assert ".frow .finv .finv-all{font-weight:400" in css
+    assert "headerCell('deals', pageCopy.col_investments || 'Deals')" in firms
+
+
 def test_hot_view_sectors_first_switch_and_lines():
     js = (ROOT / "launch/js/map.js").read_text()
     sql = (ROOT / "docs/map_hot_detail.sql").read_text()

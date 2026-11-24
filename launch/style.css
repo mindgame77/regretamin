@@ -1017,6 +1017,8 @@ main.wrap.firms-pg{max-width:1320px}
 .frow .fcity{font:400 13.5px/1.35 'DM Sans',sans-serif;color:var(--ink2)}
 .frow .finds{font:400 13.5px/1.35 'DM Sans',sans-serif;color:var(--ink)}
 .frow .finv{justify-self:center;text-align:center;font:700 14px/1.35 'DM Sans',sans-serif;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Deals column: the deals we know in detail, then every investment found in brackets, lighter */
+.frow .finv .finv-all{font-weight:400;color:var(--muted,#586964)}
 .flist.has-activity .frow{grid-template-columns:minmax(130px,1.2fr) minmax(80px,.6fr) minmax(100px,.9fr) 100px 120px minmax(130px,1.2fr) 104px}
 .frow .fact{justify-self:center;text-align:center}
 .frow .alab{display:inline-flex;align-items:center;border-radius:99px;padding:3px 8px;font:700 12px/1.2 'DM Sans',sans-serif;white-space:nowrap}

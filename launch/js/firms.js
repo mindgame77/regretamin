@@ -180,6 +180,18 @@
     if (!Number.isFinite(n) || n <= 0) return '';
     return Math.trunc(n).toLocaleString('en-US');
   }
+  // The Deals column shows both numbers (founder, 24 Nov): the deals we know in detail, then in brackets every
+  // investment we found, e.g. "9 (228)" or "0 (404)". One number when they are the same. The rest of the site
+  // (status, latest deal, the maps) counts the first number, so a row can no longer say "400" next to "Not active".
+  function dealsCell(f) {
+    const all = investmentCount(f);
+    if (!all) return '';
+    const k = Number(f && f.deals), known = Number.isFinite(k) && k > 0 ? Math.trunc(k) : 0;
+    const allN = Number(String(all).replace(/,/g, ''));
+    if (known >= allN) return all;
+    const kn = known.toLocaleString('en-US');
+    return kn + ' <span class="finv-all" title="' + kn + ' deals with a date and a round. ' + all + ' investments found in total">(' + all + ')</span>';
+  }
   function activityOf(f) {
     const rule = window.RegretActivity;
     if (!rule) return null;
@@ -250,7 +262,7 @@
     const date = fmtDate(f.added);
     const city = cityLabel(f);
     const inds = invests(f, window.innerWidth < 1200 ? 1 : 2);  // a narrow window has room for one sector and the "+N"
-    const investments = investmentCount(f);
+    const investments = dealsCell(f);
     const dealMain = (f.latest_company && f.latest_deal_date)
       ? [f.latest_company, roundName(f.latest_round)].filter(Boolean).join(' · ') : '';
     const dealDate = (f.latest_company && f.latest_deal_date) ? fmtDate(f.latest_deal_date) : '';
@@ -261,7 +273,7 @@
       + '<span class="fnm"><b>' + esc(f.name) + '</b></span>'
       + '<span class="fcity">' + (city ? flagOf(f) : '') + esc(city) + '</span>'
       + '<span class="finds">' + inds + '</span>'
-      + '<span class="finv">' + esc(investments) + '</span>'
+      + '<span class="finv">' + investments + '</span>'
       + activityHtml(f)
       + '<span class="fdeal">' + dealHtml + '</span>'
       + (date ? '<span class="rdt">' + esc(date) + '</span>' : '<span class="rdt"></span>')
