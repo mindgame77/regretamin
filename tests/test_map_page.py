@@ -68,7 +68,7 @@ def test_which_firms_filter():
 
 def test_new_investors_and_fresh_funds_choices():
     """Founder, 23 Nov: "New investors" = first deal ever (one meaning), "Fresh funds" = raised a fund in the last
-    12 months, and the picked choice is explained in the bottom-left corner of the map."""
+    12 months, and while a choice is picked its meaning takes the colour key's place in the corner of the map."""
     js = (ROOT / "launch/js/map.js").read_text()
     firms = (ROOT / "launch/js/firms.js").read_text()
     css = (ROOT / "launch/style.css").read_text()
@@ -81,7 +81,9 @@ def test_new_investors_and_fresh_funds_choices():
                  "Most of their deals are in one sector", "Made their first deal in this period",
                  "Raised a new fund in the last 12 months"):
         assert line in js
-    assert 'id="vm-whonote" hidden' in js and "nb.hidden = !note" in js and ".vm-col .vm-whonote{left:448px}" in css
+    # it replaces the colour key (founder: "not appear in a new spot"); "All firms" shows the key
+    assert "$('#vm-legend').innerHTML = note ? `<span class=\"vm-whonote\">" in js and 'id="vm-whonote"' not in js
+    assert ".vm-whonote{display:block" in css and "position:absolute;left:24px;bottom:18px" not in css
     # the investors list passes the two new words on to the same database rule
     assert "['top', 'focused', 'new', 'first', 'fresh']" in firms
     # the database: additive (old words answer as before), and the fund list is not open to visitors directly

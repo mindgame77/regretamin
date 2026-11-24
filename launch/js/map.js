@@ -41,7 +41,8 @@
   const WHO = [['all', 'All firms'], ['top', 'Top firms'], ['focused', 'Focused funds'], ['first', 'New investors'], ['fresh', 'Fresh funds']];
   // 'new' was this choice's old name ("New entrants": first deal in the picked sectors). Old links and saved views open as "New investors".
   const whoKey = (k) => (k === 'new' ? 'first' : k);
-  // What each choice means, shown in the bottom-left corner of the map while it is picked (founder, 23 Nov).
+  // What each choice means. While one is picked, this takes the place of the colour key in the map's corner (founder, 23 Nov:
+  // "should replace the legend on the right, not appear in a new spot"). "All firms" shows the colour key.
   // "Top firms" in the US is an outside ranking, everywhere else our own (rounds led), so its line follows the zoom.
   const whoNote = () => ({
     top: S.level === 'us' ? 'The 100 top-ranked US firms of 2026' : 'Led the most rounds in the last 3 years',
@@ -151,7 +152,6 @@
   <div class="vm-time"><div class="vm-track"><div class="vm-fill" id="vm-fill"></div>${Array.from({ length: NQ + 1 }, (_, i) => `<i class="${i % 4 ? '' : 'vm-y'}" style="left:${i / NQ * 100}%"></i>`).join('')}
     <input type="range" id="vm-q0" min="0" max="${NQ}" step="1" aria-label="From quarter"><input type="range" id="vm-q1" min="0" max="${NQ}" step="1" aria-label="To quarter"></div>
     <div class="vm-years">${Array.from({ length: Math.ceil(NQ / 4) }, (_, i) => `<span style="left:${i * 4 / NQ * 100}%;width:${Math.min(4, NQ - i * 4) / NQ * 100}%">${2021 + i}</span>`).join('')}</div></div></div>
-<p class="vm-whonote" id="vm-whonote" hidden></p>
 <p class="vm-legend" id="vm-legend"></p>
 <div class="vm-msg" id="vm-msg" hidden></div>`;
   const stage = $('#vm-stage'), mapBox = $('#vm-map');
@@ -454,10 +454,8 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     $('#vm-h1').textContent = sec ? `Where ${sec} ${S.sectors.length === 1 && !PLURAL.includes(S.sectors[0]) ? 'is' : 'are'} heating up${where}.` : `Where it is heating up${where}.`;
     S.countId = (S.countId || 0) + 1; S.shown = null;
     $('#vm-based').textContent = '';  // no text under the filters in this view (founder); a question mark may come later
-    const note = whoNote(), nb = $('#vm-whonote');
-    nb.hidden = !note;
-    nb.innerHTML = note ? `<b>${esc(WHO.find(([k]) => k === who())[1])}</b><span>${esc(note)}</span>` : '';
-    $('#vm-legend').innerHTML = '<span class="vm-keys"><span><i class="vm-up"></i>up 10% or more</span><span><i class="vm-flat"></i>steady</span><span><i class="vm-down"></i>down 10% or more</span><span><i class="vm-few"></i>too few to call</span></span>';
+    const note = whoNote();
+    $('#vm-legend').innerHTML = note ? `<span class="vm-whonote"><b>${esc(WHO.find(([k]) => k === who())[1])}</b><span>${esc(note)}</span></span>` : '<span class="vm-keys"><span><i class="vm-up"></i>up 10% or more</span><span><i class="vm-flat"></i>steady</span><span><i class="vm-down"></i>down 10% or more</span><span><i class="vm-few"></i>too few to call</span></span>';
   }
   function drawHead() {
     if (S.view === 'hot') return drawHotHead();
@@ -476,7 +474,6 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
       if (k < 1) requestAnimationFrame(step);
     };
     step(t0);
-    $('#vm-whonote').hidden = true;
     $('#vm-legend').innerHTML = '';  // no note over the map in this view: it only repeated what the map shows (founder, 23 Nov)
   }
 
