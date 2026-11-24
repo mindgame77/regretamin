@@ -1,3 +1,12 @@
+-- Skipped on databases without the v2 research tables (e.g. the CI test database), like other v2 migrations.
+do $mig$
+begin
+  if to_regclass('public.v2_deals') is null or to_regclass('public.firm_fund_announcements') is null
+     or to_regprocedure('public.v2_deal_dates_conflict(date, text, date, text)') is null then
+    raise notice 'v2 research tables not present; shared register migration skipped';
+    return;
+  end if;
+  execute $sql$
 -- Bots read the register: each deal in the deals action gets also_in_round (up to 10 other firms/noted names in that round), only when there are any.
 CREATE OR REPLACE FUNCTION public.v2_research_firm_deals(p_key uuid, p_firm_id bigint, p_only_gaps boolean DEFAULT false, p_limit integer DEFAULT 500, p_offset integer DEFAULT 0)
  RETURNS jsonb
@@ -60,3 +69,7 @@ begin
 end
 $function$
 ;
+
+$sql$;
+end
+$mig$;

@@ -1,3 +1,12 @@
+-- Skipped on databases without the v2 research tables (e.g. the CI test database), like other v2 migrations.
+do $mig$
+begin
+  if to_regclass('public.v2_deals') is null or to_regclass('public.firm_fund_announcements') is null
+     or to_regprocedure('public.v2_deal_dates_conflict(date, text, date, text)') is null then
+    raise notice 'v2 research tables not present; shared register migration skipped';
+    return;
+  end if;
+  execute $sql$
 -- Fill the register from data saved in the last 5 days only (plus other firms' existing deals for the same rounds).
 -- Setting event_id must not change shown or rerun summaries, so the row/statement triggers on v2_deals are paused for this transaction only.
 set local statement_timeout = '15min';
@@ -92,3 +101,7 @@ insert into public.v2_event_sources (event_id, fund_announcement_id, firm_id, so
 select event_id, id, firm_id, coalesce(source_url, url), source_level, source_date, amount_usd, 'USD', announced_on, 'day'
   from public.firm_fund_announcements where event_id is not null;
 
+
+$sql$;
+end
+$mig$;

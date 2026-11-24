@@ -1,3 +1,12 @@
+-- Skipped on databases without the v2 research tables (e.g. the CI test database), like other v2 migrations.
+do $mig$
+begin
+  if to_regclass('public.v2_deals') is null or to_regclass('public.firm_fund_announcements') is null
+     or to_regprocedure('public.v2_deal_dates_conflict(date, text, date, text)') is null then
+    raise notice 'v2 research tables not present; shared register migration skipped';
+    return;
+  end if;
+  execute $sql$
 -- co_investors on a saved round: listed firms join the round's event; unknown names are stored as noted text only (never a new firm).
 create or replace function public.v2_event_add_co_investors(p_key_id uuid, p_submission_id bigint, p_names jsonb)
 returns jsonb language plpgsql security definer set search_path to 'public' as $$
@@ -38,3 +47,7 @@ begin
 end $$;
 revoke all on function public.v2_event_add_co_investors(uuid, bigint, jsonb) from public, anon, authenticated;
 grant execute on function public.v2_event_add_co_investors(uuid, bigint, jsonb) to service_role;
+
+$sql$;
+end
+$mig$;

@@ -1,3 +1,12 @@
+-- Skipped on databases without the v2 research tables (e.g. the CI test database), like other v2 migrations.
+do $mig$
+begin
+  if to_regclass('public.v2_deals') is null or to_regclass('public.firm_fund_announcements') is null
+     or to_regprocedure('public.v2_deal_dates_conflict(date, text, date, text)') is null then
+    raise notice 'v2 research tables not present; shared register migration skipped';
+    return;
+  end if;
+  execute $sql$
 -- Rest of firm_fund_announcements: link to existing fund_launch events (same firm + fund name), else one new event per firm + name.
 drop table if exists fm;
 create temp table fm as select id from public.firm_fund_announcements where event_id is null and is_current and not archived and name is not null;
@@ -20,3 +29,7 @@ update public.v2_events ev set sources_disagree = true where ev.kind = 'fund_lau
    and (select count(distinct s.reported_amount) from public.v2_event_sources s where s.event_id = ev.event_id) > 1;
 create schema if not exists shared_register_20261123;
 create table if not exists shared_register_20261123.funds_rest_links as select a.id, a.event_id from public.firm_fund_announcements a join fm using (id) where a.event_id is not null;
+
+$sql$;
+end
+$mig$;

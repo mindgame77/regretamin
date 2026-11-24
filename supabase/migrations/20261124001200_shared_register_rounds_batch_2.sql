@@ -1,3 +1,12 @@
+-- Skipped on databases without the v2 research tables (e.g. the CI test database), like other v2 migrations.
+do $mig$
+begin
+  if to_regclass('public.v2_deals') is null or to_regclass('public.firm_fund_announcements') is null
+     or to_regprocedure('public.v2_deal_dates_conflict(date, text, date, text)') is null then
+    raise notice 'v2 research tables not present; shared register migration skipped';
+    return;
+  end if;
+  execute $sql$
 create schema if not exists shared_register_20261123;
 create table if not exists shared_register_20261123.batch_links (batch text not null, deal_id bigint primary key, event_id bigint not null, created_at timestamptz default now());
 -- Rounds backfill batch 2: startups 23471..53091 (~10,000 rounds). Same rule as the 5-day fill.
@@ -63,3 +72,7 @@ select d.event_id, d.deal_id, d.firm_id, d.source_url, d.source_level, d.source_
 update public.v2_events ev set sources_disagree = true
  where ev.event_id in (select distinct event_id from m) and not ev.sources_disagree
    and (select count(distinct s.reported_amount) from public.v2_event_sources s where s.event_id = ev.event_id) > 1;
+
+$sql$;
+end
+$mig$;

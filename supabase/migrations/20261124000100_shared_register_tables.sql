@@ -1,3 +1,12 @@
+-- Skipped on databases without the v2 research tables (e.g. the CI test database), like other v2 migrations.
+do $mig$
+begin
+  if to_regclass('public.v2_deals') is null or to_regclass('public.firm_fund_announcements') is null
+     or to_regprocedure('public.v2_deal_dates_conflict(date, text, date, text)') is null then
+    raise notice 'v2 research tables not present; shared register migration skipped';
+    return;
+  end if;
+  execute $sql$
 -- Shared register for things that happened (rounds, fund launches). Tables only; no triggers, no ingest/bot/site changes.
 create table public.v2_events (
   event_id bigserial primary key,
@@ -57,3 +66,7 @@ alter table public.v2_deals add column event_id bigint references public.v2_even
 alter table public.firm_fund_announcements add column event_id bigint references public.v2_events(event_id) on delete set null;
 create index v2_deals_event_idx on public.v2_deals (event_id) where event_id is not null;
 create index firm_fund_announcements_event_idx on public.firm_fund_announcements (event_id) where event_id is not null;
+
+$sql$;
+end
+$mig$;

@@ -1,3 +1,12 @@
+-- Skipped on databases without the v2 research tables (e.g. the CI test database), like other v2 migrations.
+do $mig$
+begin
+  if to_regclass('public.v2_deals') is null or to_regclass('public.firm_fund_announcements') is null
+     or to_regprocedure('public.v2_deal_dates_conflict(date, text, date, text)') is null then
+    raise notice 'v2 research tables not present; shared register migration skipped';
+    return;
+  end if;
+  execute $sql$
 -- Auto-link new or changed deals and fund announcements to the shared register.
 -- BEFORE ROW trigger that only sets NEW.event_id (no second UPDATE, so the existing deal triggers and shown are never re-run or touched).
 -- Any linking error is logged and the save goes ahead.
@@ -93,3 +102,7 @@ create trigger zz_v2_deals_event_link before insert or update of startup_id, rou
   on public.v2_deals for each row execute function public.v2_deals_event_link_trg();
 create trigger zz_ffa_event_link before insert or update of firm_id, name, amount_usd, announced_on, is_current, archived, source_url
   on public.firm_fund_announcements for each row execute function public.v2_ffa_event_link_trg();
+
+$sql$;
+end
+$mig$;
