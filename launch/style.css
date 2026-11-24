@@ -1812,3 +1812,10 @@ main.prof #around .arsub em{font-family:'Geist',system-ui,sans-serif!important;f
 main.prof .ph1{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 main.prof .ph1 h1{margin:0}
 main.prof .ph .ph1 .sv{position:relative;top:-.06em;margin:0;flex:none}
+/* The same standard for the parts first missed (founder: go, 23 Nov): the deal cards of the narrow layout,
+   the "Also in the portfolio" label and the place names on the "Where they invest" card. */
+main.prof .dcard .dname,main.prof .dcard .dname a.co,main.prof .dcard .dname span.co{font-size:15px!important;font-weight:600!important}
+main.prof .dmeta span{font-family:'Geist Mono',ui-monospace,monospace!important;font-size:12px!important;font-weight:400!important;letter-spacing:.06em;text-transform:uppercase}
+main.prof .dmeta b,main.prof .dmeta b.arty{font-size:13px!important;font-weight:600!important}
+main.prof .adp{font-weight:400!important}
+main.prof #where .wmap b{font-size:13px}
