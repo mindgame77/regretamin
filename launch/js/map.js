@@ -586,6 +586,7 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
       const all = $('#vm-allsec'); if (all) all.onclick = () => { S.sectors = []; drawPicks(); refresh().then(drawSide); };
       return;
     }
+    loadUpdates();  // the zoom buttons redraw without asking the database again, so the updates are asked for from here too
     // What the list is for, under the title: the place and the filters. Nothing on the world view with no filter.
     const few = (a, word) => (a.length > 2 ? a.length + ' ' + word : a.join(', '));
     const upFor = [S.level === 'us' ? 'United States' : S.level === 'eu' ? 'Europe' : '', few(S.sectors, 'sectors'), few(S.stages, 'stages')].filter(Boolean).join(' · ');

@@ -119,6 +119,7 @@ def test_latest_updates_follow_the_map_and_carry_the_amount():
     mig = (ROOT / "supabase/migrations/20261124182941_v2_map_updates_for.sql").read_text()
     # asked again whenever the zoom or a filter changes, never for the timeline
     assert "const updKey = () => [S.level === 'world' ? '' : S.level, S.sectors.join('|'), S.stages.join('|')].join('~');" in js
+    assert "loadUpdates();  // the zoom buttons redraw without asking the database again" in js
     assert "if (S.view !== 'hot') loadUpdates();" in js and "sb.rpc('v2_map_updates_for', { p_level: S.level === 'world' ? null : S.level" in js
     # the opening view still shows its ready-made answer at once, and the old function is the fallback
     assert "sb.rpc('v2_map_cached', { p_key: 'updates' })" in js and "sb.rpc('v2_map_updates', { p_limit: n })" in js
