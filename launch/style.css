@@ -1114,6 +1114,7 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-map{position:absolute;inset:0}
 .vm-stage{position:absolute;left:0;top:0;transform-origin:0 0}
 .vm-bg{position:absolute;left:0;top:0;transition:opacity .45s}
+.vm-bg{filter:brightness(1.04)}  /* the land a touch lighter on the white page, as in the share picture */
 .vm-wave{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s;background:linear-gradient(90deg,transparent,rgba(16,32,28,.7),transparent) no-repeat;background-size:30% 100%;-webkit-mask-size:100% 100%;mask-size:100% 100%;animation:vm-wave 1.15s linear infinite}
 .vm-busy .vm-wave{opacity:1}
 @keyframes vm-wave{from{background-position:-45% 0}to{background-position:145% 0}}
