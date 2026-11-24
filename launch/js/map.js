@@ -475,6 +475,12 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
       if (S.view === 'hot') q.push('days=' + S.days, 'from=' + iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - S.days + 1)), 'to=' + iso(now));
       else q.push('from=' + iso(qStart(S.q0)), 'to=' + iso(qEnd(S.q1)));
       if (who() !== 'all') q.push('who=' + who());
+    } else if (S.level === 'us' || S.level === 'eu') {
+      // No circle open on the US or Europe view: the list shows that whole view, the same firms this map counted (founder, 23 Nov).
+      q.push('zoom=' + S.level);
+      if (S.view === 'hot') q.push('days=' + S.days, 'from=' + iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - S.days + 1)), 'to=' + iso(now));
+      else q.push('from=' + iso(qStart(S.q0)), 'to=' + iso(qEnd(S.q1)));
+      if (who() !== 'all') q.push('who=' + who());
     }
     const sec = S.view === 'hot' && S.list && S.list.sector ? [S.list.sector] : S.sectors;
     if (sec.length) q.push('sectors=' + sec.map(encodeURIComponent).join('|'));

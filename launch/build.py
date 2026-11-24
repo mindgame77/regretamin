@@ -353,6 +353,9 @@ def load_firm(slug):
     rows = _rpc('firm_meta', {'p_slug': slug})
     return rows[0] if rows else None
 
+PROBE_PAGE = 'a16z'   # scripts/pages_deploy.sh and tests read site-launch/vc/a16z/
+PAGES_WRITTEN = 10    # how many firm pages a normal build writes (pages_deploy.sh expects ten in a lab build)
+LIVE_SLUGS = []       # every live slug from firm_sitemap, filled by launch_firms(); empty when building from snapshots
 def launch_firms():
     """Firms that get a page. With SUPABASE_URL/ANON_KEY, walk firm_sitemap and load firm_meta
     for each slug. Those RPCs read v2_firm_live joined to v2_firms, so a firm that goes live
@@ -370,14 +373,23 @@ def launch_firms():
         slugs += [(r['slug'], r.get('updated_at')) for r in rows]
         if len(rows) < 1000: break
         page_n += 1
+    # The live site draws every /vc/<slug>/ when it is opened (functions/vc/[[path]].js: one template, firm_meta
+    # per request), so a normal build only writes the few firm pages the release checks read, not all of them.
+    # That was 5,660 database calls and 17,000 files on every run (14 minutes). LAB_ONLY=0 (the manual full
+    # rollout) still writes a page for every firm.
+    want = slugs
+    if os.environ.get('LAB_ONLY', '1') != '0':
+        first = [x for x in slugs if x[0] == PROBE_PAGE] + [x for x in slugs if x[0] != PROBE_PAGE]
+        want = first[:PAGES_WRITTEN]
     firms = []
-    for slug, added in slugs:
+    for slug, added in want:
         row = load_firm(slug)
         if row:
             # firm_sitemap.updated_at is v2_firm_live.live_since, the date the public page appeared.
             row['added'] = added
             firms.append(row)
     if not firms: raise SystemExit('launch build: firm_sitemap returned no firms firm_meta can open')
+    LIVE_SLUGS[:] = [slug for slug, _ in slugs]
     return firms
 
 def main():
@@ -414,10 +426,11 @@ def main():
                    'hq': F.get('hq') or None, 'added': F.get('added')}
                   for F in built if F.get('slug') and F.get('name')]
     }, ensure_ascii=False, separators=(',', ':')))
-    live_slugs = ','.join(sorted(F['slug'] for F in built))
+    all_slugs = LIVE_SLUGS or [F['slug'] for F in built]  # every live firm, with or without a written page
+    live_slugs = ','.join(sorted(all_slugs))
     open(os.path.join(OUT, '_tpl', 'version.txt'), 'w').write(hashlib.sha256((edge + tpl['summary'] + tpl['full'] + tpl['checks'] + '\n' + live_slugs + '\n' + live_token).encode()).hexdigest()[:12])
+    firms.extend(all_slugs)  # sitemap.xml lists every live firm
     for F in built:
-        firms.append(F['slug'])
         for v, sub in (('summary', ''), ('full', 'full'), ('checks', 'checks')):
             d = os.path.join(OUT, 'vc', F['slug'], sub); os.makedirs(d, exist_ok=True)
             open(os.path.join(d, 'index.html'), 'w').write(fill(tpl[v], F, v == 'full'))
@@ -448,6 +461,6 @@ def main():
         '/map.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/firms.json\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/style.css\n  Cache-Control: public, max-age=0, must-revalidate\n')
-    print('built', len(firms), 'firms', '->', OUT)
+    print('built', len(built), 'firm pages for', len(firms), 'live firms', '->', OUT)
 
 if __name__ == '__main__': main()

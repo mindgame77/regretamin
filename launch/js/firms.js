@@ -1310,6 +1310,11 @@
           e.stopPropagation();
           deal = null;
           if (place && place.level === 'world' && mapRegions) { active.region = [place.p]; place = null; renderFacets(); }
+          // A whole view from the map only exists with its period. Without it, it becomes the ordinary filter for the same place.
+          else if (place && place.p == null) {
+            if (place.level === 'us') place = { level: 'country', p: 'US', name: 'United States' };
+            else { if (mapRegions) active.region = ['Europe']; place = null; renderFacets(); }
+          }
           updateBadge();
           draw();
           return;
@@ -1386,6 +1391,8 @@
         const many = function (k) { return (from.get(k) || '').split('|').map(function (v) { return v.trim().slice(0, 60); }).filter(Boolean).slice(0, 25); };
         const zoom = from.get('zoom'), at = (from.get('place') || '').trim().slice(0, 80);
         if (remote && at && ['world', 'us', 'eu'].indexOf(zoom) !== -1) place = { level: zoom, p: at, name: (from.get('pname') || at).trim().slice(0, 80) };
+        // The map's whole US or Europe view (no circle open): a place with no area. It needs the period the map sent.
+        else if (remote && !at && (zoom === 'us' || zoom === 'eu') && from.get('from')) place = { level: zoom, p: null, name: zoom === 'us' ? 'United States' : 'Europe' };
         if (remote) {
           active.industry = many('sectors').map(function (v) { return v.toLowerCase(); });
           const stages = [];
