@@ -1170,6 +1170,7 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-new{display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:50%;background:var(--ma);box-shadow:0 0 0 3px rgba(240,134,30,.28)}
 .vm-all{height:44px;flex:none;padding:0 14px;border-radius:10px;border:1px solid #8A9893;background:#fff;font-size:14px}
 .vm-time{flex:1;min-width:0;padding-top:8px;display:flex;flex-direction:column;gap:14px}
+.vm-time{cursor:pointer}  /* a click on the line moves the nearer handle there */
 .vm-track{position:relative;height:6px;border-radius:3px;background:var(--ml)}
 .vm-fill{position:absolute;top:0;bottom:0;background:var(--mi);border-radius:3px}
 .vm-track i{position:absolute;top:10px;width:1px;height:4px;background:#8A9893}

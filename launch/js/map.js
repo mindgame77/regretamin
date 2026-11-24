@@ -189,6 +189,15 @@
   const later = () => { clearTimeout(timer); timer = setTimeout(refresh, 180); };
   q0.addEventListener('input', () => { stop(); S.q0 = Math.min(+q0.value, S.q1); closeList(); drawTime(); later(); });
   q1.addEventListener('input', () => { stop(); S.q1 = Math.max(+q1.value - 1, S.q0); closeList(); drawTime(); later(); });
+  // A click anywhere on the line (or on a year under it) moves the nearer handle there: no dragging needed (founder, 23 Nov).
+  $('.vm-time').addEventListener('click', (e) => {
+    if (e.target === q0 || e.target === q1) return;  // the handles themselves still drag
+    const r = $('.vm-track').getBoundingClientRect(); if (!r.width) return;
+    const v = Math.max(0, Math.min(NQ, Math.round((e.clientX - r.left) / r.width * NQ)));
+    stop();
+    if (Math.abs(v - S.q0) <= Math.abs(v - (S.q1 + 1))) S.q0 = Math.min(v, S.q1); else S.q1 = Math.max(v - 1, S.q0);
+    closeList(); drawTime(); later();
+  });
   $('#vm-all').addEventListener('click', () => {
     stop();
     if (S.q0 === 0 && S.q1 === NQ - 1) S.q0 = Math.min((now.getFullYear() - 2021) * 4, NQ - 1);  // from January of this year to today
