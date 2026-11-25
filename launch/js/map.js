@@ -575,9 +575,10 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     $('#vm-cta').href = listUrl();
     const hotList = S.view === 'hot' && S.list;
     // The button names what is chosen: the place, and the sector when one is open, with the number of firms the map counted.
-    const openSec = hotList && S.list.sector && ((S.list.det || {}).sectors || []).find((r) => r[0] === S.list.sector);
-    const ctaN = openSec ? openSec[3] : hotList ? S.list.place.f : 0;
-    $('#vm-cta').textContent = hotList ? `See the ${num(ctaN)} ${openSec ? S.list.sector + ' ' : ''}investor${ctaN === 1 ? '' : 's'} in ${S.list.place.n}` : 'See the investors';
+    // (A sector row is [name, deals, before, firms, line] in Hot right now and [name, deals, firms] in Money flow.)
+    const openSec = S.list && S.list.sector && ((S.list.det || {}).sectors || []).find((r) => r[0] === S.list.sector);
+    const ctaN = openSec ? openSec[hotList ? 3 : 2] : S.list ? S.list.place.f : 0;
+    $('#vm-cta').textContent = S.list ? `See the ${num(ctaN)} ${openSec ? S.list.sector + ' ' : ''}investor${ctaN === 1 ? '' : 's'} in ${S.list.place.n}` : 'See the investors';
     const units = () => side.querySelectorAll('.vm-unit button').forEach((u) => u.onclick = () => { S.unit = u.dataset.u; draw(); drawSide(); });
     drawFirms();
     if (hotList) {  // a clicked place opens on its sectors; its firms open in their own panel beside the rail
@@ -591,13 +592,14 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
       return;
     }
     if (S.list) {  // Money flow works the same way (founder, 25 Nov): the place opens on all its sectors, a sector opens its firms.
-      // The words are the ones this card had before ("656 firms" and the close button); nothing is added without asking him first.
+      // Words: he approved these four on 25 Nov and nothing else: the place in the title, the sector in the pop-up's title,
+      // the button naming what it opens, the % / # switch. Anything more is asked for first.
       const L = S.list, det = L.det, rows = (det || {}).sectors || [], tot = (det && det.tot) || 1;
       const share = (n) => { const v = n / tot * 100; return v > 0 && v < 1 ? '<1%' : Math.round(v) + '%'; };
       side.className = 'vm-card vm-side vm-list';
-      side.innerHTML = `<div class="vm-lh"><h2>${det ? num(det.firms) + ' firm' + (det.firms === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
-<div class="vm-rows vm-srows">${rows.map(([name, n, f]) => `<button type="button" class="vm-sec vm-secp vm-secf${L.step === 'firms' && L.sector === name ? ' vm-secon' : ''}" data-s="${esc(name)}" title="${num(n)} deal${n === 1 ? '' : 's'}"><i style="background:${COLORS[name] || COLORS.Other}"></i><span>${esc(name)}</span><span class="vm-pc">${share(n)}</span><span class="vm-fl">${num(f)} firm${f === 1 ? '' : 's'}</span></button>`).join('')}</div>`;
-      $('#vm-close').onclick = closeList;
+      side.innerHTML = `<div class="vm-lh vm-lhp"><h2>${esc(L.place.n)} · ${det ? num(det.firms) + ' firm' + (det.firms === 1 ? '' : 's') : 'Loading'}</h2>${unitSw()}<button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
+<div class="vm-rows vm-srows">${rows.map(([name, n, f]) => `<button type="button" class="vm-sec vm-secp vm-secf${L.step === 'firms' && L.sector === name ? ' vm-secon' : ''}" data-s="${esc(name)}" title="${num(n)} deal${n === 1 ? '' : 's'}"><i style="background:${COLORS[name] || COLORS.Other}"></i><span>${esc(name)}</span><span class="vm-pc">${S.unit === 'num' ? num(n) : share(n)}</span><span class="vm-fl">${num(f)} firm${f === 1 ? '' : 's'}</span></button>`).join('')}</div>`;
+      $('#vm-close').onclick = closeList; units();
       side.querySelectorAll('.vm-secp').forEach((b) => b.onclick = () => showFirms(b.dataset.s));
       return;
     }
@@ -642,7 +644,7 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
     if (!(L && L.step === 'firms')) { if (!fp.hidden) { fp.hidden = true; fp.innerHTML = ''; fit(); } return; }
     const tags = [L.place.n].concat(L.sector ? [L.sector] : S.sectors, S.stages);
     if (fp.hidden) { fp.hidden = false; fit(); }
-    fp.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-fpx" aria-label="Close the firms list"></button></div>
+    fp.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + (S.view !== 'hot' && L.sector ? ' ' + esc(L.sector) : '') + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-fpx" aria-label="Close the firms list"></button></div>
 ${S.view === 'hot' ? `<div class="vm-chips">${tags.map((x) => `<span class="vm-chip vm-chipst">${esc(x)}</span>`).join('')}</div>` : ''}
 <div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
 <a class="vm-more" href="${listUrl()}">Open the full investors list</a>`;

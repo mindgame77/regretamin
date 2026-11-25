@@ -1287,6 +1287,7 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-unit button[aria-pressed="true"]{background:var(--mi);color:#fff;font-weight:600}
 .vm-unit button:focus-visible{outline:2px solid var(--mi);outline-offset:-2px}
 .vm-lh2{margin-top:14px}
+.vm-side .vm-lhp{flex-wrap:nowrap;gap:10px;align-items:flex-start}.vm-lhp h2{flex:1;min-width:0}.vm-lhp .vm-unit{flex:none}  /* Money flow: the place and its firms, the % / # switch, the close button */
 .vm-lh2 h3{margin:0;font-size:16px;font-weight:600}
 .vm-srows{margin-top:6px}
 .vm-secp{min-height:44px}

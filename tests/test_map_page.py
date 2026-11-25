@@ -157,12 +157,16 @@ def test_money_flow_opens_a_place_on_its_sectors_like_hot_right_now():
     assert "if (!(L && L.step === 'firms'))" in js and "const open = S.list && S.list.step === 'firms'" in js
     assert "const sec = S.list && S.list.sector ? [S.list.sector] : S.sectors;" in js
     assert "S.view === 'hot' && b.step === 'firms'" not in js
-    # the words in Money flow are the ones it had before (the count of firms, the close button, "See the investors"):
-    # no place label, no extra lines, no labels in the firms pop-up (founder, 25 Nov: "don't add more text", ask first)
-    assert "hotList ? `See the ${num(ctaN)}" in js and "S.view === 'hot' ? `<div class=\"vm-chips\">${tags.map(" in js
-    card = js[js.index('if (S.list) {  // Money flow works the same way'):js.index("// The firms behind a place (or one of its sectors) open in a panel of their own")]
-    for word in ('vm-chip', 'stands out', 'Sectors here', 'unitSw', 'vm-tag', 'share of deals'):
-        assert word not in card.split('side.innerHTML')[1], word
+    # the words in Money flow: what was there before plus the four things he said yes to on 25 Nov (the place in the card's
+    # title, the sector in the pop-up's title, the button naming what it opens, the % / # switch). Nothing else: no place
+    # label with an x, no "stands out for" line, no "Sectors here", no "share of deals", no labels in the firms pop-up.
+    card = js[js.index('if (S.list) {  // Money flow works the same way'):js.index("// The firms behind a place (or one of its sectors) open in a panel of their own")].split('side.innerHTML')[1]
+    assert "<h2>${esc(L.place.n)} · ${det ? num(det.firms) + ' firm'" in card and '${unitSw()}' in card
+    for word in ('vm-chip', 'stands out', 'Sectors here', 'vm-tag', 'share of deals'):
+        assert word not in card, word
+    assert "(S.view !== 'hot' && L.sector ? ' ' + esc(L.sector) : '') + ' firm'" in js
+    assert "S.view === 'hot' ? `<div class=\"vm-chips\">${tags.map(" in js
+    assert "$('#vm-cta').textContent = S.list ? `See the ${num(ctaN)}" in js
     # the database function is recorded, read-only, and skips where the v2 tables are missing (the test database)
     sql = (root / 'supabase/migrations/20261125161908_v2_map_place_sectors.sql').read_text()
     assert 'create or replace function public.v2_map_place_sectors(' in sql and 'language sql stable security definer' in sql
