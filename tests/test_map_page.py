@@ -209,3 +209,19 @@ def test_head_card_is_the_same_four_rows_in_every_view():
         assert "to_regclass('public.v2_founders_cache') is null" in sql and 'raise exception' not in sql.lower()
     assert "v_fkind is null or s.firm_id in (select v2_founders_firm_ids(v_fkind, p_place, p_deal_from, p_deal_to))" in a
     assert 'create or replace function public.v2_founders_firm_ids(' in c and 'fl as materialized' in c
+
+
+def test_which_firms_count_on_the_map_is_one_rule_with_a_register():
+    """Founder, 25 Nov: only VC-like firms count on the map (accelerators, incubators and, for now, PE and hedge funds
+    do not); the rule is kept in one place and every change to it is registered."""
+    sql = (ROOT / 'supabase/migrations/20261125201804_v2_map_type_rules.sql').read_text()
+    assert 'create table if not exists public.v2_map_type_rules' in sql and 'create table if not exists public.v2_map_rules_log' in sql
+    assert 'create trigger v2_map_type_rules_log before insert or update or delete on public.v2_map_type_rules' in sql
+    assert "t.name not in ('Accelerator', 'Incubator', 'PE', 'Hedge fund')" in sql
+    assert 'create or replace view public.v2_map_counted_places' in sql
+    # only the functions that count for the map read the counted view; the Investors list and firm pages are not in the list
+    assert "p.proname in ('v2_map_summary', 'v2_map_firms', 'v2_map_firm_ids', 'v2_map_hot', 'v2_map_hot_detail', 'v2_map_place_sectors')" in sql
+    assert 'firm_directory_page_v5' not in sql.split('do $wrapci$')[1]
+    for s in (sql, (ROOT / 'supabase/migrations/20261125201859_v2_firm_type_fixes_haiku_high.sql').read_text()):
+        assert "to_regclass('public.v2_firm_types_firms') is null" in s and 'raise exception' not in s.lower()
+        assert 'v2_firm_type_retag_20261125' in s  # old tags are kept
