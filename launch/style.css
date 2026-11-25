@@ -1116,6 +1116,7 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-map{position:absolute;inset:0}
 .vm-stage{position:absolute;left:0;top:0;transform-origin:0 0}
 .vm-bg{position:absolute;left:0;top:0;transition:opacity .45s}
+.vm-bgz{position:absolute;left:0;top:0;width:100%;height:100%}.vm-bgz svg{display:block;width:100%;height:100%}
 .vm-bg{filter:brightness(1.04)}  /* the land a touch lighter on the white page, as in the share picture */
 /* While new numbers load, the smooth land dissolves into its dots and comes back, slowly, like breathing (founder, 23 Nov).
    .vm-wave is the dots (the dotted map file as a mask); nothing sweeps across any more. */
@@ -1205,17 +1206,24 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-pl.vm-ring{background:conic-gradient(var(--vm-c1) 0 var(--vm-a1),var(--vm-c2) var(--vm-a1) var(--vm-a2),var(--vm-c3) var(--vm-a2) var(--vm-a3),var(--vm-c4) var(--vm-a3) var(--vm-a4),var(--vm-c5) var(--vm-a4) var(--vm-a5),#F1F3F2 var(--vm-a5) 100%)}
 .vm-pl:after{content:"";position:absolute;left:27%;top:27%;width:46%;height:46%;border-radius:50%;background:#fff;transform:scale(0);transition:transform .7s cubic-bezier(.3,.7,.2,1)}
 .vm-pl.vm-ring:after{transform:scale(1)}
-.vm-pl.vm-dot,.vm-pl.vm-plain{border:1.5px solid var(--mi)}
-.vm-pl.vm-sel,.vm-pl:focus-visible{outline:2px solid var(--mi);outline-offset:2px}
+.vm-pl.vm-dot,.vm-pl.vm-plain{border:calc(1.5px*var(--lz,1)) solid var(--mi)}
+.vm-pl.vm-sel,.vm-pl:focus-visible{outline:calc(2px*var(--lz,1)) solid var(--mi);outline-offset:calc(2px*var(--lz,1))}
+/* Zoom on every map: + and − sit where the Founders view has them. Zoomed in, a finger moves the map; at rest it scrolls the page. */
+.vm-pm{position:absolute;right:24px;bottom:108px;z-index:4;display:flex;flex-direction:column;gap:6px}
+.vm-pm button{width:38px;height:38px;border:1px solid #8A9893;border-radius:10px;background:#fff;font-size:20px;font-weight:600;line-height:1}
+.vm-stage.vm-ease{transition:transform .35s cubic-bezier(.3,.7,.2,1)}.vm-stage.vm-ease .vm-pl{transition-duration:.35s}
+.vm-stage.vm-live .vm-pl{transition:none}.vm-stage.vm-ease #vm-labs .vm-lab,.vm-stage.vm-live #vm-labs .vm-lab{animation:none}
+.vm-map{touch-action:pan-y}.vm-map.vm-zoomed{touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
+.vm.vm-fview .vm-pm{display:none}
 .vm-pl.vm-lit{box-shadow:0 0 0 2px var(--mi),0 0 0 9px rgba(240,134,30,.32),0 0 0 20px rgba(240,134,30,.14)}
-.vm-lab{position:absolute;font-size:12px;font-weight:600;line-height:15px;white-space:nowrap;pointer-events:none;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 4px #fff,0 0 4px #fff}
+.vm-lab{position:absolute;font-size:calc(12px*var(--lz,1));font-weight:600;line-height:calc(15px*var(--lz,1));white-space:nowrap;pointer-events:none;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 4px #fff,0 0 4px #fff}
 #vm-labs .vm-lab{animation:vm-fade .35s both}
 #vm-labs.vm-late .vm-lab{animation-delay:.55s}
 @keyframes vm-fade{from{opacity:0}to{opacity:1}}
-.vm-lab.vm-code{font-size:11px;line-height:13px;text-align:center;letter-spacing:.02em}
-.vm-lab.vm-code-in{font-size:9px;text-shadow:none}
+.vm-lab.vm-code{font-size:calc(11px*var(--lz,1));line-height:calc(13px*var(--lz,1));text-align:center;letter-spacing:.02em}
+.vm-lab.vm-code-in{font-size:calc(9px*var(--lz,1));text-shadow:none}
 .vm-lab em{font-style:normal;font-weight:400;color:var(--mm)}
-.vm-lab.vm-sm{font-size:10px;line-height:14px;font-weight:400;color:var(--mm)}
+.vm-lab.vm-sm{font-size:calc(10px*var(--lz,1));line-height:calc(14px*var(--lz,1));font-weight:400;color:var(--mm)}
 .vm-tip{position:absolute;z-index:5;width:236px;background:#fff;border:1.5px solid var(--mi);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:12px}
 .vm-tip[hidden]{display:none}
 .vm-tip>b{font-size:14px;font-weight:600}
@@ -1705,6 +1713,7 @@ main.prof #around .arstage{transform:scale(.78)}
   .vm-col .vm-zoom{order:3;position:static;align-self:stretch;box-shadow:none;display:flex}
   .vm-col .vm-zoom button{flex:1;padding:0 8px}
   .vm-col .vm-map{order:4;position:relative;left:auto;inset:auto;width:100%;height:66vw;min-height:230px;background:#fff;border:1px solid var(--ml);border-radius:16px;overflow:hidden}
+  .vm .vm-pm{right:10px;bottom:10px}
   .vm .vm-whonote b,.vm .vm-whonote span{display:inline}
   .vm .vm-whonote b{margin-right:6px}
   .vm-col .vm-legend{order:5;position:static;width:auto;margin:0;padding:0 4px}

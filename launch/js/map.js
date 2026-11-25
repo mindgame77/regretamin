@@ -176,7 +176,7 @@
 
   // ---------- page shell
   el.innerHTML = `
-<div class="vm-map" id="vm-map"><div class="vm-stage" id="vm-stage"><img class="vm-bg" id="vm-bg" alt=""><div class="vm-wave" id="vm-wave"></div><div id="vm-pls"></div><div id="vm-labs"></div></div><div class="vm-tip" id="vm-tip" hidden></div></div>
+<div class="vm-map" id="vm-map"><div class="vm-stage" id="vm-stage"><img class="vm-bg" id="vm-bg" alt=""><div class="vm-bgz" id="vm-bgz" hidden></div><div class="vm-wave" id="vm-wave"></div><div id="vm-pls"></div><div id="vm-labs"></div></div><div class="vm-tip" id="vm-tip" hidden></div><div class="vm-pm" role="group" aria-label="Zoom the map"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button></div></div>
 <div class="vm-colwrap"><section class="vm-card vm-head" aria-live="polite"><h1 id="vm-h1"></h1>
   <div class="vm-picks"><div class="vm-pick" data-pick="sectors"></div><div class="vm-pick" data-pick="stages"></div><div class="vm-pick vm-who" data-pick="who"></div></div>
   <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a></section>
@@ -292,7 +292,7 @@
   function founders() { land(); const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, span: span() }); }
   function setView(v) {
     if (v === S.view) return;
-    stop(); S.view = v; S.list = null; S.pinned = null; marks();
+    stop(); S.view = v; S.list = null; S.pinned = null; zoomReset(); marks();
     if (v === 'founders') { remember(); founders(); return; }
     if (window.REGRET_FOUNDERS) window.REGRET_FOUNDERS.hide();
     drawPicks(); refresh().then(drawSide);
@@ -304,7 +304,7 @@
     if (S.level === 'world' && stage._rows) {
       from = {}; stage._rows.forEach((p) => { if (ZOOM[p.p] === l) from[p.p] = { x: S.ox + p.x * S.k, y: S.oy + p.y * S.k }; });
     }
-    S.list = null; S.pinned = null; S.level = l; land(); draw(from); drawSide();
+    S.list = null; S.pinned = null; S.level = l; zoomReset(); land(); draw(from); drawSide();
     if (S.view === 'founders' && window.REGRET_FOUNDERS) { window.REGRET_FOUNDERS.setLevel(l); marks(); remember(); }
   }
 
@@ -320,11 +320,51 @@
     // the firms panel takes the left of the map; the map moves over so the chosen place stays in view (if the window is wide enough)
     const open = S.list && S.list.step === 'firms' && r.width >= 940, l = l0 + (open ? 376 : 0);
     const k = Math.max(narrow ? 0.2 : 0.4, Math.min((r.width - l - rt) / g.w, (r.height - t - b) / g.h));
-    S.k = k; S.ox = l + (r.width - l - rt - g.w * k) / 2; S.oy = t; S.boxW = r.width; S.boxH = r.height;
+    // Zoom (+ / −, the wheel, a pinch): the same picture, drawn S.z times bigger around the point (S.zx, S.zy) of the map.
+    // At rest (S.z = 1) nothing differs from before. Circles grow more slowly than the map and names keep their size on
+    // the screen (see RZ and LZ), so crowded places spread apart.
+    const z = S.z || 1, ox0 = l + (r.width - l - rt - g.w * k) / 2, ax = ox0 + g.w * k / 2, ay = t + g.h * k / 2, kz = k * z;
+    if (z <= 1.001) { S.z = 1; S.zx = g.w / 2; S.zy = g.h / 2; }
+    S.zx = Math.min(g.w - g.w / (2 * z), Math.max(g.w / (2 * z), S.zx == null ? g.w / 2 : S.zx)); S.zy = Math.min(g.h - g.h / (2 * z), Math.max(g.h / (2 * z), S.zy == null ? g.h / 2 : S.zy));
+    S.k = kz; S.ox = ax - S.zx * kz; S.oy = ay - S.zy * kz; S.boxW = r.width; S.boxH = r.height;
     stage.style.width = g.w + 'px'; stage.style.height = g.h + 'px';
-    stage.style.transform = `translate(${l + (r.width - l - rt - g.w * k) / 2}px, ${t}px) scale(${k})`;
+    S.k0 = k; stage.style.setProperty('--lz', LZ().toFixed(4));
+    stage.style.transform = `translate(${S.ox}px, ${S.oy}px) scale(${kz})`;
+    mapBox.classList.toggle('vm-zoomed', z > 1); sharp();
   }
   window.addEventListener('resize', fit);
+  // How circles and names are sized in map units when zoomed in. Circles grow more slowly than the map. Names keep their size
+  // on the screen; on a phone, where the whole map is drawn small, they first grow to their full size and then keep it.
+  const RZ = () => 1 / Math.sqrt(S.z || 1), LZ = () => { const z = S.z || 1, k0 = S.k0 || 1; return (k0 < 1 ? Math.min(1, k0 * z) : k0) / (k0 * z); };
+  let zraf = 0;
+  // Zoomed in, the land picture would show its white lines ever thicker. So the same drawing is laid over it as lines
+  // that keep their thickness on the screen (fetched once, the first time a map is zoomed). At rest the picture alone shows.
+  const landTxt = {};
+  function sharp() {
+    const bz = $('#vm-bgz'), lv = S.level; if (!bz) return;
+    if (!((S.z || 1) > 1) || S.view === 'founders') { bz.hidden = true; return; }
+    if (bz.dataset.l === lv) { bz.hidden = false; return; }
+    if (landTxt[lv] === undefined) { landTxt[lv] = null; fetch(`${ROOT}assets/map/${lv}-land.svg${MAPV}`).then((r) => r.text()).then((t) => { landTxt[lv] = t; sharp(); }).catch(() => { delete landTxt[lv]; }); }
+    if (!landTxt[lv]) { bz.hidden = true; return; }
+    bz.innerHTML = landTxt[lv]; bz.dataset.l = lv;
+    bz.querySelectorAll('path').forEach((p, i) => { p.style.strokeWidth = `calc(${p.getAttribute('stroke-width')}px * var(--lz, 1))`; if (!i) p.style.fill = p.style.stroke = '#CCD5D1'; });  // the picture's grey, with its touch of light
+    bz.hidden = false;
+  }
+  let zT = 0;
+  const hideTip = () => { if (!S.pinned || COL) tip(null); };
+  // the buttons glide; the wheel, a pinch and a drag follow the hand with no delay
+  const pace = (cls) => { stage.classList.remove('vm-ease', 'vm-live'); stage.classList.add(cls); clearTimeout(zT); zT = setTimeout(() => stage.classList.remove(cls), cls === 'vm-ease' ? 420 : 260); };
+  function zoomAt(f, sx, sy) {  // f above 1 zooms in; (sx, sy) is the point on the page that stays put (the middle of the map if none)
+    const g = S.geo && S.geo[S.level]; if (!g || S.view === 'founders') return;
+    const r = mapBox.getBoundingClientRect(), z0 = S.z || 1, z = Math.min(8, Math.max(1, z0 * f)); if (Math.abs(z - z0) < 0.001) return;
+    pace(sx == null ? 'vm-ease' : 'vm-live');
+    if (sx == null) { sx = S.ox + S.zx * S.k; sy = S.oy + S.zy * S.k; } else { sx -= r.left; sy -= r.top; }
+    const ux = (sx - S.ox) / S.k, uy = (sy - S.oy) / S.k, k1 = S.k / z0 * z, ax = S.ox + S.zx * S.k, ay = S.oy + S.zy * S.k;
+    S.z = z; S.zx = ux - (sx - ax) / k1; S.zy = uy - (sy - ay) / k1;
+    hideTip(); fit(); if (stage.classList.contains('vm-ease')) draw(); else { cancelAnimationFrame(zraf); zraf = requestAnimationFrame(() => draw()); }
+  }
+  function panBy(dx, dy) { if ((S.z || 1) <= 1) return; pace('vm-live'); S.zx -= dx / S.k; S.zy -= dy / S.k; fit(); }
+  const zoomReset = () => { S.z = 1; S.zx = S.zy = null; };
   // Guernsey, Jersey and the Isle of Man are registration addresses, not places a founder would look for: they get no dot
   // of their own (their deals stay in Europe's totals), and an update from one lights up the United Kingdom.
   const FOLD = { GG: 'GB', JE: 'GB', IM: 'GB' };
@@ -366,6 +406,7 @@
       p.r = p.kind === 'dot' ? 6 : S.level === 'world' ? Math.round(18 + 20 * Math.pow(p.d / max, 0.6)) : sector ? Math.round(7 + 30 * Math.sqrt(p.d / max)) : S.level === 'eu' ? Math.round(11 + 27 * Math.sqrt(p.d / max)) : Math.round(14 + 26 * Math.sqrt(p.d / max));
       p.ax = p.x; p.ay = p.y;
     });
+    rows.forEach((p) => { if (p.r) p.r *= RZ(); });
     // On the US and Europe maps the smallest places are left out so the map stays readable. With narrow filters that
     // could leave it empty while the sector list still shows deals, so when few circles remain the next largest come back.
     if (hot && S.level !== 'world' && rows.filter((p) => p.kind).length < 8) {
@@ -374,13 +415,13 @@
     const out = rows.filter((p) => p.kind), big = out.filter((p) => p.kind !== 'dot');
     for (let it = 0; it < 80; it++) {  // nudge overlapping circles apart, keeping each close to its true spot
       for (let i = 0; i < big.length; i++) for (let j = i + 1; j < big.length; j++) {
-        const a = big[i], b = big[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01, need = a.r + b.r + 3;
+        const a = big[i], b = big[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 0.01, need = a.r + b.r + 3 * LZ();
         if (d < need) { const m = (need - d) / 2, wa = b.r / (a.r + b.r), wb = 1 - wa; a.x -= dx / d * m * 2 * wa; a.y -= dy / d * m * 2 * wa; b.x += dx / d * m * 2 * wb; b.y += dy / d * m * 2 * wb; }
       }
       big.forEach((p) => { p.x += (p.ax - p.x) * 0.06; p.y += (p.ay - p.y) * 0.06; });
     }
     // a small dot that would sit on top of a ring is left out (its firms are still in that ring's neighbourhood list)
-    return out.filter((p) => p.kind !== 'dot' || !big.some((b) => Math.hypot(b.x - p.x, b.y - p.y) < b.r + 8)).sort((a, b) => (a.kind === 'dot') - (b.kind === 'dot') || b.d - a.d);
+    return out.filter((p) => p.kind !== 'dot' || !big.some((b) => Math.hypot(b.x - p.x, b.y - p.y) < b.r + 8 * LZ())).sort((a, b) => (a.kind === 'dot') - (b.kind === 'dot') || b.d - a.d);
   };
   // Each circle is one lasting element, so a change of numbers glides (size, position, slices) instead of jumping.
   const els = new Map();  // "level|place" -> button
@@ -434,9 +475,9 @@
       else b.style.backgroundColor = p.kind === 'plain' ? (S.sectors.length === 1 ? COLORS[S.sectors[0]] : '#C9D1CE') : (COLORS[(p.top && p.top[0] && p.top[0][0])] || '#C9D1CE');
       // label: below, else above, else right, else left; dropped if nothing fits
       const sub = p.kind === 'hot' ? (S.level === 'world' ? toneText(p) + (hotOf(p) && p.tone !== 'few' ? ' · ' + hotOf(p)[0] : '') : num(p.d) + ' · ' + toneText(p)) : num(p.d) + (S.level === 'world' && !sector && p.so ? ' · ' + p.so : ''), small = p.kind === 'dot';
-      const w = Math.max(p.n.length * (small ? 5.6 : 6.6), small ? 0 : sub.length * 5.9) + 8, h = small ? 14 : 30;
-      const tries = small ? [[p.x + p.r + 6, p.y - 7, 'l'], [p.x - p.r - 6 - w, p.y - 7, 'r']] : [[p.x - w / 2, p.y + p.r + 2, 'c'], [p.x - w / 2, p.y - p.r - h - 2, 'c'], [p.x + p.r + 4, p.y - h / 2, 'l'], [p.x - p.r - 4 - w, p.y - h / 2, 'r'],
-        [p.x + p.r * 0.7 + 2, p.y + p.r * 0.7, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y + p.r * 0.7, 'r'], [p.x + p.r * 0.7 + 2, p.y - p.r * 0.7 - h, 'l'], [p.x - p.r * 0.7 - 2 - w, p.y - p.r * 0.7 - h, 'r']];
+      const q = LZ(), w = (Math.max(p.n.length * (small ? 5.6 : 6.6), small ? 0 : sub.length * 5.9) + 8) * q, h = (small ? 14 : 30) * q;
+      const tries = small ? [[p.x + p.r + 6 * q, p.y - 7 * q, 'l'], [p.x - p.r - 6 * q - w, p.y - 7 * q, 'r']] : [[p.x - w / 2, p.y + p.r + 2 * q, 'c'], [p.x - w / 2, p.y - p.r - h - 2 * q, 'c'], [p.x + p.r + 4 * q, p.y - h / 2, 'l'], [p.x - p.r - 4 * q - w, p.y - h / 2, 'r'],
+        [p.x + p.r * 0.7 + 2 * q, p.y + p.r * 0.7, 'l'], [p.x - p.r * 0.7 - 2 * q - w, p.y + p.r * 0.7, 'r'], [p.x + p.r * 0.7 + 2 * q, p.y - p.r * 0.7 - h, 'l'], [p.x - p.r * 0.7 - 2 * q - w, p.y - p.r * 0.7 - h, 'r']];
       let placed = false;
       for (const [x, y, al] of tries) {
         const bx = { x0: x, y0: y, x1: x + w, y1: y + h };
@@ -444,7 +485,7 @@
       }
       // No room for the full name (crowded Europe): fall back to the two-letter country code, beside the ring if it fits, else in its centre.
       if (!placed && S.level === 'eu' && !small) {
-        const cw = 20, ch = 13, spots = [[p.x - cw / 2, p.y + p.r + 1], [p.x - cw / 2, p.y - p.r - ch - 1], [p.x + p.r + 2, p.y - ch / 2], [p.x - p.r - 2 - cw, p.y - ch / 2]];
+        const cw = 20 * q, ch = 13 * q, spots = [[p.x - cw / 2, p.y + p.r + q], [p.x - cw / 2, p.y - p.r - ch - q], [p.x + p.r + 2 * q, p.y - ch / 2], [p.x - p.r - 2 * q - cw, p.y - ch / 2]];
         let done = false;
         for (const [x, y] of spots) {
           const bx = { x0: x, y0: y, x1: x + cw, y1: y + ch };
@@ -499,7 +540,23 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   stage.addEventListener('mouseout', (e) => { if (e.target.closest('.vm-pl')) hideSoon(); });
   $('#vm-tip').addEventListener('mouseenter', () => clearTimeout(hideT));
   $('#vm-tip').addEventListener('mouseleave', hideSoon);
+  // Zoom and move the map: + / −, the wheel, a pinch; a drag moves it once it is zoomed in. At rest a finger still scrolls the page.
+  let dragged = false, drag = null, pinch = 0; const ptrs = new Map();
+  mapBox.querySelector('.vm-pm').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (b) zoomAt(b.dataset.z === 'in' ? 1.7 : 1 / 1.7); });
+  mapBox.addEventListener('wheel', (e) => { if (S.view === 'founders') return; e.preventDefault(); zoomAt(Math.exp(-Math.max(-60, Math.min(60, e.deltaY)) * 0.004), e.clientX, e.clientY); }, { passive: false });
+  mapBox.addEventListener('pointerdown', (e) => { if (S.view === 'founders' || e.target.closest('.vm-pm')) return; ptrs.set(e.pointerId, [e.clientX, e.clientY]); dragged = false; drag = ptrs.size === 1 ? [e.clientX, e.clientY] : null; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+  mapBox.addEventListener('pointermove', (e) => {
+    if (!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptrs.size === 2 && pinch) { const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (Math.abs(d - pinch) > 4) { zoomAt(d / pinch, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); pinch = d; dragged = true; } return; }
+    if (!drag || (S.z || 1) <= 1) return;
+    const dx = e.clientX - drag[0], dy = e.clientY - drag[1]; if (!dragged && Math.hypot(dx, dy) < 5) return;
+    dragged = true; drag = [e.clientX, e.clientY]; hideTip(); panBy(dx, dy);
+  });
+  const endPtr = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = 0; if (!ptrs.size) drag = null; };
+  mapBox.addEventListener('dragstart', (e) => e.preventDefault());  // the map picture must not be picked up as an image
+  mapBox.addEventListener('pointerup', endPtr); mapBox.addEventListener('pointercancel', endPtr); mapBox.addEventListener('pointerleave', endPtr);
   stage.addEventListener('click', (e) => {
+    if (dragged) { dragged = false; return; }  // the end of a drag is not a click
     const b = e.target.closest('.vm-pl');
     // Clicking a place opens its sectors (in both views; founder, 25 Nov); clicking it again, or the empty map, closes them.
     if (b) { const p = stage._rows[+b.dataset.i]; if (S.list && S.list.place.p === p.p) closeList(); else openList(p); return; }

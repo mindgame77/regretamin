@@ -113,6 +113,7 @@ button.row:hover b{text-decoration:underline}
   .panel{overflow:visible}
   .ctl .seg{max-width:100%;overflow-x:auto}
   .stage svg{touch-action:pan-y}  /* on a phone a finger moving up or down scrolls the page; zoom with the buttons */
+  .stage.zoomed svg{touch-action:none}  /* zoomed in, the finger moves the map instead */
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 /* ---- The same look as Money flow and Hot right now (founder, 25 Nov: "unify all 3 maps in size and design"). ----
@@ -323,7 +324,7 @@ async function boot(O) {
   function applyView() {
     const svg = $('#stage svg'); if (!svg) return; const { v, k, z } = vbox();
     // its own land only where the page's picture cannot follow; the white lines are as thick as the picture's
-    $('#stage').classList.toggle('own', NARROW.matches || z > 1 || S.sel != null || S.area != null);
+    $('#stage').classList.toggle('own', NARROW.matches || z > 1 || S.sel != null || S.area != null); $('#stage').classList.toggle('zoomed', z > 1);
     svg.style.setProperty('--lw', (LINE[S.level] / (k * z)).toFixed(2) + 'px');
     svg.setAttribute('viewBox', v.map((n) => +n.toFixed(2)).join(' ')); svg.style.setProperty('--k', k); drawMarks(k, z);
   }

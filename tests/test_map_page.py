@@ -225,3 +225,26 @@ def test_which_firms_count_on_the_map_is_one_rule_with_a_register():
     for s in (sql, (ROOT / 'supabase/migrations/20261125201859_v2_firm_type_fixes_haiku_high.sql').read_text()):
         assert "to_regclass('public.v2_firm_types_firms') is null" in s and 'raise exception' not in s.lower()
         assert 'v2_firm_type_retag_20261125' in s  # old tags are kept
+
+
+def test_money_flow_and_trends_can_be_zoomed_like_founders():
+    """Founder, 25 Nov: "Zoom on all three maps, phone and computer." Money flow and Trends get + and - (same spot as in
+    Founders), the wheel, a pinch and a drag. At rest nothing changes; no text is added."""
+    js = (ROOT / 'launch/js/map.js').read_text(); css = (ROOT / 'launch/style.css').read_text(); F = (ROOT / 'launch/js/founders.js').read_text()
+    # the only new control: two buttons with no words
+    assert '<div class="vm-pm" role="group" aria-label="Zoom the map"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button></div>' in js
+    assert '.vm-pm{position:absolute;right:24px;bottom:108px;' in css and '.vm .vm-pm{right:10px;bottom:10px}' in css
+    assert '.zoom{right:24px;bottom:108px}' in F and '.zoom{right:10px;bottom:10px}' in F  # the same spots as in Founders
+    assert '.vm.vm-fview .vm-pm{display:none}' in css  # Founders has its own
+    # at rest the map is drawn exactly as before: the zoom only multiplies
+    assert "if (z <= 1.001) { S.z = 1;" in js and 'const RZ = () => 1 / Math.sqrt(S.z || 1)' in js
+    # zoom goes back to rest with the view and with World / United States / Europe
+    assert "S.view = v; S.list = null; S.pinned = null; zoomReset();" in js and "S.level = l; zoomReset(); land();" in js
+    # wheel, pinch, drag; the end of a drag is not a click on a place
+    for s in ("addEventListener('wheel'", "ptrs.size === 2 && pinch", "panBy(dx, dy)", "if (dragged) { dragged = false; return; }", "addEventListener('dragstart'"):
+        assert s in js, s
+    # a phone: a finger scrolls the page at rest and moves the map when zoomed in, in Founders too
+    assert '.vm-map{touch-action:pan-y}.vm-map.vm-zoomed{touch-action:none;' in css
+    assert '.stage.zoomed svg{touch-action:none}' in F and "classList.toggle('zoomed', z > 1)" in F
+    # names and lines keep their size on the screen
+    assert '.vm-lab{position:absolute;font-size:calc(12px*var(--lz,1))' in css and "calc(${p.getAttribute('stroke-width')}px * var(--lz, 1))" in js
