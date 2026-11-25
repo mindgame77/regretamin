@@ -2709,7 +2709,13 @@
       const place = function () {
         const map = card.querySelector && card.querySelector('.wmap'), wrap = card.querySelector && card.querySelector('.wbox');
         if (!map || !wrap || !map.getBoundingClientRect) return;
-        const box = map.getBoundingClientRect(), lim = wrap.getBoundingClientRect();
+        // On a computer the card has a set height and the map fills it. On a phone the card is as tall as what is in it, so
+        // the map got no height at all and every circle landed on one spot over the title (founder's phone, 25 Nov).
+        // When that happens the map takes the card's width and its own shape sets the height.
+        wrap.style.flex = ''; map.style.width = ''; map.style.height = '';
+        let box = map.getBoundingClientRect();
+        if (!box.height) { wrap.style.flex = 'none'; map.style.width = '100%'; map.style.height = 'auto'; box = map.getBoundingClientRect(); }
+        const lim = wrap.getBoundingClientRect();
         if (!box.width || !box.height) return;
         const circles = spots.map(x => ({ x: x.s.x / g.w * box.width, y: x.s.y / g.h * box.height, r: rad(x.n) }));
         const edge = { l: lim.left - box.left, r: lim.right - box.left, t: lim.top - box.top, b: lim.bottom - box.top };
