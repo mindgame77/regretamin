@@ -60,6 +60,11 @@ def test_draws_in_its_own_shadow_root_from_one_database_function():
     assert '.vm-map' not in rule and '.vm.vm-fview #vm-pls,.vm.vm-fview #vm-labs' in CSS
     assert '@media (max-width:900px){.vm.vm-fview .vm-map{display:none!important}' in CSS  # on a phone it is a block of its own
     assert 'function land()' in MAP and 'function founders() { land();' in MAP
+    # the colours take the place of the picture as it really is on the screen (never worked out a second time), and
+    # both fit again when a box changes size without the window doing so (his screenshot of 25 Nov: ~30 px apart)
+    assert 'function pictureBox()' in MAP and 'picture: pictureBox' in MAP and 'window.REGRET_FOUNDERS.refit()' in MAP
+    assert 'O.picture()' in JS and 'pic.level === S.level' in JS and 'preserveAspectRatio="xMinYMin meet"' in JS
+    assert 'ResizeObserver' in MAP and 'ResizeObserver' in JS
     assert '.shp.plain{fill:transparent;stroke:none}' in JS and '.stage.own .shp.plain{fill:#CCD5D1;stroke:#fff}' in JS
     assert '.soft .shp.tint{animation:tint' in JS  # the colours fade in
     # the white lines of its own land are as thick as the ones build.py draws into <level>-land.svg

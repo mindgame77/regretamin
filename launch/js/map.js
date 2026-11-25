@@ -276,7 +276,7 @@
     const a = qStart(S.q0), b = qEnd(S.q1), all = S.q0 === 0 && S.q1 === NQ - 1;
     return { from: ymd(a), to: ymd(b), text: all ? 'since 2021' : `from ${MONTHS[a.getMonth()]} ${a.getFullYear()} to ${S.q1 === NQ - 1 ? 'today' : MONTHS[b.getMonth()] + ' ' + b.getFullYear()}` };
   }
-  function founders() { land(); const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, span: span() }); }
+  function founders() { land(); const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, span: span(), picture: pictureBox }); }
   function setView(v) {
     if (v === S.view) return;
     stop(); S.view = v; S.list = null; S.pinned = null; marks();
@@ -310,8 +310,13 @@
     S.k = k; S.ox = l + (r.width - l - rt - g.w * k) / 2; S.oy = t; S.boxW = r.width; S.boxH = r.height;
     stage.style.width = g.w + 'px'; stage.style.height = g.h + 'px';
     stage.style.transform = `translate(${l + (r.width - l - rt - g.w * k) / 2}px, ${t}px) scale(${k})`;
+    if (S.view === 'founders' && window.REGRET_FOUNDERS && window.REGRET_FOUNDERS.refit) window.REGRET_FOUNDERS.refit();  // its colours sit on this picture: move them with it
   }
   window.addEventListener('resize', fit);
+  // The map's box can change size without the window doing so (a scroll bar that comes or goes, a side panel): fit again then too.
+  if (window.ResizeObserver) { let rw = 0, rh = 0; new ResizeObserver(() => { const r = mapBox.getBoundingClientRect(); if (Math.abs(r.width - rw) < 0.5 && Math.abs(r.height - rh) < 0.5) return; rw = r.width; rh = r.height; fit(); }).observe(mapBox); }
+  // Where the land picture really is on the screen, for the view that draws on top of it (Founders).
+  function pictureBox() { const bg = $('#vm-bg'), g = S.geo && S.geo[S.level]; if (!g || bg.dataset.l !== S.level) return null; const r = bg.getBoundingClientRect(); return r.width > 0 ? { level: S.level, x: r.left, y: r.top, w: r.width, h: r.height } : null; }
   // Guernsey, Jersey and the Isle of Man are registration addresses, not places a founder would look for: they get no dot
   // of their own (their deals stay in Europe's totals), and an update from one lights up the United Kingdom.
   const FOLD = { GG: 'GB', JE: 'GB', IM: 'GB' };
