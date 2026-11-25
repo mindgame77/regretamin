@@ -134,10 +134,12 @@ def test_founders_shapes_lie_on_the_sites_own_map():
     # Europe: the frame cuts both at the same edges
     a, b = box([land['eu']]), box([s['d'] for s in geo['shapes']['eu']])
     assert all(abs(x - y) <= 1.5 for x, y in zip(a, b)), (a, b)
-    # and the two generators say so: one fit per view, word for word
+    # and the two generators cannot differ: how a view is framed and fitted is written once, in tools/map/views.cjs, and
+    # both read it (founder, 25 Nov: "one shared place for the map settings"); neither keeps a fit of its own
     A = (ROOT / 'tools/map/gen_assets.cjs').read_text(); F = (ROOT / 'tools/map/gen_founders.cjs').read_text()
-    assert "d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], usa)" in A and "find((f) => f.id === '840')" in A
-    assert "d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], topo.feature(A110, A110.objects.countries).features.find((f) => f.id === '840'))" in F
-    for fit in ("d3.geoNaturalEarth1().fitExtent([[20, 70], [1040, 580]], { type: 'MultiPoint', coordinates: [[-170, -52], [180, 72], [-170, 72], [180, -52]] })",
-                "d3.geoMercator().fitExtent([[0, 0], [876, 600]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [50.5, 34.5], [-25, 67], [50.5, 67]] })"):
-        assert fit in A and fit in F
+    V = (ROOT / 'tools/map/views.cjs').read_text()
+    assert "require('./views.cjs')(d3, topo, atlas)" in A and "require('./views.cjs')(d3, topo, A110)" in F
+    for own in ('fitExtent(', 'geoAlbersUsa(', 'geoNaturalEarth1(', 'geoMercator('):
+        assert own not in A and own not in F, own
+        assert own in V
+    assert "find((f) => f.id === '840')" in V  # the US is fitted to the world atlas's United States
