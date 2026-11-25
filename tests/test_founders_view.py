@@ -39,8 +39,9 @@ def test_draws_in_its_own_shadow_root_from_one_database_function():
     assert "O.sb.rpc('v2_founders_data')" in JS
     # founder's decisions: no tick box for giant rounds, no "Whole map" button, no word "then" between two sectors
     assert 'Include rounds of $1B' not in JS and 'Whole map' not in JS and "', then '" not in JS
-    # every round counts in the cash, however big (founder, 25 Nov: "count everything")
-    assert 'not counted in the cash' not in JS and 'r[1] < 1000' not in JS
+    # rounds of $1B or more stay out of the cash of universities and companies, and the page says so there; a place
+    # counts every round (founder, 25 Nov: "we don't hide them completely, we just don't use them for universities")
+    assert 'Rounds of $1B or more are not counted in the cash here.' in JS and '(isPlace() || r[1] < BIG)' in JS and 'const BIG = 1000;' in JS
     # the three choices and the two ways to draw them
     # one timeline for the whole map: Founders reads the page's own handles, it has no year buttons of its own
     assert 'seg-year' not in JS and 'setSpan' in JS and 'window.REGRET_FOUNDERS.setSpan(span())' in MAP

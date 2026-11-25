@@ -1,7 +1,7 @@
 // The "Founders" view of the home page map (the third button next to Money flow and Hot right now).
 // What founders are building, three ways: by where they live (Places), where they studied (Universities) and where
 // they worked before (Companies); as a map or as blocks sized by cash raised. Founder's decisions, 24 to 25 Nov 2026:
-// a place needs only one startup to get a colour; every round counts in the cash, however big; pressing a state or country does not move the map; circles in one
+// a place needs only one startup to get a colour; rounds of $1B or more are left out of the cash of universities and companies (places count everything); pressing a state or country does not move the map; circles in one
 // city sit beside each other; a logo on a filled or white square is cut round and fills its circle.
 // Data: one read-only database function, v2_founders_data (kept 30 minutes); the page does all the counting, so the
 // years, the pressed place and the two switches answer at once. Map shapes, positions and logos come with the site
@@ -10,6 +10,11 @@
 (function () {
   const COLORS = { 'Enterprise software': '#A9C4E8', 'Health': '#F2A7A0', 'Fintech': '#F3D98B', 'Hardware & Robotics': '#9FD4C3', 'Consumer': '#D9B5E0', 'Climate & Energy': '#BFDCA0', 'Bio': '#C59AC7', 'AI agents': '#8E9BE0', 'AI models': '#C4CCF2', 'Security': '#A8BDB5', 'Crypto': '#F7E6B5', 'Media & Gaming': '#F5C19A', 'Food & Agriculture': '#D5E0A3', 'Defense': '#B5B5BD', 'Space': '#9AA5D1', 'Mobility': '#9CC9D9', 'Education': '#EFC4D0', 'Developer tools': '#B9E0E6', 'Real estate': '#E6C9B0', 'Govtech': '#C2D6C8', 'Other': '#DADFDD' };
   const VC = window.REGRET_VC_BASE || '/vc/';
+  // A round this big ($M) is left out of the cash of a university or a company, and only there: 83 such rounds are
+  // nearly half of all the money, and each would be counted under every university and former employer of that
+  // startup's founders (OpenAI alone put Google at $388B). A place counts every round: the money did land there.
+  // The startup itself always counts and is listed with its real round. Founder's call, 25 Nov 2026.
+  const BIG = 1000;
   // Local preview only: ?fx_founders=<saved v2_founders_data answer>. Ignored on any real host.
   const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const FIX = LOCAL ? new URLSearchParams(location.search).get('fx_founders') : null;
@@ -191,7 +196,7 @@ async function boot(O) {
     const agg = new Map(); let total = 0;
     ST.forEach((st, i) => {
       let cash = 0, hit = false, last = null;
-      for (const r of st[4]) { if (r[0] < S.from || r[0] > S.to) continue; hit = true; if (r[1]) cash += r[1]; if (!last || r[0] > last[0]) last = r; }
+      for (const r of st[4]) { if (r[0] < S.from || r[0] > S.to) continue; hit = true; if (r[1] && (isPlace() || r[1] < BIG)) cash += r[1]; if (!last || r[0] > last[0]) last = r; }
       if (!hit) return;
       const ks = keysOf(st); if (!ks.length) return; total++;
       for (const k of ks) {
@@ -305,12 +310,12 @@ async function boot(O) {
   const where = () => S.level === 'us' ? 'the US' : S.level === 'eu' ? 'Europe' : 'a country we know';
   function drawHead() {
     const unit = S.kind === 'unis' ? 'university' : S.kind === 'cos' ? 'company' : S.level === 'us' ? 'state' : 'country', a = S.sel != null ? C.agg.get(S.sel) : null;
-    const ar = !isPlace() && S.area != null && !a;
+    const ar = !isPlace() && S.area != null && !a, cashNote = isPlace() ? '' : ' Rounds of $1B or more are not counted in the cash here.';
     $('#h1').textContent = ar ? (S.kind === 'unis' ? `What founders from universities in ${areaName()} are building.` : `What founders who worked at companies in ${areaName()} are building.`) : a ? (S.kind === 'unis' ? `What ${label(S.sel)} founders are building.` : S.kind === 'cos' ? `What founders who worked at ${label(S.sel)} are building.` : `What founders in ${label(S.sel)} are building.`) : (!isPlace() ? `What founders from each ${unit} are building.` : `What founders in each ${unit} are building.`);
     const when = S.when;
-    if (ar) { const ids = new Set(); for (const x of shown()) for (const l of x.list) ids.add(l[0]); $('#based').textContent = `Based on ${num(ids.size)} startups that raised ${when} and have a founder from one of the ${shown().length} ${S.kind === 'unis' ? 'universities' : 'companies'} here.`; }
+    if (ar) { const ids = new Set(); for (const x of shown()) for (const l of x.list) ids.add(l[0]); $('#based').textContent = `Based on ${num(ids.size)} startups that raised ${when} and have a founder from one of the ${shown().length} ${S.kind === 'unis' ? 'universities' : 'companies'} here.` + cashNote; }
     else $('#based').textContent = (a ? `Based on ${num(a.n)} startups that raised ${when} and have a founder ${S.kind === 'unis' ? 'who studied there' : S.kind === 'cos' ? 'who worked there' : 'living there'}.`
-      : `Based on ${num(C.total)} startups that raised ${when} and have a founder ${!isPlace() ? (S.kind === 'unis' ? 'from one of ' + M.unis.length + ' universities' : 'who worked at one of ' + M.cos.length + ' companies') + (S.level === 'world' ? '' : ' in ' + (S.level === 'us' ? 'the US' : 'Europe')) : (S.level === 'world' ? 'whose home country we know' : 'living in ' + where())}.`);
+      : `Based on ${num(C.total)} startups that raised ${when} and have a founder ${!isPlace() ? (S.kind === 'unis' ? 'from one of ' + M.unis.length + ' universities' : 'who worked at one of ' + M.cos.length + ' companies') + (S.level === 'world' ? '' : ' in ' + (S.level === 'us' ? 'the US' : 'Europe')) : (S.level === 'world' ? 'whose home country we know' : 'living in ' + where())}.`) + cashNote;
     const used = new Map(); for (const x of C.agg.values()) used.set(x.top, (used.get(x.top) || 0) + 1);
     const order = [...used.entries()].sort((x, y) => y[1] - x[1]).map((e) => e[0]);
     $('#key').innerHTML = order.length ? `<h4>${S.mode === 'blocks' ? 'Colours: what the startups do' : 'Colour: what most startups there do'}</h4>` + (S.mode === 'blocks' ? Object.keys(M.colors).slice(0, 12) : order.map((s) => M.sectors[s])).map((n) => `<span><i class="sw" style="background:${M.colors[n]}"></i>${esc(n)}</span>`).join('') + (S.mode === 'map' && isPlace() ? `<span><i class="sw" style="background:${GREY}"></i>No startups yet</span>` : '') : '';
