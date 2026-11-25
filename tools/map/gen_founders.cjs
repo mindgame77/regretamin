@@ -28,14 +28,12 @@ const name2cc = {}; for (const [c, n] of Object.entries(CC)) name2cc[n] = c;
 const crimea = ([lon, lat]) => lon > 32.3 && lon < 36.6 && lat > 44.3 && lat < 46.3;
 const polys = (g) => g.type === 'MultiPolygon' ? g.coordinates : [g.coordinates];
 const nice = (n) => n.replace('United States of America', 'United States');
-const V = { world: { w: 1060, h: 620 }, us: { w: 900, h: 540 }, eu: { w: 876, h: 600 } };
-const P = {
-  world: d3.geoNaturalEarth1().fitExtent([[20, 70], [1040, 580]], { type: 'MultiPoint', coordinates: [[-170, -52], [180, 72], [-170, 72], [180, -52]] }),
-  // The US must be fitted exactly as the site's own US map is (tools/map/gen_assets.cjs fits it to the United States of
-  // the 1:110m world atlas, country 840), not to the detailed outline: with another fit the states land 25 to 35 px beside
-  // the grey land they are laid over (founder, 25 Nov). The shapes themselves still come from the detailed outline.
-  us: d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], topo.feature(A110, A110.objects.countries).features.find((f) => f.id === '840')),
-  eu: d3.geoMercator().fitExtent([[0, 0], [876, 600]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [50.5, 34.5], [-25, 67], [50.5, 67]] }).clipExtent([[0, 0], [876, 600]]) };
+// How each view is framed and fitted comes from the one shared file, the same one the site's own map is made with
+// (tools/map/gen_assets.cjs). With a copy of its own here the US once differed and every state sat 25 to 35 px beside the
+// grey land it is laid over (founder, 25 Nov). The shapes themselves still come from the detailed outlines.
+const MV = require('./views.cjs')(d3, topo, A110);
+const V = MV.SIZE;
+const P = { world: MV.world(), us: MV.us(), eu: MV.eu().clipExtent(MV.EU_FRAME) };
 const geo = { views: V, shapes: { world: [], us: [], eu: [] }, dots: {}, europe: EUROPE };
 function countries(A, view, skip) {
   const p = d3.geoPath(P[view]).digits(1), feats = topo.feature(A, A.objects.countries).features;

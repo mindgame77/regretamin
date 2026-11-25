@@ -8,7 +8,8 @@ const d3 = require(process.env.D3 || 'd3-geo'), topo = require(process.env.TOPO 
 const atlas = JSON.parse(fs.readFileSync(process.env.ATLAS || require.resolve('world-atlas/countries-110m.json')));
 const OUT = path.join(__dirname, '..', '..', 'launch', 'assets', 'map');
 const land = topo.feature(atlas, atlas.objects.land);
-const usa = topo.feature(atlas, atlas.objects.countries).features.find((f) => f.id === '840');
+const MV = require('./views.cjs')(d3, topo, atlas);  // how each view is framed and fitted: one copy, shared with gen_founders.cjs
+const usa = MV.usa;
 // The Europe view shows no Russian territory (founder, 23 Nov): its land, Kaliningrad included, is left out.
 // Crimea is Ukraine and stays on the map; the atlas files it under Russia, so it is named here by its box.
 const russia = topo.feature(atlas, atlas.objects.countries).features.find((f) => f.id === '643');
@@ -22,10 +23,9 @@ const kazakhstan = topo.feature(atlas, atlas.objects.countries).features.find((f
 const usDetail = (() => { try { return JSON.parse(fs.readFileSync(process.env.US_ATLAS || require.resolve('us-atlas/states-10m.json'))); } catch (e) { return null; } })();
 const usNation = usDetail ? topo.feature(usDetail, usDetail.objects.nation) : null;
 const VIEWS = {
-  world: { w: 1060, h: 620, step: 8, proj: d3.geoNaturalEarth1().fitExtent([[20, 70], [1040, 580]], { type: 'MultiPoint', coordinates: [[-170, -52], [180, 72], [-170, 72], [180, -52]] }), inside: (ll) => d3.geoContains(land, ll) },
-  us: { w: 900, h: 540, step: 8, proj: d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], usa), inside: (ll) => d3.geoContains(usNation || usa, ll) },
-  // Europe is framed from Iceland (top left) to the Caspian (right), at the same scale as before the frame was widened (23 Nov).
-  eu: { w: 876, h: 600, step: 6, proj: d3.geoMercator().fitExtent([[0, 0], [876, 600]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [50.5, 34.5], [-25, 67], [50.5, 67]] }), inside: (ll) => d3.geoContains(land, ll) && !inRussia(ll) && !d3.geoContains(kazakhstan, ll) },
+  world: { w: MV.SIZE.world.w, h: MV.SIZE.world.h, step: 8, proj: MV.world(), inside: (ll) => d3.geoContains(land, ll) },
+  us: { w: MV.SIZE.us.w, h: MV.SIZE.us.h, step: 8, proj: MV.us(), inside: (ll) => d3.geoContains(usNation || usa, ll) },
+  eu: { w: MV.SIZE.eu.w, h: MV.SIZE.eu.h, step: 6, proj: MV.eu(), inside: (ll) => d3.geoContains(land, ll) && !inRussia(ll) && !d3.geoContains(kazakhstan, ll) },
 };
 // [lat, lon] per place. World regions are hand-placed; the rest are city or country centres.
 const PLACES = {
@@ -55,7 +55,7 @@ const atlas50 = (() => { try { return JSON.parse(fs.readFileSync(process.env.ATL
 let euLand = null, euPath = null;
 const lines = {};
 {
-  const eu = VIEWS.eu, proj = d3.geoMercator().fitExtent([[0, 0], [eu.w, eu.h]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [50.5, 34.5], [-25, 67], [50.5, 67]] }).clipExtent([[0, 0], [eu.w, eu.h]]);
+  const eu = VIEWS.eu, proj = MV.eu().clipExtent(MV.EU_FRAME);
   // Europe is drawn from the 1:50m atlas (land and lines from the same data, so they agree); the world from 1:110m.
   const A = atlas50 || atlas, out = (g) => g.id === '643' || g.id === '398';
   lines.eu = d3.geoPath(proj).digits(1)(topo.mesh(A, A.objects.countries, (a, b) => a !== b && !out(a) && !out(b))) || '';
@@ -77,7 +77,7 @@ const landShapes = {};
 if (usNation) landShapes.us = d3.geoPath(VIEWS.us.proj).digits(1)(usNation) || '';
 if (euLand) landShapes.eu = euPath(euLand) || '';
 // The world's land and its lines both come from the 1:110m atlas; the frame cuts off what lies outside the picture.
-landShapes.world = d3.geoPath(d3.geoNaturalEarth1().fitExtent([[20, 70], [1040, 580]], { type: 'MultiPoint', coordinates: [[-170, -52], [180, 72], [-170, 72], [180, -52]] }).clipExtent([[0, 0], [VIEWS.world.w, VIEWS.world.proj([0, -58])[1]]])).digits(1)(land) || '';  // the frame ends above Antarctica
+landShapes.world = d3.geoPath(MV.world().clipExtent([[0, 0], [VIEWS.world.w, VIEWS.world.proj([0, -58])[1]]])).digits(1)(land) || '';  // the frame ends above Antarctica
 fs.writeFileSync(path.join(OUT, 'land.json'), JSON.stringify(landShapes) + '\n');
 const places = {};
 for (const [k, v] of Object.entries(VIEWS)) {
