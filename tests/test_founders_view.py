@@ -46,6 +46,12 @@ def test_draws_in_its_own_shadow_root_from_one_database_function():
     # one timeline for the whole map: Founders reads the page's own handles, it has no year buttons of its own
     assert 'seg-year' not in JS and 'setSpan' in JS and 'window.REGRET_FOUNDERS.setSpan(span())' in MAP
     assert '.vm.vm-fview .vm-dock' in CSS and '.vm.vm-fview .vm-map,.vm.vm-fview .vm-dock' not in CSS
+    # one look for all three views (founder, 25 Nov): no colour key; Places / Universities / Companies in the head card;
+    # Map / Blocks in the list card's header; a white hover card; the map in the same room as the main map
+    assert 'id="key"' not in JS and 'what most startups there do' not in JS
+    assert 'class="unit" id="seg-mode"' in JS and 'All other sectors' in JS
+    assert 'const ROOM = { world: [16, 16, 84, 104], us: [24, 24, 96, 120], eu: [24, 24, 62, 100] };' in JS
+    assert "{ world: [16, 16, 84, 104], us: [24, 24, 96, 120], eu: [24, 24, 62, 100] }" in MAP  # the main map's own numbers: keep the two in step
     for word in ('data-v="places"', 'data-v="unis"', 'data-v="cos"', 'data-v="map"', 'data-v="blocks"'):
         assert word in JS
 

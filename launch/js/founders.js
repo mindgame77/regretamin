@@ -113,19 +113,56 @@ button.row:hover b{text-decoration:underline}
   .ctl .seg{max-width:100%;overflow-x:auto}
   .stage svg{touch-action:pan-y}  /* on a phone a finger moving up or down scrolls the page; zoom with the buttons */
 }
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}`;
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ---- The same look as Money flow and Hot right now (founder, 25 Nov: "unify all 3 maps in size and design"). ----
+   Values are the site's own (style.css: .vm-card, .vm-head, .vm-side, .vm-lh, .vm-unit, .vm-tip, .vm-views). */
+:host{--mi:#10201C;--mm:#586964;--ml:#E2E7E5;--ms:#F3F5F4}
+.side{gap:16px;padding:20px;background:var(--ms);border-right:1px solid var(--ml)}
+.card{border:1px solid var(--ml);border-radius:16px;padding:20px;background:#fff}
+.head{display:flex;flex-direction:column;gap:12px}
+.head h1{margin:0;font-size:27px;font-weight:600;letter-spacing:-.05em;line-height:1.02}
+.head p{margin:0;font:13px/1.35 var(--mono);color:var(--mm)}
+.head .seg{display:flex;padding:5px;gap:2px;border:1px solid var(--ml);border-radius:14px}
+.head .seg button{flex:1;height:40px;padding:0 6px;border-radius:10px;font-size:14px}
+.panel{padding:16px 20px 8px;display:flex;flex-direction:column;overflow:hidden}
+.lh{display:flex;justify-content:space-between;align-items:center;gap:10px;flex:none;padding-bottom:10px}
+.lh h2{margin:0;font-size:20px;font-weight:600;letter-spacing:0;min-width:0;overflow-wrap:anywhere}
+#panel{flex:1;min-height:0;overflow:auto}
+.unit{display:inline-flex;border:1px solid #8A9893;border-radius:8px;overflow:hidden;flex:none}
+.unit button{height:28px;padding:0 10px;border:0;background:#fff;color:var(--mi);font-size:13px}
+.unit button[aria-pressed="true"]{background:var(--mi);color:#fff;font-weight:600}
+.unit button:focus-visible{outline:2px solid var(--mi);outline-offset:-2px}
+.row{padding:10px 0;border-top:1px solid var(--ml)}
+.row b{font-size:14px}.row small{font-size:13px}.row strong{font-size:14px}
+.main{padding:0;position:relative}
+.stage{position:absolute;inset:0;flex:none;border:0;border-radius:0;background:#fff}
+.blocks{inset:96px 24px 112px 24px}
+.zoom{right:24px;bottom:108px}
+.zoom button{border:1px solid var(--ml);border-radius:12px;box-shadow:0 8px 28px rgba(16,32,28,.08)}
+.lab{paint-order:stroke;stroke:#fff;stroke-width:calc(3px * var(--k));stroke-linejoin:round}
+.pin .lab{stroke:none}
+#tip{width:236px;max-width:236px;box-sizing:border-box;background:#fff;color:var(--mi);border:1.5px solid var(--mi);border-radius:12px;padding:10px 12px;font-size:12px;line-height:1.35;flex-direction:column;gap:4px}
+#tip>b{display:block;font-size:14px;font-weight:600}
+#tip .mu{color:var(--mm)}
+#tip .tr{display:flex;align-items:center;gap:7px}
+#tip .tr i{width:10px;height:10px;border-radius:3px;flex:none}
+#tip .tr span:nth-child(2){flex:1}
+#tip .pc{font-family:var(--mono)}
+@media (max-width:900px){
+  .side{padding:0;background:none;border:0;margin-top:12px}
+  .main{height:72vw;min-height:260px;border:1px solid var(--ml);border-radius:16px;overflow:hidden}
+  .panel{overflow:visible}#panel{overflow:visible}
+  .blocks{inset:6px}
+  .zoom{right:10px;bottom:10px}
+}
+`;
   const HTML = `<div class="app">
   <aside class="side">
-    <section class="card head"><h1 id="h1">Loading the data…</h1><p id="based"></p><div class="key" id="key"></div></section>
-    <section class="card panel" id="panel"></section>
+    <section class="card head"><h1 id="h1">Loading…</h1><p id="based"></p>
+      <div class="seg" id="seg-kind" role="group" aria-label="What to show"><button data-v="places">Places</button><button data-v="unis">Universities</button><button data-v="cos">Companies</button></div></section>
+    <section class="card panel"><div class="lh"><h2 id="ptitle"></h2><span class="unit" id="seg-mode" role="group" aria-label="Show as"><button data-v="map">Map</button><button data-v="blocks">Blocks</button></span></div><div id="panel"></div></section>
   </aside>
-  <section class="main">
-    <div class="ctl">
-      <div class="seg" id="seg-kind" role="group" aria-label="What to show"><button data-v="places">Places</button><button data-v="unis">Universities</button><button data-v="cos">Companies</button></div>
-      <div class="seg" id="seg-mode" role="group" aria-label="How to show it"><button data-v="map">Map</button><button data-v="blocks">Blocks</button></div>
-    </div>
-    <div class="stage" id="stage"></div>
-  </section>
+  <section class="main"><div class="stage" id="stage"></div></section>
 </div>
 <div id="tip"></div>`;
   let host = null, root = null, want = 'us', span = null;
@@ -162,7 +199,7 @@ async function boot(O) {
     ST = D.startups || [];
   } catch (e) { $('#h1').textContent = 'This view is not available right now.'; $('#based').textContent = 'Reload the page to try again.'; return; }
   const S = { kind: 'places', mode: 'map', level: ['world', 'us', 'eu'].includes(want) ? want : 'us', from: (O.span || {}).from || 0, to: (O.span || {}).to || 99999999, when: (O.span || {}).text || 'since 2021', sel: null, area: null };
-  const EU = new Set(M.europe), OTHER = 18, GREY = '#E3E8E6';
+  const EU = new Set(M.europe), OTHER = 18, GREY = '#CBD3CF';
   const col = (sid) => M.colors[M.sectors[sid]] || '#DADFDD', sname = (sid) => M.sectors[sid] || 'Other';
   const num = (n) => n.toLocaleString('en-US');
   const money = (m) => m >= 1000 ? '$' + (+(m / 1000).toFixed(1)) + 'B' : m >= 10 ? '$' + Math.round(m) + 'M' : m > 0 ? '$' + (+m.toFixed(1)) + 'M' : '';
@@ -229,32 +266,46 @@ async function boot(O) {
   }
 
   // ---------- the map ----------
-  const Z = {};  // the part of the map in view, per region (zoom and position)
+  // The map sits exactly where the main map sits: the same room is left for the buttons above it and the timeline below
+  // (map.js: ROOM), so switching views does not make the map jump. Zoom and position are kept per region.
+  const ROOM = { world: [16, 16, 84, 104], us: [24, 24, 96, 120], eu: [24, 24, 62, 100] };
+  const Z = {};
   const view = () => M.views[S.level];
-  const vbox = () => Z[S.level] || (Z[S.level] = [0, 0, view().w, view().h]);
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  function base() {  // the whole map at rest, in map units, for the box it is drawn in
+    const st = $('#stage'), W = st.clientWidth || 1, H = st.clientHeight || 1, V = view(), [l, r, t, b] = W < 700 ? [6, 6, 6, 6] : ROOM[S.level];
+    const k = Math.max(0.2, Math.min((W - l - r) / V.w, (H - t - b) / V.h)), ox = l + (W - l - r - V.w * k) / 2;
+    return { W, x: -ox / k, y: -t / k, w: W / k, h: H / k };
+  }
+  function vbox() {
+    const B = base(), s = Z[S.level] || (Z[S.level] = { z: 1, cx: 0, cy: 0 }), w = B.w / s.z, h = B.h / s.z;
+    if (s.z <= 1.0001) { s.z = 1; s.cx = B.x + B.w / 2; s.cy = B.y + B.h / 2; }
+    s.cx = clamp(s.cx, B.x + w / 2, B.x + B.w - w / 2); s.cy = clamp(s.cy, B.y + h / 2, B.y + B.h - h / 2);
+    return { v: [s.cx - w / 2, s.cy - h / 2, w, h], k: w / B.W, z: s.z };  // k: map units per pixel on screen
+  }
   function drawMap() {
     const st = $('#stage'), agg = C.agg, places = isPlace(); let h = '', selD = '';
     const live = new Set(); if (!places) for (const a of agg.values()) { const e = ent()[a.k]; if (e.p[S.level] && entArea(e)) live.add(entArea(e)); }
     for (const s of M.shapes[S.level]) {
       const a = places && s.k ? agg.get(s.k) : null;
-      if (S.level === 'eu' && s.k && !EU.has(s.k)) { h += `<path class="shp" d="${s.d}" fill="#EEF1F0"/>`; continue; }
-      if (!places && live.has(shapeArea(s))) { const id = shapeArea(s); if (S.area === id) selD = s.d; h += `<path class="shp has${S.area === id ? ' on' : ''}" d="${s.d}" fill="${S.area === id ? '#D3DAD7' : '#E9EDEB'}" data-a="${esc(id)}" tabindex="0" role="button" aria-label="${esc(s.n)}"/>`; continue; }
+      if (S.level === 'eu' && s.k && !EU.has(s.k)) { h += `<path class="shp" d="${s.d}" fill="${GREY}"/>`; continue; }
+      if (!places && live.has(shapeArea(s))) { const id = shapeArea(s); if (S.area === id) selD = s.d; h += `<path class="shp has${S.area === id ? ' on' : ''}" d="${s.d}" fill="${S.area === id ? '#B1BDB8' : GREY}" data-a="${esc(id)}" tabindex="0" role="button" aria-label="${esc(s.n)}"/>`; continue; }
       if (a && S.sel === s.k) selD = s.d;
-      h += `<path class="shp${a ? ' has' : ''}${a && S.sel === s.k ? ' on' : ''}" d="${s.d}" fill="${a ? col(a.top) : (places ? GREY : '#E9EDEB')}"${a ? ` data-k="${s.k}" tabindex="0" role="button" aria-label="${esc(s.n)}"` : ''}/>`;
+      h += `<path class="shp${a ? ' has' : ''}${a && S.sel === s.k ? ' on' : ''}" d="${s.d}" fill="${a ? col(a.top) : GREY}"${a ? ` data-k="${s.k}" tabindex="0" role="button" aria-label="${esc(s.n)}"` : ''}/>`;
     }
-    st.innerHTML = `<svg preserveAspectRatio="xMidYMid meet" class="${S.sel != null && (places || S.area == null) ? 'dim' : ''}${!places && S.area != null ? ' areaon' : ''}" style="--k:1"><style>.lab{font-size:calc(12px * var(--k))}</style><defs><clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath></defs><g>${h}</g><path class="ring sel" d="${selD}"/><path class="ring hov" d=""/><g id="marks"></g></svg><div class="zoom"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button></div>`;
+    st.innerHTML = `<svg preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="${S.sel != null && (places || S.area == null) ? 'dim' : ''}${!places && S.area != null ? ' areaon' : ''}" style="--k:1"><style>.lab{font-size:calc(12px * var(--k))}</style><defs><clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath></defs><g>${h}</g><path class="ring sel" d="${selD}"/><path class="ring hov" d=""/><g id="marks"></g></svg><div class="zoom"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button></div>`;
     applyView();
   }
   function applyView() {
-    const svg = $('#stage svg'); if (!svg) return; const v = vbox(), k = v[2] / view().w;
-    svg.setAttribute('viewBox', v.map((n) => +n.toFixed(2)).join(' ')); svg.style.setProperty('--k', k); drawMarks(k);
+    const svg = $('#stage svg'); if (!svg) return; const { v, k, z } = vbox();
+    svg.setAttribute('viewBox', v.map((n) => +n.toFixed(2)).join(' ')); svg.style.setProperty('--k', k); drawMarks(k, z);
   }
   // everything that keeps its size on screen while the map is zoomed: numbers, small-country circles, university and company circles
-  function drawMarks(k) {
+  function drawMarks(k, z) {  // k: map units per pixel, so a size times k stays that many pixels; z: how far the map is zoomed in
     const agg = C.agg, lv = S.level; let h = '';
     const marker = (x, y, key, name, a) => {
-      h += `<circle class="dot${S.sel === key ? ' on' : ''}" cx="${x}" cy="${y}" r="${(5.5 * Math.sqrt(k)).toFixed(2)}" fill="${col(a.top)}" stroke="#10201C" stroke-width="1" data-k="${key}" tabindex="0" role="button" aria-label="${esc(name)}"/>`;
-      if (a.n >= 20 || k <= 0.5) h += `<text class="lab" style="text-anchor:start" x="${(x + 9 * k).toFixed(1)}" y="${y}" dy="0.35em">${a.n >= 100 || k <= 0.5 ? `<tspan class="n">${esc(name)} </tspan>` : ''}<tspan class="c">${num(a.n)}</tspan></text>`;
+      h += `<circle class="dot${S.sel === key ? ' on' : ''}" cx="${x}" cy="${y}" r="${(5.5 * Math.sqrt(z) * k).toFixed(2)}" fill="${col(a.top)}" stroke="#10201C" stroke-width="1" data-k="${key}" tabindex="0" role="button" aria-label="${esc(name)}"/>`;
+      if (a.n >= 20 || z >= 2) h += `<text class="lab" style="text-anchor:start" x="${(x + (5.5 * Math.sqrt(z) + 4) * k).toFixed(1)}" y="${y}" dy="0.35em">${a.n >= 100 || z >= 2 ? `<tspan class="n">${esc(name)} </tspan>` : ''}<tspan class="c">${num(a.n)}</tspan></text>`;
     };
     if (isPlace()) {
       for (const s of M.shapes[lv]) {
@@ -267,7 +318,7 @@ async function boot(O) {
       }
       for (const [key, d] of Object.entries(M.dots)) { const p = d[lv], a = agg.get(key); if (p && a && (lv !== 'eu' || EU.has(key))) marker(p[0], p[1], key, d.n, a); }
     } else {
-      const g = 1 / Math.sqrt(k);  // circles grow as the map is zoomed in
+      const g = Math.sqrt(z);  // circles grow as the map is zoomed in
       const pins = [...agg.values()].filter((a) => ent()[a.k].p[lv]).sort((x, y) => y.cash - x.cash), mx = Math.max(1, ...pins.map((a) => a.cash)), big = lv === 'world' ? 26 : 34, put = [];
       for (const a of pins) {
         const p = ent()[a.k].p[lv], rs = Math.min(64, Math.max(5.5, Math.sqrt(a.cash / mx) * big) * g), r = rs * k, n = ent()[a.k].n;
@@ -281,16 +332,15 @@ async function boot(O) {
     }
     $('#marks').innerHTML = h;
   }
-  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-  function zoomAt(f, cx, cy) {
-    const V = view(), v = vbox(), w = clamp(v[2] * f, V.w / 16, V.w), r = w / v[2], hh = w * V.h / V.w;
-    if (cx == null) { cx = v[0] + v[2] / 2; cy = v[1] + v[3] / 2; }
-    Z[S.level] = [clamp(cx - (cx - v[0]) * r, 0, V.w - w), clamp(cy - (cy - v[1]) * r, 0, V.h - hh), w, hh]; applyView();
+  function zoomAt(f, ux, uy) {  // f below 1 zooms in; (ux, uy) is the point that stays put, in map units
+    vbox(); const s = Z[S.level], z = clamp(s.z / f, 1, 16), r = s.z / z;
+    if (ux == null) { ux = s.cx; uy = s.cy; }
+    s.cx = ux - (ux - s.cx) * r; s.cy = uy - (uy - s.cy) * r; s.z = z; applyView();
   }
   const toUser = (x, y) => { const m = $('#stage svg').getScreenCTM(); return [(x - m.e) / m.a, (y - m.f) / m.d]; };
   // ---------- the blocks ----------
   function drawBlocks() {
-    const st = $('#stage'), W = st.clientWidth - 20, H = st.clientHeight - 20;
+    const st = $('#stage'); st.innerHTML = '<div class="blocks"></div>'; const W = st.firstChild.clientWidth, H = st.firstChild.clientHeight;
     const items = shown().filter((a) => a.cash > 0).sort((x, y) => y.cash - x.cash).slice(0, 18);
     if (!items.length) { st.innerHTML = '<div class="empty">No rounds with a known amount for this choice. Try a longer stretch of time.</div>'; return; }
     let h = '';
@@ -316,23 +366,22 @@ async function boot(O) {
     if (ar) { const ids = new Set(); for (const x of shown()) for (const l of x.list) ids.add(l[0]); $('#based').textContent = `Based on ${num(ids.size)} startups that raised ${when} and have a founder from one of the ${shown().length} ${S.kind === 'unis' ? 'universities' : 'companies'} here.` + cashNote; }
     else $('#based').textContent = (a ? `Based on ${num(a.n)} startups that raised ${when} and have a founder ${S.kind === 'unis' ? 'who studied there' : S.kind === 'cos' ? 'who worked there' : 'living there'}.`
       : `Based on ${num(C.total)} startups that raised ${when} and have a founder ${!isPlace() ? (S.kind === 'unis' ? 'from one of ' + M.unis.length + ' universities' : 'who worked at one of ' + M.cos.length + ' companies') + (S.level === 'world' ? '' : ' in ' + (S.level === 'us' ? 'the US' : 'Europe')) : (S.level === 'world' ? 'whose home country we know' : 'living in ' + where())}.`) + cashNote;
-    const used = new Map(); for (const x of C.agg.values()) used.set(x.top, (used.get(x.top) || 0) + 1);
-    const order = [...used.entries()].sort((x, y) => y[1] - x[1]).map((e) => e[0]);
-    $('#key').innerHTML = order.length ? `<h4>${S.mode === 'blocks' ? 'Colours: what the startups do' : 'Colour: what most startups there do'}</h4>` + (S.mode === 'blocks' ? Object.keys(M.colors).slice(0, 12) : order.map((s) => M.sectors[s])).map((n) => `<span><i class="sw" style="background:${M.colors[n]}"></i>${esc(n)}</span>`).join('') + (S.mode === 'map' && isPlace() ? `<span><i class="sw" style="background:${GREY}"></i>No startups yet</span>` : '') : '';
   }
   function drawPanel() {
     const p = $('#panel'), unit = S.kind === 'unis' ? 'Universities' : S.kind === 'cos' ? 'Companies' : S.level === 'us' ? 'States' : 'Countries';
     if (S.sel == null || !C.agg.get(S.sel)) {
       const rows = shown().sort((x, y) => !isPlace() || S.mode === 'blocks' ? y.cash - x.cash || y.n - x.n : y.n - x.n || y.cash - x.cash);
       const byCash = !isPlace() || S.mode === 'blocks';
-      p.innerHTML = (S.area != null && !isPlace() ? `<button class="back" id="backarea">← All ${unit.toLowerCase()}</button>` : '') + `<h2>${S.area != null && !isPlace() ? unit + ' in ' + esc(areaName()) : unit}</h2>` + (rows.length ? rows.slice(0, 60).map((a) => `<button class="row" data-k="${a.k}"><i class="sw" style="background:${col(a.top)}"></i><span><b>${logo(a.k, 20)}${esc(label(a.k))}${flag(a.k)}</b><small>${esc(M.sectors[a.top])}${a.order[1] ? ' · ' + esc(M.sectors[a.order[1]]) : ''} · ${byCash ? num(a.n) + (a.n === 1 ? ' startup' : ' startups') : (money(a.cash) || 'amount not known')}</small></span><strong>${byCash ? (money(a.cash) || '–') : num(a.n)}</strong></button>`).join('') : '<p class="note">Nothing for this choice. Try a longer stretch of time.</p>');
+      $('#ptitle').innerHTML = S.area != null && !isPlace() ? unit + ' in ' + esc(areaName()) : unit;
+      p.innerHTML = (S.area != null && !isPlace() ? `<button class="back" id="backarea">← All ${unit.toLowerCase()}</button>` : '') + (rows.length ? rows.slice(0, 60).map((a) => `<button class="row" data-k="${a.k}"><i class="sw" style="background:${col(a.top)}"></i><span><b>${logo(a.k, 20)}${esc(label(a.k))}${flag(a.k)}</b><small>${esc(M.sectors[a.top])}${a.order[1] ? ' · ' + esc(M.sectors[a.order[1]]) : ''} · ${byCash ? num(a.n) + (a.n === 1 ? ' startup' : ' startups') : (money(a.cash) || 'amount not known')}</small></span><strong>${byCash ? (money(a.cash) || '–') : num(a.n)}</strong></button>`).join('') : '<p class="note">Nothing for this choice. Try a longer stretch of time.</p>');
       p.scrollTop = 0; return;
     }
     const a = C.agg.get(S.sel), n = label(S.sel);
     const firms = new Map(); for (const [i] of a.list) for (const f of ST[i][5]) firms.set(f, (firms.get(f) || 0) + 1);
     const topF = [...firms.entries()].sort((x, y) => y[1] - x[1]).slice(0, 10);
     const list = a.list.slice().sort((x, y) => y[1][0] - x[1][0]).slice(0, 25);
-    p.innerHTML = `<button class="back" id="back">← ${S.area != null && !isPlace() ? unit + ' in ' + esc(areaName()) : 'All ' + unit.toLowerCase()}</button><h2>${logo(S.sel, 28)}${esc(n)}${flag(S.sel)}</h2>
+    $('#ptitle').innerHTML = `${logo(S.sel, 24)}${esc(n)}${flag(S.sel)}`;
+    p.innerHTML = `<button class="back" id="back">← ${S.area != null && !isPlace() ? unit + ' in ' + esc(areaName()) : 'All ' + unit.toLowerCase()}</button>
       <p class="stat"><b>${num(a.n)}</b> ${a.n === 1 ? 'startup' : 'startups'}${a.cash ? ` · <b>${money(a.cash)}</b> raised` : ''}</p>
       <div class="bar">${a.order.map((s) => `<i style="flex:${a.sec.get(s).n};background:${col(s)}" title="${esc(M.sectors[s])}: ${a.sec.get(s).n}"></i>`).join('')}</div>
       <div class="key" style="margin-top:10px">${a.order.slice(0, 6).map((s) => `<span><i class="sw" style="background:${col(s)}"></i>${esc(M.sectors[s])} ${a.sec.get(s).n}</span>`).join('')}</div>
@@ -362,14 +411,14 @@ async function boot(O) {
   $('#stage').addEventListener('wheel', (e) => { if (S.mode !== 'map' || !$('#stage svg')) return; e.preventDefault(); const [x, y] = toUser(e.clientX, e.clientY); zoomAt(Math.exp(clamp(e.deltaY, -60, 60) * 0.004), x, y); hideTip(); }, { passive: false });
   $('#stage').addEventListener('pointerdown', (e) => {
     if (S.mode !== 'map' || e.target.closest('.zoom')) return; ptrs.set(e.pointerId, [e.clientX, e.clientY]);
-    if (ptrs.size === 1) { drag = { x: e.clientX, y: e.clientY, v: vbox().slice() }; dragged = false; }
+    if (ptrs.size === 1) { vbox(); drag = { x: e.clientX, y: e.clientY, cx: Z[S.level].cx, cy: Z[S.level].cy }; dragged = false; }
     else if (ptrs.size === 2) { const p = [...ptrs.values()]; pinch = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); drag = null; dragged = true; }
   });
   addEventListener('pointermove', (e) => {
     if (!ptrs.has(e.pointerId) || !$('#stage svg')) return; ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     if (ptrs.size === 2) { const p = [...ptrs.values()], d = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); if (pinch && d) { const m = toUser((p[0][0] + p[1][0]) / 2, (p[0][1] + p[1][1]) / 2); zoomAt(pinch / d, m[0], m[1]); pinch = d; } return; }
     if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (!dragged && Math.hypot(dx, dy) < 5) return; dragged = true;
-    const m = $('#stage svg').getScreenCTM(), V = view(), v = drag.v; Z[S.level] = [clamp(v[0] - dx / m.a, 0, V.w - v[2]), clamp(v[1] - dy / m.d, 0, V.h - v[3]), v[2], v[3]]; applyView(); hideTip();
+    const m = $('#stage svg').getScreenCTM(), z0 = Z[S.level]; z0.cx = drag.cx - dx / m.a; z0.cy = drag.cy - dy / m.d; applyView(); hideTip();
   });
   const endPtr = (e) => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = 0; if (!ptrs.size) drag = null; };
   addEventListener('pointerup', endPtr); addEventListener('pointercancel', endPtr);
@@ -377,17 +426,17 @@ async function boot(O) {
   const tip = $('#tip'); function hideTip() { tip.style.display = 'none'; }
   $('#stage').addEventListener('mousemove', (e) => {
     const hv = $('#stage .ring.hov'); if (hv) { const sh = e.target.closest('.shp.has'), d = sh && !sh.classList.contains('on') && !(drag && dragged) ? sh.getAttribute('d') : ''; if (hv.getAttribute('d') !== d) hv.setAttribute('d', d); }
-    const t = e.target.closest('[data-k]'), place = (html) => { tip.innerHTML = html; tip.style.display = 'block'; const w = tip.offsetWidth, hh = tip.offsetHeight; tip.style.left = Math.min(innerWidth - w - 8, e.clientX + 14) + 'px'; tip.style.top = Math.max(8, e.clientY - hh - 12) + 'px'; };
-    if (!t) { const ar = e.target.closest('[data-a]'); if (!ar || drag && dragged) return hideTip(); const id = ar.dataset.a, c = [...C.agg.values()].filter((x) => ent()[x.k].p[S.level] && entArea(ent()[x.k]) === id).length; return place(`<b>${esc(S.level === 'us' ? (names[id] || id) : id)}</b>${num(c)} ${S.kind === 'unis' ? (c === 1 ? 'university' : 'universities') : (c === 1 ? 'company' : 'companies')}<br>Press to list them`); }
+    const t = e.target.closest('[data-k]'), place = (html) => { tip.innerHTML = html; tip.style.display = 'flex'; const w = tip.offsetWidth, hh = tip.offsetHeight; tip.style.left = Math.min(innerWidth - w - 8, e.clientX + 14) + 'px'; tip.style.top = Math.max(8, e.clientY - hh - 12) + 'px'; };
+    if (!t) { const ar = e.target.closest('[data-a]'); if (!ar || drag && dragged) return hideTip(); const id = ar.dataset.a, c = [...C.agg.values()].filter((x) => ent()[x.k].p[S.level] && entArea(ent()[x.k]) === id).length; return place(`<b>${esc(S.level === 'us' ? (names[id] || id) : id)}</b><span class="mu">${num(c)} ${S.kind === 'unis' ? (c === 1 ? 'university' : 'universities') : (c === 1 ? 'company' : 'companies')}</span><span>Press to list them</span>`); }
     const k = !isPlace() ? Number(t.dataset.k) : t.dataset.k, a = C.agg.get(k); if (!a) return hideTip();
-    tip.innerHTML = `<b>${logo(k, 18)}${esc(label(k))}${flag(k)}</b>${num(a.n)} ${a.n === 1 ? 'startup' : 'startups'}${a.cash ? ' · ' + money(a.cash) : ''}<br>Mostly ${esc(M.sectors[a.top])}${!isPlace() && S.mode === 'map' ? '<br>Shown at its ' + (S.kind === 'unis' ? 'campus' : 'head office') : ''}`;
-    tip.style.display = 'block'; const w = tip.offsetWidth, hh = tip.offsetHeight;
-    tip.style.left = Math.min(innerWidth - w - 8, e.clientX + 14) + 'px'; tip.style.top = Math.max(8, e.clientY - hh - 12) + 'px';
+    // the sectors with their share of the startups there, as on the main map's hover card
+    let used = 0; const tot = a.n || 1, top = a.order.slice(0, 5).map((sid, n2) => { const pc = Math.round(a.sec.get(sid).n / tot * 100); used += pc; return `<span class="tr"><i style="background:${col(sid)}"></i><span>${n2 + 1}. ${esc(sname(sid))}</span><span class="pc">${pc}%</span></span>`; }).join('');
+    place(`<b>${logo(k, 18)}${esc(label(k))}${flag(k)}</b><span class="mu">${num(a.n)} ${a.n === 1 ? 'startup' : 'startups'}${a.cash ? ' · ' + money(a.cash) : ''}</span>${top}${a.order.length > 5 ? `<span class="tr"><i style="background:#EEF1F0"></i><span>All other sectors</span><span class="pc">${Math.max(0, 100 - used)}%</span></span>` : ''}`);
   });
   $('#stage').addEventListener('mouseleave', () => { hideTip(); const hv = $('#stage .ring.hov'); if (hv) hv.setAttribute('d', ''); });
-  let rz = 0; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (S.mode === 'blocks') drawBlocks(); }, 150); });
+  let rz = 0; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (host.hidden) return; if (S.mode === 'blocks') drawBlocks(); else applyView(); }, 150); });
   api.setLevel = (l) => { if (!['world', 'us', 'eu'].includes(l) || l === S.level) return; S.level = l; S.sel = null; S.area = null; hideTip(); render(); };
-  api.redraw = () => { if (S.mode === 'blocks') drawBlocks(); };
+  api.redraw = () => { if (S.mode === 'blocks') drawBlocks(); else applyView(); };
   // the page's timeline moved: count again for that stretch of time
   api.setSpan = (sp) => { if (!sp || (sp.from === S.from && sp.to === S.to)) return; S.from = sp.from; S.to = sp.to; S.when = sp.text; hideTip(); render(); };
   if (['world', 'us', 'eu'].includes(want) && want !== S.level) S.level = want;
