@@ -265,7 +265,7 @@ def test_top_firms_have_a_logo_on_their_page_and_in_the_investors_list():
     """Founder, 25 Nov: logos for the 100 top firms. Firm page: left of the name. Investors list: in front of the name,
     and a grey square with initials for a firm without a logo ("good"). The build lists the firms that have a file."""
     logos = sorted(p.name[2:-4] for p in (ROOT / 'launch/assets/logos').glob('f-*.png'))
-    assert 80 <= len(logos) <= 110 and 'generalcatalyst' in logos and 'sequoia' in logos
+    assert len(logos) >= 290 and 'generalcatalyst' in logos and 'sequoia' in logos and 'y-combinator' in logos  # 90 top firms + 210 of the next 250 (25 Nov)
     build = (ROOT / 'launch/build.py').read_text(); F = (ROOT / 'launch/js/firms.js').read_text(); C = (ROOT / 'launch/js/company.js').read_text(); css = (ROOT / 'launch/style.css').read_text()
     assert "'flogos': FLOGOS" in build and "'f-*.png'" in build
     assert """'<span class="fnm">' + logoOf(f) + '<b>'""" in F and 'class="flg flg-i"' in F and "FLOGOS.has(f.slug)" in F
