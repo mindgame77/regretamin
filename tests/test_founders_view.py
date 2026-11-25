@@ -157,3 +157,16 @@ def test_portfolio_chips_show_only_the_sector_dot():
     """Firm page, "Also in the portfolio": a chip is the sector's dot and the company's name. The type standard's 13px
     rule had brought the sector's name back, glued to the dot (founder, 25 Nov: "what is this?")."""
     assert "main.prof #deals .adl>.adp~.ad>.arty{display:inline-flex;font-size:0!important;gap:0;order:1}" in CSS
+
+
+def test_places_map_is_less_crowded_on_a_phone_at_rest():
+    """Founder, 25 Nov: on a phone take things off the map so it is less crowded. At rest a phone shows names and
+    numbers for the eight places with the most startups, and small-country circles only from 20 startups (the number
+    only from 100, no names). Zooming in (2x or more) brings back everything a computer shows."""
+    from pathlib import Path
+    F = (Path(__file__).resolve().parents[1] / 'launch/js/founders.js').read_text()
+    assert "const ph = NARROW.matches && z < 2" in F
+    assert ".sort((x, y) => agg.get(y.k).n - agg.get(x.k).n).slice(0, 8)" in F
+    assert "if (ph && a.n < 20) return;" in F
+    assert "if (ph ? a.n >= 100 : a.n >= 20 || z >= 2)" in F and "!ph && (a.n >= 100 || z >= 2)" in F
+    assert "if (seen <= thr || (top && !top.has(s.k))) continue;" in F

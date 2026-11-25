@@ -331,16 +331,22 @@ async function boot(O) {
   // everything that keeps its size on screen while the map is zoomed: numbers, small-country circles, university and company circles
   function drawMarks(k, z) {  // k: map units per pixel, so a size times k stays that many pixels; z: how far the map is zoomed in
     const agg = C.agg, lv = S.level; let h = '';
+    // A phone at rest shows only what matters most on the small map: names and numbers for the eight places with the
+    // most startups, and of the small-country circles only those with 20 startups or more, the number only from 100
+    // (founder, 25 Nov: less crowded on a phone). Zooming in brings the rest back.
+    const ph = NARROW.matches && z < 2, thr = lv === 'us' ? 700 : lv === 'eu' ? 450 : 1300;
+    const top = ph && isPlace() ? new Set(M.shapes[lv].filter((s) => s.k && agg.get(s.k) && (lv !== 'eu' || EU.has(s.k)) && s.a / (k * k) > thr).sort((x, y) => agg.get(y.k).n - agg.get(x.k).n).slice(0, 8).map((s) => s.k)) : null;
     const marker = (x, y, key, name, a) => {
+      if (ph && a.n < 20) return;
       h += `<circle class="dot${S.sel === key ? ' on' : ''}" cx="${x}" cy="${y}" r="${(5.5 * Math.sqrt(z) * k).toFixed(2)}" fill="${col(a.top)}" stroke="#10201C" stroke-width="1" data-k="${key}" tabindex="0" role="button" aria-label="${esc(name)}"/>`;
-      if (a.n >= 20 || z >= 2) h += `<text class="lab" style="text-anchor:start" x="${(x + (5.5 * Math.sqrt(z) + 4) * k).toFixed(1)}" y="${y}" dy="0.35em">${a.n >= 100 || z >= 2 ? `<tspan class="n">${esc(name)} </tspan>` : ''}<tspan class="c">${num(a.n)}</tspan></text>`;
+      if (ph ? a.n >= 100 : a.n >= 20 || z >= 2) h += `<text class="lab" style="text-anchor:start" x="${(x + (5.5 * Math.sqrt(z) + 4) * k).toFixed(1)}" y="${y}" dy="0.35em">${!ph && (a.n >= 100 || z >= 2) ? `<tspan class="n">${esc(name)} </tspan>` : ''}<tspan class="c">${num(a.n)}</tspan></text>`;
     };
     if (isPlace()) {
       for (const s of M.shapes[lv]) {
         const a = s.k ? agg.get(s.k) : null; if (!a || (lv === 'eu' && !EU.has(s.k))) continue;
         const seen = s.a / (k * k);  // how big the shape is on screen
         if (seen < 70) { marker(s.x, s.y, s.k, s.n, a); continue; }  // too small to see: a circle with its number
-        if (seen <= (lv === 'us' ? 700 : lv === 'eu' ? 450 : 1300)) continue;
+        if (seen <= thr || (top && !top.has(s.k))) continue;
         const short = lv === 'us' ? s.k.slice(3) : s.k === 'gb' ? 'UK' : s.k === 'us' ? 'US' : seen > (lv === 'eu' ? 2600 : 5200) ? s.n : lv === 'eu' ? s.k.toUpperCase() : '';
         h += `<text class="lab" x="${s.x}" y="${s.y}">${short ? `<tspan class="n" x="${s.x}" dy="-0.15em">${esc(short)}</tspan><tspan class="c" x="${s.x}" dy="1.1em">${num(a.n)}</tspan>` : `<tspan class="c" x="${s.x}" dy="0.35em">${num(a.n)}</tspan>`}</text>`;
       }
