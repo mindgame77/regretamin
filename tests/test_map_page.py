@@ -248,3 +248,14 @@ def test_money_flow_and_trends_can_be_zoomed_like_founders():
     assert '.stage.zoomed svg{touch-action:none}' in F and "classList.toggle('zoomed', z > 1)" in F
     # names and lines keep their size on the screen
     assert '.vm-lab{position:absolute;font-size:calc(12px*var(--lz,1))' in css and "calc(${p.getAttribute('stroke-width')}px * var(--lz, 1))" in js
+
+
+def test_latest_updates_list_a_round_once_and_us_cities_sit_in_their_region():
+    """Founder, 25 Nov ("3 is really important, double check"): a round is the database's own grouping, listed once on
+    the day most of its rows carry, with each firm counted once. And "Where they invest" files a US city under the
+    region most of its firms have, so the Bay Area is no longer "US Central". Old city values are kept."""
+    sql = (ROOT / 'supabase/migrations/20261125222950_v2_updates_once_per_round_us_region_jp_cities.sql').read_text()
+    assert sql.count("coalesce('e' || ") == 2 and sql.count('mode() within group (order by deal_date) deal_date') == 2
+    assert "replace(def, 'min(region) region', 'mode() within group (order by region) region')" in sql
+    assert 'v2_startup_city_cleanup_20261125' in sql and 'To undo:' in sql
+    assert "to_regclass('public.v2_deals') is null" in sql  # a test database without the v2 tables skips it
