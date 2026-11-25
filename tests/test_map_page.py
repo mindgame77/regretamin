@@ -167,6 +167,8 @@ def test_money_flow_opens_a_place_on_its_sectors_like_hot_right_now():
     assert "(S.view !== 'hot' && L.sector ? ' ' + esc(L.sector) : '') + ' firm'" in js
     assert "S.view === 'hot' ? `<div class=\"vm-chips\">${tags.map(" in js
     assert "$('#vm-cta').textContent = S.list ? `See the ${num(ctaN)}" in js
+    # the button is always one line; a long text ("See the 31 Enterprise software investors in Seattle") is cut with …
+    assert '#vm-cta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' in (root / 'launch/style.css').read_text()
     # the database function is recorded, read-only, and skips where the v2 tables are missing (the test database)
     sql = (root / 'supabase/migrations/20261125161908_v2_map_place_sectors.sql').read_text()
     assert 'create or replace function public.v2_map_place_sectors(' in sql and 'language sql stable security definer' in sql
