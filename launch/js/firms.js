@@ -1412,8 +1412,10 @@
       try {
         const from = new URLSearchParams(location.search);
         const many = function (k) { return (from.get(k) || '').split('|').map(function (v) { return v.trim().slice(0, 60); }).filter(Boolean).slice(0, 25); };
-        const zoom = from.get('zoom'), at = (from.get('place') || '').trim().slice(0, 80);
-        if (remote && at && ['world', 'us', 'eu'].indexOf(zoom) !== -1) place = { level: zoom, p: at, name: (from.get('pname') || at).trim().slice(0, 80) };
+        // The Founders view sends 'fplace', 'funi' or 'fco' and what it shows (places, universities or companies, joined by |):
+        // the list then holds the firms that backed those founders' startups. Its label is the name the map sent.
+        const zoom = from.get('zoom'), founders = ['fplace', 'funi', 'fco'].indexOf(zoom) !== -1, at = (from.get('place') || '').trim().slice(0, founders ? 8000 : 80);
+        if (remote && at && (founders || ['world', 'us', 'eu'].indexOf(zoom) !== -1)) place = { level: zoom, p: at, name: (from.get('pname') || (founders ? 'Founders' : at)).trim().slice(0, 80) };
         // The map's whole US or Europe view (no circle open): a place with no area. It needs the period the map sent.
         else if (remote && !at && (zoom === 'us' || zoom === 'eu') && from.get('from')) place = { level: zoom, p: null, name: zoom === 'us' ? 'United States' : 'Europe' };
         if (remote) {

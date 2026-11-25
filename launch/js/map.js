@@ -514,9 +514,11 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   function drawHotHead() {
     const where = S.level === 'us' ? ' in the US' : S.level === 'eu' ? ' in Europe' : '', t = (S.data.totals || {})[S.level] || { deals: 0, prev: 0 };
     const sec = S.sectors.length === 1 ? inSentence(S.sectors[0]) : S.sectors.length ? 'these sectors' : '';
-    $('#vm-h1').textContent = sec ? `Where ${sec} ${S.sectors.length === 1 && !PLURAL.includes(S.sectors[0]) ? 'is' : 'are'} heating up${where}.` : `Where it is heating up${where}.`;
+    // The head card is the same four rows in every view (founder, 25 Nov): one fixed title line, the buttons, one "Based on"
+    // line, the black button. The title no longer names the place or the sector: the buttons and the list card do.
+    $('#vm-h1').textContent = 'Where it is heating up.';
     S.countId = (S.countId || 0) + 1; S.shown = null;
-    $('#vm-based').textContent = '';  // no text under the filters in this view (founder); a question mark may come later
+    $('#vm-based').textContent = `Based on ${num(t.deals)} deal${t.deals === 1 ? '' : 's'} and ${num(t.firms || 0)} VC firm${t.firms === 1 ? '' : 's'}`;
     const note = whoNote();
     $('#vm-legend').innerHTML = note ? `<span class="vm-whonote"><b>${esc(WHO.find(([k]) => k === who())[1])}</b><span>${esc(note)}</span></span>` : '<span class="vm-keys"><span><i class="vm-up"></i>up 10% or more</span><span><i class="vm-flat"></i>steady</span><span><i class="vm-down"></i>down 10% or more</span><span><i class="vm-few"></i>too few to call</span></span>';
   }
@@ -524,7 +526,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     if (S.view === 'hot') return drawHotHead();
     const where = S.level === 'us' ? ' in the US' : S.level === 'eu' ? ' in Europe' : '', t = (S.data.totals || {})[S.level] || { deals: 0, firms: 0 };
     const sec = S.sectors.length === 1 ? inSentence(S.sectors[0]) : S.sectors.length ? 'these sectors' : '';
-    $('#vm-h1').textContent = sec ? `Who backs ${sec}${where}.` : S.level === 'us' ? 'What US investors are backing.' : S.level === 'eu' ? 'What European investors are backing.' : 'What VCs are investing in.';
+    $('#vm-h1').textContent = 'What VCs are investing in.';  // one fixed line, as in every view
     // the two numbers count up or down to their new values
     const a0 = S.shown || { deals: t.deals, firms: t.firms }, t0 = performance.now(), my = S.countId = (S.countId || 0) + 1;
     const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
