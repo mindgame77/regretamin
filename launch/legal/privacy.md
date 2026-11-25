@@ -1,7 +1,7 @@
 # Privacy Policy
 
 What we collect, why, and what you can do about it.
-Effective November 24, 2026 · See also [Terms of Service](../terms/)
+Effective November 25, 2026 · See also [Terms of Service](../terms/)
 
 ## 1. Who we are
 Regretamin (regretamin.com) shows founders information about venture capital, private equity and hedge fund firms from public sources. It is operated by **Know Your Group INC.**, a Delaware corporation ("we", "us"), which is responsible for the personal data described here. Questions or requests: **malytskyyo@gmail.com**.
@@ -37,7 +37,7 @@ We don't sell your personal data, don't share it for advertising, and don't show
 - **Stripe:** payments, subscriptions and promo codes.
 - **Google:** Google Analytics (visit counts, see section 3), Google sign-in if you choose it, and Google Fonts, which receives your IP address when our pages load fonts.
 - **Resend:** sends the email telling you a firm you requested is ready.
-- **GitHub Pages:** hosts the website. Page code also loads from the jsDelivr content network.
+- **Cloudflare:** hosts the website. Page code also loads from the jsDelivr content network.
 
 These providers process data on our behalf under their own terms. Most are in the United States, so your data may be processed outside your country. Where required, we rely on the transfer safeguards these providers offer (such as Standard Contractual Clauses or the EU-U.S. Data Privacy Framework).
 

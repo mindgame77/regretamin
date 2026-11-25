@@ -21,7 +21,8 @@ def test_terms_and_privacy_render_the_approved_pages():
         assert page.count("<h2>") >= 10
         assert page.count('<a href="#') == page.count("<h2>")
     assert "October 25, 2026" in terms
-    assert "November 24, 2026" in privacy and "Google Analytics" in privacy  # cookie bar, batch 8
+    assert "November 25, 2026" in privacy and "Google Analytics" in privacy  # cookie bar, batch 8; host line corrected 25 Nov
+    assert "<b>Cloudflare:</b> hosts the website" in privacy and "GitHub Pages" not in privacy  # the site moved to Cloudflare
     assert "Terms of Service" in terms and 'href="../privacy/"' in terms
     assert "Privacy Policy" in privacy and 'href="../terms/"' in privacy
     assert "not a consumer reporting agency" in terms
