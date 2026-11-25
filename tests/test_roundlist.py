@@ -20,11 +20,13 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 NAME = "20261119170000_roundlist.sql"
 MIG = (ROOT / "supabase/migrations" / NAME).read_text()
 UNDO = (ROOT / "supabase/rollbacks" / NAME).read_text()
+NEW_NAME = "20261125163000_roundlist_finish_done_check.sql"
+NEW_MIG = (ROOT / "supabase/migrations" / NEW_NAME).read_text()
+NEW_UNDO = (ROOT / "supabase/rollbacks" / NEW_NAME).read_text()
 FN = (ROOT / "supabase/functions/research-ingest-v2/index.ts").read_text()
 ENTRY = ("public.roundlist_add_round(uuid, jsonb)", "public.roundlist_claim_next_round(uuid, integer)",
          "public.roundlist_finish_round(uuid, bigint, text, text)")
-REFUSE_DONE = ("finish_round done refused: you have no accepted deal saved since you took this round. "
-               "Save the deals first, or finish it as rejected with the reason.")
+ENTRY_NEW = "public.roundlist_finish_round(uuid, bigint, text, text, text, jsonb)"
 sys.path.insert(0, str(ROOT / "scripts"))
 
 
@@ -72,11 +74,50 @@ def test_door_routes_round_actions_with_header_key():
     assert "bot_id" not in block.split("db.rpc", 1)[0]  # the bot comes from the key, never the body
 
 
+def test_new_done_check_is_locked_down_and_rolls_back_to_the_old_function():
+    code = _code(NEW_MIG).lower()
+    undo = _code(NEW_UNDO).lower()
+    assert "v2_deals.shown" not in code and "v2_map_" not in code and "v2_top_firms" not in code
+    assert "create or replace function roundlist.done_check" in code
+    assert "create or replace function public.roundlist_finish_round" in code
+    assert f"grant execute on function {ENTRY_NEW} to service_role" in code
+    assert f"drop function if exists {ENTRY_NEW}" in undo
+    assert "drop function if exists roundlist.done_check" in undo
+    assert "drop function if exists roundlist.save_pending_firms" in undo
+    # Rollback restores the previous 4-argument finish_round; it does not drop the list.
+    assert "create or replace function public.roundlist_finish_round(p_key_id uuid, p_round_id bigint, p_result text, p_note text)" in undo
+    assert "drop schema" not in undo
+
+
 # ---------- database checks (local scratch Postgres only) ----------
 
 SUB = """
 create table if not exists public.v2_research_submissions (submission_id bigserial primary key, batch_id bigint,
   firm_id bigint, bot_key_id bigint, target_box text, payload jsonb, status text, received_at timestamptz default now());
+"""
+
+EXTRA = """
+alter table public.v2_startups add column if not exists startup_name text;
+alter table public.v2_startups add column if not exists domain text;
+alter table public.v2_startups add column if not exists website_url text;
+alter table public.v2_startups add column if not exists website_url_norm text;
+alter table public.v2_firms add column if not exists website_url_norm text;
+alter table public.v2_firms add column if not exists legal_name text;
+alter table public.v2_firms add column if not exists short_name text;
+alter table public.v2_deals add column if not exists shown boolean default true;
+alter table public.v2_deals add column if not exists lead text;
+alter table public.v2_deals add column if not exists event_id bigint;
+alter table public.v2_deals add column if not exists source_url text;
+alter table public.v2_deals add column if not exists round_amount numeric;
+create table if not exists public.v2_events (
+  event_id bigserial primary key, kind text not null, startup_id bigint, round text,
+  event_date date, event_date_precision text, amount numeric);
+create table if not exists public.v2_event_sources (
+  source_id bigserial primary key, event_id bigint, source_url text);
+create table if not exists public.v2_firm_hold_list (
+  id bigserial primary key, priority smallint not null check (priority in (1,2,3)),
+  name text not null, website_url text not null, website_domain text not null unique,
+  source_tag text not null, status text not null default 'held', created_at timestamptz default now());
 """
 
 
@@ -94,12 +135,16 @@ def db():
         for k, b in ((K1, "bot-a"), (K2, "bot-b"), (K3, "bot-c")):
             c.execute("insert into bots.ingest_keys(id, key_hash, bot_id) values (%s, %s, %s)", (k, "h-" + b, b))
         c.execute(WORK_SQL)  # public.v2_work_bot, the key -> bot lookup the bots already use
+        c.execute(EXTRA)
         c.execute(MIG)
+        c.execute(NEW_MIG)
         yield c
+        c.execute(NEW_UNDO)
         c.execute(UNDO)
         c.execute(WORK_UNDO)
-        c.execute("drop schema bots cascade; drop table public.v2_research_submissions, public.v2_deals, "
-                  "public.v2_startups, public.v2_bot_keys, public.v2_firms cascade")
+        c.execute("drop schema bots cascade; drop table if exists public.v2_research_submissions, public.v2_deals, "
+                  "public.v2_startups, public.v2_bot_keys, public.v2_firms, public.v2_events, "
+                  "public.v2_event_sources, public.v2_firm_hold_list cascade")
 
 
 def add(c, key, **kw):
@@ -119,8 +164,31 @@ def add_many(c, n, prefix="S"):
             for i in range(n)]
 
 
-def finish(c, key, rid, result="done", note="saved 2 deals"):
-    return c.execute("select public.roundlist_finish_round(%s, %s, %s, %s)", (key, rid, result, note)).fetchone()[0]
+def finish(c, key, rid, result="done", note="saved 2 deals", source_url="https://news.example/acme", report=None):
+    from psycopg.types.json import Jsonb
+    return c.execute("select public.roundlist_finish_round(%s, %s, %s, %s, %s, %s)",
+                     (key, rid, result, note, source_url, Jsonb(report or {}))).fetchone()[0]
+
+
+def seed_round(c, firm_id=80, firm_name="Founders Fund", website="https://foundersfund.com",
+               startup_id=10, startup_name="Acme", domain="acme.io", amount=8000000,
+               date="2026-11-10", rnd="Seed", source="https://news.example/acme", lead="yes"):
+    c.execute("insert into public.v2_firms(firm_id, display_name, website_url, website_url_norm) "
+              "values (%s,%s,%s,%s) on conflict (firm_id) do update set display_name = excluded.display_name, "
+              "website_url = excluded.website_url, website_url_norm = excluded.website_url_norm",
+              (firm_id, firm_name, website, website))
+    c.execute("insert into public.v2_startups(startup_id, startup_name, domain, website_url, is_current, archived) "
+              "values (%s,%s,%s,%s,true,false) on conflict (startup_id) do update set startup_name = excluded.startup_name, "
+              "domain = excluded.domain, website_url = excluded.website_url",
+              (startup_id, startup_name, domain, "https://" + domain))
+    ev = c.execute("insert into public.v2_events(kind, startup_id, round, event_date, event_date_precision, amount) "
+                   "values ('round', %s, %s, %s, 'full date', %s) returning event_id",
+                   (startup_id, rnd, date, amount)).fetchone()[0]
+    c.execute("insert into public.v2_event_sources(event_id, source_url) values (%s,%s)", (ev, source))
+    c.execute("insert into public.v2_deals(firm_id, startup_id, round, deal_date, is_current, archived, shown, lead, event_id, source_url, round_amount) "
+              "values (%s,%s,%s,%s,true,false,true,%s,%s,%s,%s)",
+              (firm_id, startup_id, rnd, date, lead, ev, source, amount))
+    return ev
 
 
 def bot_key_id(c, key):
@@ -267,28 +335,50 @@ def run_k2(gate, res):
         res.append(claim(c, K2, 3))
 
 
-def test_db_done_needs_an_accepted_deal_since_the_claim(db):
+def test_db_done_needs_a_complete_event_and_named_investors(db):
     rid = add(db, K3)["round"]["round_id"]
-    save_deal(db, K1, when="now() - interval '1 minute'")  # before the claim: does not count
-    db.execute("select pg_sleep(0.01)")
     assert claim(db, K1)["round"]["round_id"] == rid
+    # Old-style done (note only): refused.
     r = finish(db, K1, rid)
-    assert not r["ok"] and r["error"] == REFUSE_DONE
-    save_deal(db, K1, status="Rejected: no source link (source_url)")  # rejected: does not count
-    save_deal(db, K1, table="v2_people")                                 # not a deal: does not count
-    save_deal(db, K2)                                                    # other bot: does not count
-    assert finish(db, K1, rid)["error"] == REFUSE_DONE
+    assert not r["ok"] and "list every named investor" in r["error"]
     assert db.execute("select status from roundlist.rounds where round_id = %s", (rid,)).fetchone()[0] == "taken"
     assert "note is required" in finish(db, K1, rid, note="  ")["error"]
+    assert "source_url is required" in finish(db, K1, rid, source_url="not-a-url")["error"]
     assert "not held by you" in finish(db, K2, rid)["error"]
-    save_deal(db, K1)
-    ok = finish(db, K1, rid, note="Saved Founders Fund lead")
-    assert ok["ok"] and ok["round"]["status"] == "done" and ok["round"]["notes"] == "Saved Founders Fund lead"
+
+    # Higgsfield-style miss: DST Global is already in the list, but listed as not in our list, and no lead deal.
+    ev = seed_round(db, firm_id=80, firm_name="Accel", website="https://accel.com", lead=None)
+    # add DST as an existing firm with no deal
+    db.execute("insert into public.v2_firms(firm_id, display_name, website_url, website_url_norm) "
+               "values (5811, 'DST Global', 'https://dst-global.com', 'https://dst-global.com')")
+    miss = finish(db, K1, rid, note="DST Global led and is not in the system. Accel was saved.",
+                  report={"amount": 8000000, "investors": [
+                      {"firm_id": 80},
+                      {"name": "DST Global", "website": "https://dst-global.com", "lead": True},
+                  ]})
+    assert not miss["ok"] and "already in our list" in miss["error"] and "5811" in miss["error"]
+    assert db.execute("select status from roundlist.rounds where round_id = %s", (rid,)).fetchone()[0] == "taken"
+    # Accel saved, DST omitted, no lead: refused for no lead (and DST never linked).
+    miss2 = finish(db, K1, rid, note="Saved Accel", report={"amount": 8000000, "investors": [{"firm_id": 80}]})
+    assert not miss2["ok"] and "mark the lead deal" in miss2["error"]
+
+    # Correct: add the DST lead deal, list both firm_ids, include a truly new firm.
+    db.execute("insert into public.v2_deals(firm_id, startup_id, round, deal_date, is_current, archived, shown, lead, event_id, source_url, round_amount) "
+               "select 5811, 10, 'Seed', '2026-11-10', true, false, true, 'yes', %s, 'https://news.example/acme', 8000000", (ev,))
+    ok = finish(db, K1, rid, note="Saved DST Global lead and Accel. NewCo not in our list.",
+                report={"amount": 8000000, "investors": [
+                    {"firm_id": 5811}, {"firm_id": 80},
+                    {"name": "NewCo Capital", "website": "https://newco.example"},
+                ]})
+    assert ok["ok"] and ok["round"]["status"] == "done" and ok["round"]["notes"].startswith("Saved DST Global")
+    held = db.execute("select name, website_domain, source_tag, status from public.v2_firm_hold_list").fetchall()
+    assert held == [("NewCo Capital", "newco.example", "roundlist_not_in_list", "held")]
     assert finish(db, K1, rid)["already_finished"]
-    # rejected needs only the note
+
+    # rejected needs a note and a source, not an event.
     rid2 = add(db, K3, startup_name="Gone", startup_website="gone.io")["round"]["round_id"]
     assert claim(db, K2)["round"]["round_id"] == rid2
-    rej = finish(db, K2, rid2, "rejected", "not a 2026 round")
+    rej = finish(db, K2, rid2, "rejected", "not a 2026 round", source_url="https://news.example/gone")
     assert rej["ok"] and rej["round"]["status"] == "rejected"
     assert claim(db, K2)["round"] is None
 
