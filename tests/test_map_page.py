@@ -267,9 +267,9 @@ def test_top_firms_have_a_logo_on_their_page_and_in_the_investors_list():
     logos = sorted(p.name[2:-4] for p in (ROOT / 'launch/assets/logos').glob('f-*.png'))
     assert len(logos) >= 290 and 'generalcatalyst' in logos and 'sequoia' in logos and 'y-combinator' in logos  # 90 top firms + 210 of the next 250 (25 Nov)
     build = (ROOT / 'launch/build.py').read_text(); F = (ROOT / 'launch/js/firms.js').read_text(); C = (ROOT / 'launch/js/company.js').read_text(); css = (ROOT / 'launch/style.css').read_text()
-    assert "'flogos': FLOGOS" in build and "'f-*.png'" in build
+    assert "'flv': hashlib.sha1(" in build and "'f-*.png'" in build and "'firms.json'" in build and "'flogos'" not in build  # the list is its own file, not in every page
     assert """'<span class="fnm">' + logoOf(f) + '<b>'""" in F and 'class="flg flg-i"' in F and "FLOGOS.has(f.slug)" in F
-    assert "function paintLogo(main)" in C and "(C.flogos || []).includes(slug)" in C and "row.insertBefore(im, row.firstChild)" in C
+    assert "function paintLogo(main)" in C and "im.onload = () =>" in C and "row.insertBefore(im, row.firstChild)" in C and "assets/logos/firms.json" in F
     assert 'main.prof .ph .ph1 .plg{width:52px;height:52px;' in css and '.firms-pg .frow .flg{width:28px;height:28px;' in css
     # generic or blurry icons were left out on purpose (a default WordPress icon, 16 and 32 px icons)
     for s in ('uniiq', 'benchmark', 'accel'):

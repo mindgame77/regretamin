@@ -162,10 +162,28 @@
   }
   function href(slug) { return (window.REGRET_VC_BASE || '/vc/') + encodeURIComponent(slug) + '/'; }
   // The firm's logo in front of its name; a firm without one gets a grey square with its initials, so names line up.
-  const FLOGOS = new Set((window.REGRET && window.REGRET.flogos) || []);
+  // Which firms have one is a small file of its own (assets/logos/firms.json), fetched once; rows drawn before it
+  // arrives get their logo the moment it does.
+  let FLOGOS = new Set();
   const LOGO_BASE = (window.REGRET_ROOT || '/') + 'assets/logos/f-';
+  const logoImg = (slug) => '<img class="flg" src="' + LOGO_BASE + encodeURIComponent(slug) + '.png" alt="" width="28" height="28" loading="lazy">';
+  (function loadLogoList() {
+    // a plain file request, kept apart from the list's own data requests
+    if (typeof XMLHttpRequest !== 'function') return;
+    const x = new XMLHttpRequest();
+    x.open('GET', (window.REGRET_ROOT || '/') + 'assets/logos/firms.json' + ((window.REGRET && window.REGRET.flv) ? '?v=' + window.REGRET.flv : ''));
+    x.onload = () => {
+      let list = []; try { list = x.status === 200 ? JSON.parse(x.responseText) : []; } catch (e) { list = []; }
+      FLOGOS = new Set(list || []);
+      document.querySelectorAll('a.frow').forEach((a) => {
+        const m = /\/vc\/([^/]+)\/?$/.exec(a.getAttribute('href') || ''), slug = m && decodeURIComponent(m[1]), tile = a.querySelector('.flg-i');
+        if (slug && tile && FLOGOS.has(slug)) tile.outerHTML = logoImg(slug);
+      });
+    };
+    x.send();
+  })();
   function logoOf(f) {
-    if (FLOGOS.has(f.slug)) return '<img class="flg" src="' + LOGO_BASE + encodeURIComponent(f.slug) + '.png" alt="" width="28" height="28" loading="lazy">';
+    if (FLOGOS.has(f.slug)) return logoImg(f.slug);
     const ini = String(f.name || '').replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
     return '<span class="flg flg-i" aria-hidden="true">' + esc(ini) + '</span>';
   }
