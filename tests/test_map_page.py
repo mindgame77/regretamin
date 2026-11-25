@@ -259,3 +259,18 @@ def test_latest_updates_list_a_round_once_and_us_cities_sit_in_their_region():
     assert "replace(def, 'min(region) region', 'mode() within group (order by region) region')" in sql
     assert 'v2_startup_city_cleanup_20261125' in sql and 'To undo:' in sql
     assert "to_regclass('public.v2_deals') is null" in sql  # a test database without the v2 tables skips it
+
+
+def test_top_firms_have_a_logo_on_their_page_and_in_the_investors_list():
+    """Founder, 25 Nov: logos for the 100 top firms. Firm page: left of the name. Investors list: in front of the name,
+    and a grey square with initials for a firm without a logo ("good"). The build lists the firms that have a file."""
+    logos = sorted(p.name[2:-4] for p in (ROOT / 'launch/assets/logos').glob('f-*.png'))
+    assert 80 <= len(logos) <= 110 and 'generalcatalyst' in logos and 'sequoia' in logos
+    build = (ROOT / 'launch/build.py').read_text(); F = (ROOT / 'launch/js/firms.js').read_text(); C = (ROOT / 'launch/js/company.js').read_text(); css = (ROOT / 'launch/style.css').read_text()
+    assert "'flogos': FLOGOS" in build and "'f-*.png'" in build
+    assert """'<span class="fnm">' + logoOf(f) + '<b>'""" in F and 'class="flg flg-i"' in F and "FLOGOS.has(f.slug)" in F
+    assert "function paintLogo(main)" in C and "(C.flogos || []).includes(slug)" in C and "row.insertBefore(im, row.firstChild)" in C
+    assert 'main.prof .ph .ph1 .plg{width:52px;height:52px;' in css and '.firms-pg .frow .flg{width:28px;height:28px;' in css
+    # generic or blurry icons were left out on purpose (a default WordPress icon, 16 and 32 px icons)
+    for s in ('uniiq', 'benchmark', 'accel'):
+        assert s not in logos

@@ -1874,3 +1874,13 @@ main.prof #where .wmap b span{color:#46544F}  /* the count under a name can sit 
 .vm.vm-fview.vm-busy .vm-bg{animation:none}
 .vm.vm-fview .vm-views,.vm.vm-fview .vm-zoom,.vm.vm-fview .vm-dock{z-index:8}  /* the timeline is the same one as on Money flow */
 @media (max-width:900px){.vm.vm-fview .vm-map{display:none!important}#vf{position:static;order:5}.vm.vm-fview .vm-dock{order:4}}
+
+/* Firm logos (25 Nov): 100 top firms have a logo file. Firm page: left of the name. Investors list: in front of the name,
+   and a grey square with initials for a firm without one, so the names start at the same spot. */
+main.prof .ph .ph1{display:flex;align-items:center}
+main.prof .ph .ph1 .plg{width:52px;height:52px;flex:none;margin-right:14px;border-radius:12px;border:1px solid #C9D1CE;background:#fff;object-fit:contain;padding:6px}
+.firms-pg .frow .fnm{display:flex;align-items:center;gap:10px;min-width:0}
+.firms-pg .frow .fnm b{min-width:0;white-space:nowrap}
+.firms-pg .frow .flg{width:28px;height:28px;flex:none;border-radius:7px;border:1px solid #C9D1CE;background:#fff;object-fit:contain;padding:3px}
+.firms-pg .frow .flg-i{display:inline-flex;align-items:center;justify-content:center;border:0;padding:0;background:#E2E7E5;color:#586964;font:600 11px/1 'Geist',system-ui,sans-serif}
+@media (max-width:640px){main.prof .ph .ph1 .plg{width:40px;height:40px;border-radius:10px;padding:5px;margin-right:10px}}

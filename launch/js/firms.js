@@ -161,6 +161,14 @@
     return rows.slice().sort((a, b) => (stamp(b.added) - stamp(a.added)) || String(a.name || '').localeCompare(String(b.name || '')));
   }
   function href(slug) { return (window.REGRET_VC_BASE || '/vc/') + encodeURIComponent(slug) + '/'; }
+  // The firm's logo in front of its name; a firm without one gets a grey square with its initials, so names line up.
+  const FLOGOS = new Set((window.REGRET && window.REGRET.flogos) || []);
+  const LOGO_BASE = (window.REGRET_ROOT || '/') + 'assets/logos/f-';
+  function logoOf(f) {
+    if (FLOGOS.has(f.slug)) return '<img class="flg" src="' + LOGO_BASE + encodeURIComponent(f.slug) + '.png" alt="" width="28" height="28" loading="lazy">';
+    const ini = String(f.name || '').replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
+    return '<span class="flg flg-i" aria-hidden="true">' + esc(ini) + '</span>';
+  }
   function invests(f, max) {
     const rows = Array.isArray(f.industries) ? f.industries.filter(Boolean) : [];
     if (!rows.length) return '';
@@ -270,7 +278,7 @@
       ? esc(dealMain) + (dealDate ? ' · <span class="dwhen">' + esc(dealDate) + '</span>' : '')
       : '';
     return '<a class="frow" href="' + href(f.slug) + '">'
-      + '<span class="fnm"><b>' + esc(f.name) + '</b></span>'
+      + '<span class="fnm">' + logoOf(f) + '<b>' + esc(f.name) + '</b></span>'
       + '<span class="fcity">' + (city ? flagOf(f) : '') + esc(city) + '</span>'
       + '<span class="finds">' + inds + '</span>'
       + '<span class="finv">' + investments + '</span>'

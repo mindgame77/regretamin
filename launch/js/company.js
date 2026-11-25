@@ -369,7 +369,17 @@
     document.addEventListener('click', hide);
     window.addEventListener('scroll', hide, { passive: true });
   }
+  // The firm's logo, left of its name, for the firms that have a logo file (the list comes from the build). Others: nothing.
+  function paintLogo(main) {
+    const C = window.REGRET || {}, slug = main && main.dataset && main.dataset.firm;
+    const row = main && main.querySelector && main.querySelector('.ph .ph1');
+    if (!slug || !row || !row.insertBefore || (row.querySelector && row.querySelector('.plg')) || !(C.flogos || []).includes(slug)) return;
+    const im = document.createElement('img');
+    im.className = 'plg'; im.alt = ''; im.width = 52; im.height = 52; im.src = (window.REGRET_ROOT || '/') + 'assets/logos/f-' + encodeURIComponent(slug) + '.png';
+    row.insertBefore(im, row.firstChild);
+  }
   function paintSignals(main) {
+    paintLogo(main);
     const C = window.REGRET || {};
     const slug = main && main.dataset && main.dataset.firm;
     const tile = main.querySelector && main.querySelector('.ats .att');
