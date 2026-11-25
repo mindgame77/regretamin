@@ -14,7 +14,7 @@
   // Ignored on any real host.
   const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const FIXTURE = LOCAL ? qs.get('fixture') : null;
-  const FX_FIRMS = FIXTURE && qs.get('fx_firms'), FX_UPDATES = FIXTURE && qs.get('fx_updates'), FX_HOT = FIXTURE && qs.get('fx_hot'), FX_DETAIL = FIXTURE && qs.get('fx_detail');
+  const FX_FIRMS = FIXTURE && qs.get('fx_firms'), FX_UPDATES = FIXTURE && qs.get('fx_updates'), FX_HOT = FIXTURE && qs.get('fx_hot'), FX_DETAIL = FIXTURE && qs.get('fx_detail'), FX_PLACE = FIXTURE && qs.get('fx_place');
 
   // Layout (founder's choice): a grey rail on the left holds two cards, controls and news; nothing covers the map.
   // ?layout=float brings back the first layout (cards floating over the map) for comparison.
@@ -113,9 +113,20 @@
     if (FX_FIRMS) return fetch(FX_FIRMS).then((r) => r.json());
     if (FIXTURE || !sb) return null;
     // in the 'Hot right now' view the list covers the same recent period the map is showing
-    const win = S.view === 'hot' ? { p_from: iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - S.days + 1)), p_to: iso(now), p_stages: S.stages.length ? S.stages : null, p_sectors: sector ? [sector] : S.sectors.length ? S.sectors : null } : args();
+    const win = S.view === 'hot' ? { p_from: iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - S.days + 1)), p_to: iso(now), p_stages: S.stages.length ? S.stages : null, p_sectors: sector ? [sector] : S.sectors.length ? S.sectors : null } : Object.assign(args(), sector ? { p_sectors: [sector] } : {});
     const { data, error } = await sb.rpc('v2_map_firms', Object.assign({ p_level: S.level, p_place: place.p }, win, who() !== 'all' ? { p_firms: who() } : {}));
     return error ? null : data;
+  }
+  // Money flow: every sector of one clicked place for the stretch of time the timeline shows: deals and firms.
+  const secCache = new Map();
+  async function placeSectors(place) {
+    if (FX_PLACE) return fetch(FX_PLACE).then((r) => r.json());
+    if (FIXTURE || !sb) return null;
+    const a = Object.assign({ p_level: S.level, p_place: place.p }, args()), key = JSON.stringify(a);
+    if (secCache.has(key)) return secCache.get(key);
+    const { data, error } = await sb.rpc('v2_map_place_sectors', a);
+    if (error) return null;
+    secCache.set(key, data); return data;
   }
   // Every sector of the zoom level (place null) or of one clicked place: deals now and before, firms, and a line of the last two years.
   const detCache = new Map();
@@ -305,7 +316,7 @@
     // On a phone the controls sit above and below the map, not over it, so the map uses its whole box.
     const narrow = r.width < 700, [l0, rt, t, b] = narrow ? [6, 6, 6, 6] : ROOM[S.level];
     // the firms panel takes the left of the map; the map moves over so the chosen place stays in view (if the window is wide enough)
-    const open = S.view === 'hot' && S.list && S.list.step === 'firms' && r.width >= 940, l = l0 + (open ? 376 : 0);
+    const open = S.list && S.list.step === 'firms' && r.width >= 940, l = l0 + (open ? 376 : 0);
     const k = Math.max(narrow ? 0.2 : 0.4, Math.min((r.width - l - rt) / g.w, (r.height - t - b) / g.h));
     S.k = k; S.ox = l + (r.width - l - rt - g.w * k) / 2; S.oy = t; S.boxW = r.width; S.boxH = r.height;
     stage.style.width = g.w + 'px'; stage.style.height = g.h + 'px';
@@ -488,11 +499,11 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   $('#vm-tip').addEventListener('mouseleave', hideSoon);
   stage.addEventListener('click', (e) => {
     const b = e.target.closest('.vm-pl');
-    // Clicking a place opens the firms behind it straight away; clicking it again, or the empty map, closes them.
+    // Clicking a place opens its sectors (in both views; founder, 25 Nov); clicking it again, or the empty map, closes them.
     if (b) { const p = stage._rows[+b.dataset.i]; if (S.list && S.list.place.p === p.p) closeList(); else openList(p); return; }
     if (S.list) closeList();
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (S.view === 'hot' && S.list && S.list.step === 'firms') { S.list.step = 'sectors'; S.list.sector = null; S.list.data = null; drawSide(); } else if (S.list) closeList(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { if (S.list && S.list.step === 'firms') { S.list.step = 'sectors'; S.list.sector = null; S.list.data = null; drawSide(); } else if (S.list) closeList(); } });
 
   // ---------- headline card
   // sector names inside a sentence: lower case, except the ones that start with an abbreviation
@@ -554,7 +565,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
       else q.push('from=' + iso(qStart(S.q0)), 'to=' + iso(qEnd(S.q1)));
       if (who() !== 'all') q.push('who=' + who());
     }
-    const sec = S.view === 'hot' && S.list && S.list.sector ? [S.list.sector] : S.sectors;
+    const sec = S.list && S.list.sector ? [S.list.sector] : S.sectors;
     if (sec.length) q.push('sectors=' + sec.map(encodeURIComponent).join('|'));
     if (S.stages.length) q.push('stages=' + S.stages.map(encodeURIComponent).join('|'));
     return ROOT + 'investors/' + (q.length ? '?' + q.join('&') : '');
@@ -564,9 +575,10 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     $('#vm-cta').href = listUrl();
     const hotList = S.view === 'hot' && S.list;
     // The button names what is chosen: the place, and the sector when one is open, with the number of firms the map counted.
-    const openSec = hotList && S.list.sector && ((S.list.det || {}).sectors || []).find((r) => r[0] === S.list.sector);
-    const ctaN = openSec ? openSec[3] : hotList ? S.list.place.f : 0;
-    $('#vm-cta').textContent = hotList ? `See the ${num(ctaN)} ${openSec ? S.list.sector + ' ' : ''}investor${ctaN === 1 ? '' : 's'} in ${S.list.place.n}` : 'See the investors';
+    // (A sector row is [name, deals, before, firms, line] in Hot right now and [name, deals, firms] in Money flow.)
+    const openSec = S.list && S.list.sector && ((S.list.det || {}).sectors || []).find((r) => r[0] === S.list.sector);
+    const ctaN = openSec ? openSec[hotList ? 3 : 2] : S.list ? S.list.place.f : 0;
+    $('#vm-cta').textContent = S.list ? `See the ${num(ctaN)} ${openSec ? S.list.sector + ' ' : ''}investor${ctaN === 1 ? '' : 's'} in ${S.list.place.n}` : 'See the investors';
     const units = () => side.querySelectorAll('.vm-unit button').forEach((u) => u.onclick = () => { S.unit = u.dataset.u; draw(); drawSide(); });
     drawFirms();
     if (hotList) {  // a clicked place opens on its sectors; its firms open in their own panel beside the rail
@@ -579,13 +591,15 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
       side.querySelectorAll('.vm-secp').forEach((b) => b.onclick = () => showFirms(b.dataset.s));
       return;
     }
-    if (S.list) {
-      const L = S.list;
+    if (S.list) {  // Money flow works the same way (founder, 25 Nov): the place opens on all its sectors, a sector opens its firms
+      const L = S.list, det = L.det, rows = (det || {}).sectors || [], tot = (det && det.tot) || 1, p = L.place;
+      const share = (n) => { const v = n / tot * 100; return v > 0 && v < 1 ? '<1%' : Math.round(v) + '%'; };
       side.className = 'vm-card vm-side vm-list';
-      side.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
-<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
-<a class="vm-more" href="${listUrl()}">Open the full investors list</a>`;
-      $('#vm-close').onclick = closeList;
+      side.innerHTML = `<div class="vm-lh"><div class="vm-chips"><button type="button" class="vm-chip" id="vm-unplace" aria-label="Remove filter ${esc(p.n)}">${esc(p.n)}<span aria-hidden="true">×</span></button></div><button type="button" class="vm-x" id="vm-close" aria-label="Close"></button></div>
+<div class="vm-facts"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'}${!S.sectors.length && p.so ? ` · stands out for <b>${esc(p.so)}</b>` : ''}</span></div><div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}</div><span class="vm-tag">${S.unit === 'num' ? 'deals' : 'share of deals'}</span>
+<div class="vm-rows vm-srows">${!det ? '<p class="vm-mu">Loading</p>' : rows.length ? rows.map(([name, n, f]) => `<button type="button" class="vm-sec vm-secp vm-secf${L.step === 'firms' && L.sector === name ? ' vm-secon' : ''}" data-s="${esc(name)}" title="${num(n)} deal${n === 1 ? '' : 's'}"><i style="background:${COLORS[name] || COLORS.Other}"></i><span>${esc(name)}</span><span class="vm-pc">${S.unit === 'num' ? num(n) : share(n)}</span><span class="vm-fl">${num(f)} firm${f === 1 ? '' : 's'}</span></button>`).join('') : '<p class="vm-mu">No deals here in this period.</p>'}</div>`;
+      $('#vm-close').onclick = closeList; $('#vm-unplace').onclick = closeList; units();
+      side.querySelectorAll('.vm-secp').forEach((b) => b.onclick = () => showFirms(b.dataset.s));
       return;
     }
     side.className = 'vm-card vm-side';
@@ -623,15 +637,15 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
       return `<a class="${i ? '' : 'vm-first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="vm-tag">${i ? '' : '<i class="vm-new" title="Newest update: its place is lit up on the map"></i>'}${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span class="vm-line" title="${esc(updateLine(u, who))}">${esc(updateLine(u, who))}</span></a>`;
     }).join('') : '<p class="vm-mu">No updates to show yet.</p>'}`;
   }
-  // 'Hot right now': the firms behind a place (or one of its sectors) open in a panel of their own, so the sectors stay in view.
+  // The firms behind a place (or one of its sectors) open in a panel of their own, so the sectors stay in view.
   function drawFirms() {
     const fp = $('#vm-fp'), L = S.list;
-    if (!(S.view === 'hot' && L && L.step === 'firms')) { if (!fp.hidden) { fp.hidden = true; fp.innerHTML = ''; fit(); } return; }
+    if (!(L && L.step === 'firms')) { if (!fp.hidden) { fp.hidden = true; fp.innerHTML = ''; fit(); } return; }
     const tags = [L.place.n].concat(L.sector ? [L.sector] : S.sectors, S.stages);
     if (fp.hidden) { fp.hidden = false; fit(); }
     fp.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-fpx" aria-label="Close the firms list"></button></div>
 <div class="vm-chips">${tags.map((x) => `<span class="vm-chip vm-chipst">${esc(x)}</span>`).join('')}</div>
-${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
+<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
 <a class="vm-more" href="${listUrl()}">Open the full investors list</a>`;
     $('#vm-fpx').onclick = () => { L.step = 'sectors'; L.sector = null; L.data = null; drawSide(); };
   }
@@ -642,15 +656,10 @@ ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.m
     if (S.list === L && L.step === 'firms' && L.sector === (sector || null)) { L.data = d || { count: 0, firms: [] }; drawFirms(); }
   }
   async function openList(place) {
-    if (S.view === 'hot') {  // sectors first; the firms are one click away (a sector row, or the button in the top card)
-      stop(); const L = S.list = { place, step: 'sectors', det: null, sector: null, data: null }; S.pinned = place.p; drawSide(); draw();
-      const det = await detail(place);
-      if (S.list === L) { L.det = det || { sectors: [] }; drawSide(); }
-      return;
-    }
-    stop(); S.list = { place, data: null }; S.pinned = place.p; drawSide(); draw();
-    const d = await firms(place);
-    if (S.list && S.list.place.p === place.p) { S.list.data = d || { count: place.f, firms: [] }; drawSide(); }
+    // sectors first, in both views; the firms are one click away (a sector row, or the button in the top card)
+    stop(); const L = S.list = { place, step: 'sectors', det: null, sector: null, data: null }; S.pinned = place.p; drawSide(); draw();
+    const det = await (S.view === 'hot' ? detail(place) : placeSectors(place));
+    if (S.list === L) { L.det = det || { sectors: [] }; drawSide(); }
   }
   // Coming back to the map: the place that was open opens again, with its firms list if that was showing.
   async function reopen() {
@@ -658,7 +667,7 @@ ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.m
     const row = b && (stage._rows || []).find((r) => r.p === b.p);
     if (!row) return;
     await openList(row);
-    if (S.view === 'hot' && b.step === 'firms' && S.list && S.list.place.p === b.p) showFirms(b.sector);
+    if (b.step === 'firms' && S.list && S.list.place.p === b.p) showFirms(b.sector);
   }
   function closeList() { if (S.list) { S.list = null; S.pinned = null; drawSide(); draw(); } }
 

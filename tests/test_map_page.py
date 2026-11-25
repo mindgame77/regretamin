@@ -142,3 +142,26 @@ def test_hot_view_sectors_first_switch_and_lines():
     assert "deal_date_precision::text <> 'year'" in sql
     fx = json.loads((ROOT / "tests/fixtures/map_hot_detail.json").read_text())
     assert all(len(r) == 5 and len(r[4]) == 8 for r in fx["sectors"])
+
+
+def test_money_flow_opens_a_place_on_its_sectors_like_hot_right_now():
+    """Founder, 25 Nov: pressing a circle in Money flow shows all its sectors first; a sector opens its firms in the
+    panel beside it; the button on top names the place (and the sector) and opens those firms in the Investors list."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    js = (root / 'launch/js/map.js').read_text()
+    # one way to open a place, for both views; Money flow asks for the place's sectors over the timeline's stretch of time
+    assert "const det = await (S.view === 'hot' ? detail(place) : placeSectors(place));" in js
+    assert "sb.rpc('v2_map_place_sectors', a)" in js
+    # the firms panel, Escape, the Investors-list link and coming back to the map no longer depend on the Hot view
+    assert "if (!(L && L.step === 'firms'))" in js and "const open = S.list && S.list.step === 'firms'" in js
+    assert "const sec = S.list && S.list.sector ? [S.list.sector] : S.sectors;" in js
+    assert "S.view === 'hot' && b.step === 'firms'" not in js
+    # the old straight-to-firms list in the side card is gone
+    assert 'aria-label="Close list"' not in js
+    # the database function is recorded, read-only, and skips where the v2 tables are missing (the test database)
+    sql = (root / 'supabase/migrations/20261125161908_v2_map_place_sectors.sql').read_text()
+    assert 'create or replace function public.v2_map_place_sectors(' in sql and 'language sql stable security definer' in sql
+    assert "if to_regclass('public.v2_deals') is null" in sql and 'to anon, authenticated' in sql
+    for word in ('insert into', 'update ', 'delete from', 'drop ', 'alter '):
+        assert word not in sql.lower()

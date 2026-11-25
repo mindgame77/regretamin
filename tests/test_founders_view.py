@@ -69,6 +69,8 @@ def test_draws_in_its_own_shadow_root_from_one_database_function():
     # the head card in the order of Money flow's: title, the three choices as buttons, then one "Based on" line
     assert JS.index('id="h1"') < JS.index('class="picks" id="seg-kind"') < JS.index('<p id="based">')
     assert 'that raised ${when}' not in JS
+    # the startups of a pressed place: the first 25, and a button that shows them all (founder, 25 Nov)
+    assert 'id="more">Show all ${num(all.length)} startups' in JS and 'more.</p>' not in JS
 
 
 def test_every_logo_named_in_the_list_is_a_file():

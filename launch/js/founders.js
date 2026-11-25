@@ -50,6 +50,7 @@ button.row:hover b{text-decoration:underline}
 .bar{display:flex;gap:2px;height:26px}
 .bar i{border-radius:5px;min-width:3px}
 .note{margin:14px 0 0;font-size:13px;color:var(--soft)}
+.more{display:block;width:100%;height:40px;margin:12px 0 8px;border:1px solid #8A9893;border-radius:10px;background:#fff;font-size:14px}
 .main{min-width:0;min-height:0;display:flex;flex-direction:column;padding:88px 24px 112px;gap:12px}  /* room is left at the top for the page's own View and Zoom buttons and at the bottom for its timeline */
 .ctl{flex:none;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .ctl .sp{flex:1}
@@ -388,6 +389,7 @@ async function boot(O) {
     else $('#based').textContent = (a ? `Based on ${num(a.n)} startups with a founder ${S.kind === 'unis' ? 'who studied there' : S.kind === 'cos' ? 'who worked there' : 'living there'}`
       : `Based on ${num(C.total)} startups with a founder ${!isPlace() ? (S.kind === 'unis' ? 'from one of ' + M.unis.length + ' universities' : 'who worked at one of ' + M.cos.length + ' companies') + (S.level === 'world' ? '' : ' in ' + (S.level === 'us' ? 'the US' : 'Europe')) : (S.level === 'world' ? 'whose home country we know' : 'living in ' + where())}`) + cashNote;
   }
+  let showRest = () => '';
   function drawPanel() {
     const p = $('#panel'), unit = S.kind === 'unis' ? 'Universities' : S.kind === 'cos' ? 'Companies' : S.level === 'us' ? 'States' : 'Countries';
     if (S.sel == null || !C.agg.get(S.sel)) {
@@ -400,7 +402,9 @@ async function boot(O) {
     const a = C.agg.get(S.sel), n = label(S.sel);
     const firms = new Map(); for (const [i] of a.list) for (const f of ST[i][5]) firms.set(f, (firms.get(f) || 0) + 1);
     const topF = [...firms.entries()].sort((x, y) => y[1] - x[1]).slice(0, 10);
-    const list = a.list.slice().sort((x, y) => y[1][0] - x[1][0]).slice(0, 25);
+    const all = a.list.slice().sort((x, y) => y[1][0] - x[1][0]), list = all.slice(0, 25);
+    const srow = ([i, last]) => `<div class="row"><i class="sw" style="background:${col(ST[i][1])}"></i><span><b>${esc(ST[i][0])}</b><small>${esc(M.sectors[ST[i][1]])}${last[2] ? ' · ' + esc(last[2]) : ''} · ${day(last[0])}</small></span><strong>${last[1] ? money(last[1]) : ''}</strong></div>`;
+    showRest = () => all.slice(25).map(srow).join('');  // the rest of the list, drawn when asked for (founder, 25 Nov)
     $('#ptitle').innerHTML = `${logo(S.sel, 24)}${esc(n)}${flag(S.sel)}`;
     p.innerHTML = `<button class="back" id="back">← ${S.area != null && !isPlace() ? unit + ' in ' + esc(areaName()) : 'All ' + unit.toLowerCase()}</button>
       <p class="stat"><b>${num(a.n)}</b> ${a.n === 1 ? 'startup' : 'startups'}${a.cash ? ` · <b>${money(a.cash)}</b> raised` : ''}</p>
@@ -408,8 +412,8 @@ async function boot(O) {
       <div class="key" style="margin-top:10px">${a.order.slice(0, 6).map((s) => `<span><i class="sw" style="background:${col(s)}"></i>${esc(M.sectors[s])} ${a.sec.get(s).n}</span>`).join('')}</div>
       <h3>Who invested</h3>${topF.length ? topF.map(([f, c]) => `<div class="row"><i></i><span>${M.firms[f][1] ? `<a href="${VC}${encodeURIComponent(M.firms[f][1])}/"><b>${esc(M.firms[f][0])}</b></a>` : `<b>${esc(M.firms[f][0])}</b>`}</span><strong>${num(c)} ${c === 1 ? 'startup' : 'startups'}</strong></div>`).join('') : '<p class="note">No investor on record.</p>'}
       <p class="note">${num(firms.size)} firms in total.</p>
-      <h3>Startups, newest round first</h3>${list.map(([i, last]) => `<div class="row"><i class="sw" style="background:${col(ST[i][1])}"></i><span><b>${esc(ST[i][0])}</b><small>${esc(M.sectors[ST[i][1]])}${last[2] ? ' · ' + esc(last[2]) : ''} · ${day(last[0])}</small></span><strong>${last[1] ? money(last[1]) : ''}</strong></div>`).join('')}
-      ${a.list.length > list.length ? `<p class="note">And ${num(a.list.length - list.length)} more.</p>` : ''}`;
+      <h3>Startups, newest round first</h3>${list.map(srow).join('')}
+      ${all.length > list.length ? `<button class="more" id="more">Show all ${num(all.length)} startups</button>` : ''}`;
     p.scrollTop = 0;
   }
   function segs() {
@@ -420,7 +424,7 @@ async function boot(O) {
 
   // ---------- events ----------
   for (const [id, key] of [['#seg-kind', 'kind'], ['#seg-mode', 'mode']]) $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const v = b.dataset.v; if (S[key] === v) return; S[key] = v; fresh = true; if (key === 'kind' || key === 'level') S.sel = null; if (key === 'level') S.area = null; render(); });
-  $('#panel').addEventListener('click', (e) => { if (e.target.closest('#backarea')) { S.area = null; return render(); } if (e.target.closest('#back')) return select(null); const r = e.target.closest('button.row'); if (r) select(r.dataset.k); });
+  $('#panel').addEventListener('click', (e) => { const m = e.target.closest('#more'); if (m) { m.outerHTML = showRest(); return; } if (e.target.closest('#backarea')) { S.area = null; return render(); } if (e.target.closest('#back')) return select(null); const r = e.target.closest('button.row'); if (r) select(r.dataset.k); });
   let dragged = false, drag = null, pinch = 0; const ptrs = new Map();
   $('#stage').addEventListener('click', (e) => {
     if (dragged) { dragged = false; return; }
