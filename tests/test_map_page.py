@@ -175,3 +175,9 @@ def test_money_flow_opens_a_place_on_its_sectors_like_hot_right_now():
     assert "if to_regclass('public.v2_deals') is null" in sql and 'to anon, authenticated' in sql
     for word in ('insert into', 'update ', 'delete from', 'drop ', 'alter '):
         assert word not in sql.lower()
+
+
+def test_the_second_view_is_called_trends():
+    """Founder, 25 Nov: "Hot right now" is renamed "Trends" on the button; old links with ?view=hot keep working."""
+    assert '<button type="button" data-view="hot">Trends</button>' in JS and '>Hot right now<' not in JS
+    assert "'hot'" in JS  # the view's own name in links and code is unchanged
