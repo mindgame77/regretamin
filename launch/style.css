@@ -1854,3 +1854,8 @@ main.prof #where .wmap b span{color:#46544F}  /* the count under a name can sit 
 .ckbar button{font:600 13px Geist,sans-serif;border-radius:99px;padding:8px 16px;cursor:pointer;border:1px solid #D5DAD8;background:#fff;color:#10201C}
 .ckbar .ckyes{background:#10201C;border-color:#10201C;color:#fff}
 @media (max-width:520px){.ckbar{left:12px;right:12px;bottom:12px;max-width:none}}
+/* The Founders view (js/founders.js) covers the map and draws inside its own shadow root; only the View and Zoom buttons stay on top. */
+#vf{position:absolute;inset:0;z-index:6}
+.vm.vm-fview .vm-colwrap,.vm.vm-fview .vm-map,.vm.vm-fview .vm-dock,.vm.vm-fview .vm-legend,.vm.vm-fview .vm-fp,.vm.vm-fview .vm-msg{display:none!important}
+.vm.vm-fview .vm-views,.vm.vm-fview .vm-zoom{z-index:8}
+@media (max-width:900px){#vf{position:static;order:4}}

@@ -14,14 +14,14 @@ E = html.escape
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); OUT = os.path.join(ROOT, 'site-launch')
 def _v(f):  # query on the script/link. The file path does not change, so _headers makes the CDN revalidate.
     return hashlib.sha1(open(os.path.join(HERE, f), 'rb').read()).hexdigest()[:10]
-V = {k: _v(f) for k, f in (('company', 'js/company.js'), ('app', 'js/app.js'), ('search', 'js/search.js'), ('dates', 'js/dates.js'), ('firms', 'js/firms.js'), ('map', 'js/map.js'), ('ga', 'js/ga.js'), ('css', 'style.css'))}
+V = {k: _v(f) for k, f in (('company', 'js/company.js'), ('app', 'js/app.js'), ('search', 'js/search.js'), ('dates', 'js/dates.js'), ('firms', 'js/firms.js'), ('map', 'js/map.js'), ('founders', 'js/founders.js'), ('ga', 'js/ga.js'), ('css', 'style.css'))}
 COPY = json.load(open(os.path.join(HERE, 'copy.json')))
 S = COPY['site']
 NOINDEX = os.environ.get('REGRET_NOINDEX') == '1'
 # Map pictures keep their names, and browsers hold a static file for four hours on this domain, so the pages ask for
 # them with ?v=<this>: it changes whenever a map file (or the recipe for the smooth land, LAND_RECIPE) changes.
 LAND_RECIPE = 'exact-all-1'
-MAPV = hashlib.sha1(b''.join(open(os.path.join(HERE, 'assets', 'map', f), 'rb').read() for f in ('world.svg', 'us.svg', 'eu.svg', 'places.json', 'lines.json', 'land.json')) + LAND_RECIPE.encode()).hexdigest()[:10]
+MAPV = hashlib.sha1(b''.join(open(os.path.join(HERE, 'assets', 'map', f), 'rb').read() for f in ('world.svg', 'us.svg', 'eu.svg', 'places.json', 'lines.json', 'land.json', '../founders/geo.json', '../founders/orgs.json')) + LAND_RECIPE.encode()).hexdigest()[:10]
 CFG = {'url': os.environ.get('SUPABASE_URL', ''), 'key': os.environ.get('SUPABASE_ANON_KEY', ''), 'mapv': MAPV, 'copy': {**COPY, 'site': {k: v for k, v in S.items() if k not in ('legal', 'pages')}}}
 GLOGO = '''<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>'''
 
@@ -410,9 +410,11 @@ def launch_firms():
 
 def main():
     shutil.rmtree(OUT, ignore_errors=True); os.makedirs(OUT)
-    for f in ('style.css', 'logo.svg', 'js/app.js', 'js/company.js', 'js/search.js', 'js/dates.js', 'js/firms.js', 'js/map.js', 'js/ga.js'): shutil.copy(os.path.join(HERE, f), OUT)
+    for f in ('style.css', 'logo.svg', 'js/app.js', 'js/company.js', 'js/search.js', 'js/dates.js', 'js/firms.js', 'js/map.js', 'js/founders.js', 'js/ga.js'): shutil.copy(os.path.join(HERE, f), OUT)
     shutil.copytree(os.path.join(HERE, 'fav'), os.path.join(OUT, 'fav'))
     shutil.copytree(os.path.join(HERE, 'assets', 'video'), os.path.join(OUT, 'assets', 'video'))
+    shutil.copytree(os.path.join(HERE, 'assets', 'founders'), os.path.join(OUT, 'assets', 'founders'))  # the Founders view: shapes and where each university and company sits (tools/map/gen_founders.cjs)
+    shutil.copytree(os.path.join(HERE, 'assets', 'logos'), os.path.join(OUT, 'assets', 'logos'))  # university and company logos for the Founders view
     shutil.copytree(os.path.join(HERE, 'assets', 'map'), os.path.join(OUT, 'assets', 'map'))  # backgrounds and coordinates for /map/ (tools/map/gen_assets.cjs)
     # The "Where they invest" card on a firm page shows the same maps as smooth grey land, not dots (founder, 23 Nov:
     # the dots did not show at that size, and square blocks looked ugly). Made here from the dotted files: each dot
@@ -496,6 +498,7 @@ def main():
         '/dates.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/firms.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/map.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
+        '/founders.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/ga.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/firms.json\n  Cache-Control: public, max-age=0, must-revalidate\n'
         # Map pictures keep one path too; a browser must not hold an old one for hours (the smooth land replaced a blocky file of the same name).

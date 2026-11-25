@@ -2,6 +2,7 @@
 // and, for the 'Hot right now' view, v2_map_hot (docs/map_hot_function.sql).
 // (docs/map_functions.sql). Rules it follows are in the project doc claude/plans/main-map.md.
 // No data is invented here: if the functions are missing, the page says the map is not available.
+// The third view, 'Founders', is drawn by js/founders.js; this file only switches to it and passes on the zoom.
 (function () {
   const el = document.getElementById('vm');
   if (!el) return;
@@ -54,7 +55,7 @@
   // A link can carry the view in its address (view, days, zoom, sectors, stages, firms). The page never rewrites its own address.
   (() => {
     const list = (k, ok) => (qs.get(k) || '').split('|').filter((v) => ok.includes(v)), num = (k) => (/^\d+$/.test(qs.get(k) || '') ? +qs.get(k) : null);
-    if (qs.get('view') === 'hot') S.view = 'hot';
+    if (qs.get('view') === 'hot' || qs.get('view') === 'founders') S.view = qs.get('view');
     if ([90, 180, 365].includes(num('days'))) S.days = num('days');
     if (['us', 'eu'].includes(qs.get('zoom'))) S.level = qs.get('zoom');
     S.sectors = list('sectors', SECTORS); S.stages = list('stages', STAGES);
@@ -65,7 +66,7 @@
     try {
       const m = JSON.parse(sessionStorage.getItem(KEEP) || 'null');
       if (!m) return;
-      if (m.view === 'hot' || m.view === 'flow') S.view = m.view;
+      if (m.view === 'hot' || m.view === 'flow' || m.view === 'founders') S.view = m.view;
       if ([90, 180, 365].includes(m.days)) S.days = m.days;
       if (['world', 'us', 'eu'].includes(m.level)) S.level = m.level;
       if (Array.isArray(m.sectors)) S.sectors = m.sectors.filter((v) => SECTORS.includes(v));
@@ -170,7 +171,7 @@
   <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a></section>
 <aside class="vm-card vm-side" id="vm-side"></aside></div>
 <aside class="vm-card vm-fp" id="vm-fp" aria-label="Firms" hidden></aside>
-<div class="vm-card vm-views" role="group" aria-label="View"><button type="button" data-view="flow">Money flow</button><button type="button" data-view="hot">Hot right now</button></div>
+<div class="vm-card vm-views" role="group" aria-label="View"><button type="button" data-view="flow">Money flow</button><button type="button" data-view="hot">Hot right now</button><button type="button" data-view="founders">Founders</button></div>
 <div class="vm-card vm-zoom" role="group" aria-label="Zoom to">${LEVELS.map(([k, t]) => `<button type="button" data-level="${k}">${t}</button>`).join('')}</div>
 <div class="vm-card vm-dock"><div class="vm-period" role="group" aria-label="Compare the last period with the same time before">${[[90, 'Last 90 days'], [180, 'Last 180 days'], [365, 'Last 12 months']].map(([d, t]) => `<button type="button" data-days="${d}">${t}</button>`).join('')}</div><button type="button" class="vm-play" id="vm-play" aria-label="Play"></button><button type="button" class="vm-all" id="vm-all">All years</button>
   <div class="vm-time"><div class="vm-track"><div class="vm-fill" id="vm-fill"></div>${Array.from({ length: NQ + 1 }, (_, i) => `<i class="${i % 4 ? '' : 'vm-y'}" style="left:${i / NQ * 100}%"></i>`).join('')}
@@ -262,10 +263,19 @@
   el.querySelectorAll('[data-days]').forEach((b) => b.addEventListener('click', () => { S.days = +b.dataset.days; S.list = null; S.pinned = null; marks(); refresh().then(drawSide); }));
   function marks() {
     el.classList.toggle('vm-hotview', S.view === 'hot');
+    el.classList.toggle('vm-fview', S.view === 'founders');
     el.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === S.view));
     el.querySelectorAll('[data-days]').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.days === S.days));
   }
-  function setView(v) { if (v === S.view) return; stop(); S.view = v; S.list = null; S.pinned = null; marks(); drawPicks(); refresh().then(drawSide); }
+  // Founders (js/founders.js) covers the map with its own view; the two older views are drawn here.
+  function founders() { const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level }); }
+  function setView(v) {
+    if (v === S.view) return;
+    stop(); S.view = v; S.list = null; S.pinned = null; marks();
+    if (v === 'founders') { remember(); founders(); return; }
+    if (window.REGRET_FOUNDERS) window.REGRET_FOUNDERS.hide();
+    drawPicks(); refresh().then(drawSide);
+  }
   function setLevel(l) {
     if (l === S.level) return;
     // Zooming in from the world: remember where the parent regions sit on the page, so their places can fly out of them.
@@ -274,6 +284,7 @@
       from = {}; stage._rows.forEach((p) => { if (ZOOM[p.p] === l) from[p.p] = { x: S.ox + p.x * S.k, y: S.oy + p.y * S.k }; });
     }
     S.list = null; S.pinned = null; S.level = l; draw(from); drawSide();
+    if (S.view === 'founders' && window.REGRET_FOUNDERS) { window.REGRET_FOUNDERS.setLevel(l); remember(); }
   }
 
   // ---------- drawing the map
@@ -651,6 +662,7 @@ ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.m
     msg.hidden = true; S.data = d; draw();
   }
   drawPicks(); drawTime(); drawSide(); marks();
+  if (S.view === 'founders') founders();
   // The map's places, its numbers and the latest updates are asked for at the same time, not one after another.
   // draw() does nothing until both the places and the numbers are in, so the order they arrive in does not matter.
   const places = fetch(ROOT + 'assets/map/places.json' + MAPV).then((r) => r.json()).then((g) => { S.geo = g; });
