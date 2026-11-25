@@ -1212,7 +1212,7 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-pm{position:absolute;right:24px;bottom:108px;z-index:4;display:flex;flex-direction:column;gap:6px}
 .vm-pm button{width:38px;height:38px;border:1px solid #8A9893;border-radius:10px;background:#fff;font-size:20px;font-weight:600;line-height:1}
 .vm-stage.vm-ease{transition:transform .35s cubic-bezier(.3,.7,.2,1)}.vm-stage.vm-ease .vm-pl{transition-duration:.35s}
-.vm-stage.vm-live .vm-pl{transition:none}.vm-stage.vm-ease #vm-labs .vm-lab,.vm-stage.vm-live #vm-labs .vm-lab{animation:none}
+.vm-stage.vm-live .vm-pl{transition:none}#vm-labs.vm-still .vm-lab{animation:none}
 .vm-map{touch-action:pan-y}.vm-map.vm-zoomed{touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
 .vm.vm-fview .vm-pm{display:none}
 .vm-pl.vm-lit{box-shadow:0 0 0 2px var(--mi),0 0 0 9px rgba(240,134,30,.32),0 0 0 20px rgba(240,134,30,.14)}

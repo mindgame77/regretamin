@@ -336,7 +336,7 @@
   // How circles and names are sized in map units when zoomed in. Circles grow more slowly than the map. Names keep their size
   // on the screen; on a phone, where the whole map is drawn small, they first grow to their full size and then keep it.
   const RZ = () => 1 / Math.sqrt(S.z || 1), LZ = () => { const z = S.z || 1, k0 = S.k0 || 1; return (k0 < 1 ? Math.min(1, k0 * z) : k0) / (k0 * z); };
-  let zraf = 0;
+  let zraf = 0, zdraw = false;
   // Zoomed in, the land picture would show its white lines ever thicker. So the same drawing is laid over it as lines
   // that keep their thickness on the screen (fetched once, the first time a map is zoomed). At rest the picture alone shows.
   const landTxt = {};
@@ -361,7 +361,7 @@
     if (sx == null) { sx = S.ox + S.zx * S.k; sy = S.oy + S.zy * S.k; } else { sx -= r.left; sy -= r.top; }
     const ux = (sx - S.ox) / S.k, uy = (sy - S.oy) / S.k, k1 = S.k / z0 * z, ax = S.ox + S.zx * S.k, ay = S.oy + S.zy * S.k;
     S.z = z; S.zx = ux - (sx - ax) / k1; S.zy = uy - (sy - ay) / k1;
-    hideTip(); fit(); if (stage.classList.contains('vm-ease')) draw(); else { cancelAnimationFrame(zraf); zraf = requestAnimationFrame(() => draw()); }
+    hideTip(); fit(); if (stage.classList.contains('vm-ease')) { zdraw = true; draw(); } else { cancelAnimationFrame(zraf); zraf = requestAnimationFrame(() => { zdraw = true; draw(); }); }
   }
   function panBy(dx, dy) { if ((S.z || 1) <= 1) return; pace('vm-live'); S.zx -= dx / S.k; S.zy -= dy / S.k; fit(); }
   const zoomReset = () => { S.z = 1; S.zx = S.zy = null; };
@@ -495,7 +495,7 @@
       }
     });
     els.forEach((b, key) => { if (!seen.has(key)) { els.delete(key); b.classList.add('vm-out'); setTimeout(() => b.remove(), 850); } });
-    const lb = $('#vm-labs'); lb.className = from ? 'vm-late' : ''; lb.innerHTML = labs;
+    const lb = $('#vm-labs'); lb.className = from ? 'vm-late' : zdraw ? 'vm-still' : ''; zdraw = false; lb.innerHTML = labs;  // names redrawn by a zoom do not fade in again
     // New circles: either fly out of the region they belong to (zooming in), or pop in where they are.
     if (from) fresh.forEach(([b, p], n) => {
       const o = from[parentOf(S.level, p.p)]; if (!o) return;
