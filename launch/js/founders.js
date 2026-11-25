@@ -1,7 +1,7 @@
 // The "Founders" view of the home page map (the third button next to Money flow and Hot right now).
 // What founders are building, three ways: by where they live (Places), where they studied (Universities) and where
 // they worked before (Companies); as a map or as blocks sized by cash raised. Founder's decisions, 24 to 25 Nov 2026:
-// a place needs only one startup to get a colour; pressing a state or country does not move the map; circles in one
+// a place needs only one startup to get a colour; every round counts in the cash, however big; pressing a state or country does not move the map; circles in one
 // city sit beside each other; a logo on a filled or white square is cut round and fills its circle.
 // Data: one read-only database function, v2_founders_data (kept 30 minutes); the page does all the counting, so the
 // years, the pressed place and the two switches answer at once. Map shapes, positions and logos come with the site
@@ -45,7 +45,7 @@ button.row:hover b{text-decoration:underline}
 .bar{display:flex;gap:2px;height:26px}
 .bar i{border-radius:5px;min-width:3px}
 .note{margin:14px 0 0;font-size:13px;color:var(--soft)}
-.main{min-width:0;min-height:0;display:flex;flex-direction:column;padding:88px 24px 20px;gap:12px}  /* the top 88px is left free for the page's own View and Zoom buttons */
+.main{min-width:0;min-height:0;display:flex;flex-direction:column;padding:88px 24px 112px;gap:12px}  /* room is left at the top for the page's own View and Zoom buttons and at the bottom for its timeline */
 .ctl{flex:none;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .ctl .sp{flex:1}
 .seg{display:inline-flex;gap:4px;padding:4px;border:1px solid #8A9893;border-radius:12px;background:var(--paper)}
@@ -105,7 +105,7 @@ button.row:hover b{text-decoration:underline}
   .main{padding:0}
   .stage{flex:none;height:72vw;min-height:260px}
   .panel{overflow:visible}
-  .ctl .seg,.dock .seg{max-width:100%;overflow-x:auto}
+  .ctl .seg{max-width:100%;overflow-x:auto}
   .stage svg{touch-action:pan-y}  /* on a phone a finger moving up or down scrolls the page; zoom with the buttons */
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}`;
@@ -120,25 +120,23 @@ button.row:hover b{text-decoration:underline}
       <div class="seg" id="seg-mode" role="group" aria-label="How to show it"><button data-v="map">Map</button><button data-v="blocks">Blocks</button></div>
     </div>
     <div class="stage" id="stage"></div>
-    <div class="dock">
-      <div class="seg" id="seg-year" role="group" aria-label="Years"><button data-v="0">All years</button><button data-v="2021">2021</button><button data-v="2022">2022</button><button data-v="2023">2023</button><button data-v="2024">2024</button><button data-v="2025">2025</button><button data-v="2026">2026</button></div>
-    </div>
   </section>
 </div>
 <div id="tip"></div>`;
-  let host = null, root = null, want = 'us';
+  let host = null, root = null, want = 'us', span = null;
   const api = {};
   window.REGRET_FOUNDERS = {
     // o: { el: the map's <main>, sb: the database client, root: the site root, mapv: '?v=…' for the map files, level }
     show(o) {
-      want = o.level || want;
+      want = o.level || want; if (o.span) span = o.span;
       if (!host) {
         host = document.createElement('div'); host.id = 'vf'; o.el.appendChild(host);
         root = host.attachShadow({ mode: 'open' }); root.innerHTML = '<style>' + CSS + '</style>' + HTML;
         boot(o);
-      } else { host.hidden = false; if (api.setLevel) api.setLevel(want); if (api.redraw) api.redraw(); }
+      } else { host.hidden = false; if (api.setLevel) api.setLevel(want); if (span && api.setSpan) api.setSpan(span); if (api.redraw) api.redraw(); }
     },
     hide() { if (host) host.hidden = true; },
+    setSpan(sp) { span = sp; if (api.setSpan) api.setSpan(sp); },
     setLevel(l) { want = l; if (api.setLevel) api.setLevel(l); },
   };
 
@@ -158,7 +156,7 @@ async function boot(O) {
     M = { views: geo.views, shapes: geo.shapes, dots: geo.dots, europe: geo.europe, colors: COLORS, sectors, firms: D.firms || [], unis: info(orgs.unis, D.unis || []), cos: info(orgs.cos, D.cos || []) };
     ST = D.startups || [];
   } catch (e) { $('#h1').textContent = 'This view is not available right now.'; $('#based').textContent = 'Reload the page to try again.'; return; }
-  const S = { kind: 'places', mode: 'map', level: ['world', 'us', 'eu'].includes(want) ? want : 'us', year: 0, big: false, sel: null, area: null };
+  const S = { kind: 'places', mode: 'map', level: ['world', 'us', 'eu'].includes(want) ? want : 'us', from: (O.span || {}).from || 0, to: (O.span || {}).to || 99999999, when: (O.span || {}).text || 'since 2021', sel: null, area: null };
   const EU = new Set(M.europe), OTHER = 18, GREY = '#E3E8E6';
   const col = (sid) => M.colors[M.sectors[sid]] || '#DADFDD', sname = (sid) => M.sectors[sid] || 'Other';
   const num = (n) => n.toLocaleString('en-US');
@@ -193,7 +191,7 @@ async function boot(O) {
     const agg = new Map(); let total = 0;
     ST.forEach((st, i) => {
       let cash = 0, hit = false, last = null;
-      for (const r of st[4]) { if (S.year && Math.floor(r[0] / 10000) !== S.year) continue; hit = true; if (r[1] && (S.big || r[1] < 1000)) cash += r[1]; if (!last || r[0] > last[0]) last = r; }
+      for (const r of st[4]) { if (r[0] < S.from || r[0] > S.to) continue; hit = true; if (r[1]) cash += r[1]; if (!last || r[0] > last[0]) last = r; }
       if (!hit) return;
       const ks = keysOf(st); if (!ks.length) return; total++;
       for (const k of ks) {
@@ -289,7 +287,7 @@ async function boot(O) {
   function drawBlocks() {
     const st = $('#stage'), W = st.clientWidth - 20, H = st.clientHeight - 20;
     const items = shown().filter((a) => a.cash > 0).sort((x, y) => y.cash - x.cash).slice(0, 18);
-    if (!items.length) { st.innerHTML = '<div class="empty">No rounds with a known amount for this choice. Try All years.</div>'; return; }
+    if (!items.length) { st.innerHTML = '<div class="empty">No rounds with a known amount for this choice. Try a longer stretch of time.</div>'; return; }
     let h = '';
     for (const [k, x, y, w, hh] of squarify(items.map((a) => [a.k, a.cash]), 0, 0, W, H)) {
       const a = C.agg.get(k), hd = hh > 64 ? 30 : 0, n = label(k);
@@ -309,11 +307,10 @@ async function boot(O) {
     const unit = S.kind === 'unis' ? 'university' : S.kind === 'cos' ? 'company' : S.level === 'us' ? 'state' : 'country', a = S.sel != null ? C.agg.get(S.sel) : null;
     const ar = !isPlace() && S.area != null && !a;
     $('#h1').textContent = ar ? (S.kind === 'unis' ? `What founders from universities in ${areaName()} are building.` : `What founders who worked at companies in ${areaName()} are building.`) : a ? (S.kind === 'unis' ? `What ${label(S.sel)} founders are building.` : S.kind === 'cos' ? `What founders who worked at ${label(S.sel)} are building.` : `What founders in ${label(S.sel)} are building.`) : (!isPlace() ? `What founders from each ${unit} are building.` : `What founders in each ${unit} are building.`);
-    const when = S.year ? 'in ' + S.year : 'since 2021';
-    const cashNote = ' Rounds of $1B or more are not counted in the cash.';
-    if (ar) { const ids = new Set(); for (const x of shown()) for (const l of x.list) ids.add(l[0]); $('#based').textContent = `Based on ${num(ids.size)} startups that raised ${when} and have a founder from one of the ${shown().length} ${S.kind === 'unis' ? 'universities' : 'companies'} here.` + cashNote; }
+    const when = S.when;
+    if (ar) { const ids = new Set(); for (const x of shown()) for (const l of x.list) ids.add(l[0]); $('#based').textContent = `Based on ${num(ids.size)} startups that raised ${when} and have a founder from one of the ${shown().length} ${S.kind === 'unis' ? 'universities' : 'companies'} here.`; }
     else $('#based').textContent = (a ? `Based on ${num(a.n)} startups that raised ${when} and have a founder ${S.kind === 'unis' ? 'who studied there' : S.kind === 'cos' ? 'who worked there' : 'living there'}.`
-      : `Based on ${num(C.total)} startups that raised ${when} and have a founder ${!isPlace() ? (S.kind === 'unis' ? 'from one of ' + M.unis.length + ' universities' : 'who worked at one of ' + M.cos.length + ' companies') + (S.level === 'world' ? '' : ' in ' + (S.level === 'us' ? 'the US' : 'Europe')) : (S.level === 'world' ? 'whose home country we know' : 'living in ' + where())}.`) + cashNote;
+      : `Based on ${num(C.total)} startups that raised ${when} and have a founder ${!isPlace() ? (S.kind === 'unis' ? 'from one of ' + M.unis.length + ' universities' : 'who worked at one of ' + M.cos.length + ' companies') + (S.level === 'world' ? '' : ' in ' + (S.level === 'us' ? 'the US' : 'Europe')) : (S.level === 'world' ? 'whose home country we know' : 'living in ' + where())}.`);
     const used = new Map(); for (const x of C.agg.values()) used.set(x.top, (used.get(x.top) || 0) + 1);
     const order = [...used.entries()].sort((x, y) => y[1] - x[1]).map((e) => e[0]);
     $('#key').innerHTML = order.length ? `<h4>${S.mode === 'blocks' ? 'Colours: what the startups do' : 'Colour: what most startups there do'}</h4>` + (S.mode === 'blocks' ? Object.keys(M.colors).slice(0, 12) : order.map((s) => M.sectors[s])).map((n) => `<span><i class="sw" style="background:${M.colors[n]}"></i>${esc(n)}</span>`).join('') + (S.mode === 'map' && isPlace() ? `<span><i class="sw" style="background:${GREY}"></i>No startups yet</span>` : '') : '';
@@ -323,7 +320,7 @@ async function boot(O) {
     if (S.sel == null || !C.agg.get(S.sel)) {
       const rows = shown().sort((x, y) => !isPlace() || S.mode === 'blocks' ? y.cash - x.cash || y.n - x.n : y.n - x.n || y.cash - x.cash);
       const byCash = !isPlace() || S.mode === 'blocks';
-      p.innerHTML = (S.area != null && !isPlace() ? `<button class="back" id="backarea">← All ${unit.toLowerCase()}</button>` : '') + `<h2>${S.area != null && !isPlace() ? unit + ' in ' + esc(areaName()) : unit}</h2>` + (rows.length ? rows.slice(0, 60).map((a) => `<button class="row" data-k="${a.k}"><i class="sw" style="background:${col(a.top)}"></i><span><b>${logo(a.k, 20)}${esc(label(a.k))}${flag(a.k)}</b><small>${esc(M.sectors[a.top])}${a.order[1] ? ' · ' + esc(M.sectors[a.order[1]]) : ''} · ${byCash ? num(a.n) + (a.n === 1 ? ' startup' : ' startups') : (money(a.cash) || 'amount not known')}</small></span><strong>${byCash ? (money(a.cash) || '–') : num(a.n)}</strong></button>`).join('') : '<p class="note">Nothing for this choice. Try All years.</p>');
+      p.innerHTML = (S.area != null && !isPlace() ? `<button class="back" id="backarea">← All ${unit.toLowerCase()}</button>` : '') + `<h2>${S.area != null && !isPlace() ? unit + ' in ' + esc(areaName()) : unit}</h2>` + (rows.length ? rows.slice(0, 60).map((a) => `<button class="row" data-k="${a.k}"><i class="sw" style="background:${col(a.top)}"></i><span><b>${logo(a.k, 20)}${esc(label(a.k))}${flag(a.k)}</b><small>${esc(M.sectors[a.top])}${a.order[1] ? ' · ' + esc(M.sectors[a.order[1]]) : ''} · ${byCash ? num(a.n) + (a.n === 1 ? ' startup' : ' startups') : (money(a.cash) || 'amount not known')}</small></span><strong>${byCash ? (money(a.cash) || '–') : num(a.n)}</strong></button>`).join('') : '<p class="note">Nothing for this choice. Try a longer stretch of time.</p>');
       p.scrollTop = 0; return;
     }
     const a = C.agg.get(S.sel), n = label(S.sel);
@@ -341,13 +338,13 @@ async function boot(O) {
     p.scrollTop = 0;
   }
   function segs() {
-    for (const [id, v] of [['#seg-kind', S.kind], ['#seg-mode', S.mode], ['#seg-year', String(S.year)]]) for (const b of root.querySelectorAll(id + ' button')) b.setAttribute('aria-pressed', String(b.dataset.v === v));
+    for (const [id, v] of [['#seg-kind', S.kind], ['#seg-mode', S.mode]]) for (const b of root.querySelectorAll(id + ' button')) b.setAttribute('aria-pressed', String(b.dataset.v === v));
   }
   function render() { C = compute(); if (S.sel != null && !C.agg.get(S.sel)) S.sel = null; if (isPlace()) S.area = null; segs(); drawHead(); drawPanel(); if (S.mode === 'map') drawMap(); else drawBlocks(); }
   function select(k) { if (k == null) S.sel = null; else { k = !isPlace() ? Number(k) : k; S.sel = S.sel === k ? null : k; } hideTip(); render(); }
 
   // ---------- events ----------
-  for (const [id, key] of [['#seg-kind', 'kind'], ['#seg-mode', 'mode'], ['#seg-year', 'year']]) $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const v = key === 'year' ? Number(b.dataset.v) : b.dataset.v; if (S[key] === v) return; S[key] = v; if (key === 'kind' || key === 'level') S.sel = null; if (key === 'level') S.area = null; render(); });
+  for (const [id, key] of [['#seg-kind', 'kind'], ['#seg-mode', 'mode']]) $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const v = b.dataset.v; if (S[key] === v) return; S[key] = v; if (key === 'kind' || key === 'level') S.sel = null; if (key === 'level') S.area = null; render(); });
   $('#panel').addEventListener('click', (e) => { if (e.target.closest('#backarea')) { S.area = null; return render(); } if (e.target.closest('#back')) return select(null); const r = e.target.closest('button.row'); if (r) select(r.dataset.k); });
   let dragged = false, drag = null, pinch = 0; const ptrs = new Map();
   $('#stage').addEventListener('click', (e) => {
@@ -386,7 +383,10 @@ async function boot(O) {
   let rz = 0; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (S.mode === 'blocks') drawBlocks(); }, 150); });
   api.setLevel = (l) => { if (!['world', 'us', 'eu'].includes(l) || l === S.level) return; S.level = l; S.sel = null; S.area = null; hideTip(); render(); };
   api.redraw = () => { if (S.mode === 'blocks') drawBlocks(); };
+  // the page's timeline moved: count again for that stretch of time
+  api.setSpan = (sp) => { if (!sp || (sp.from === S.from && sp.to === S.to)) return; S.from = sp.from; S.to = sp.to; S.when = sp.text; hideTip(); render(); };
   if (['world', 'us', 'eu'].includes(want) && want !== S.level) S.level = want;
+  if (span) { S.from = span.from; S.to = span.to; S.when = span.text; }  // the timeline may have moved while the data was loading
   render();
   if (window.REGRET_TRACK) window.REGRET_TRACK('founders_view', { level: S.level });
 }

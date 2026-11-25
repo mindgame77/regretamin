@@ -19,8 +19,8 @@ def test_third_view_button_and_switch():
     assert '<button type="button" data-view="founders">Founders</button>' in MAP
     assert "m.view === 'founders'" in MAP and "qs.get('view') === 'founders'" in MAP
     assert "window.REGRET_FOUNDERS.hide()" in MAP and "window.REGRET_FOUNDERS.setLevel(l)" in MAP
-    # while it is open, the old map's cards are out of the way and only the View and Zoom buttons stay on top
-    assert ".vm.vm-fview .vm-colwrap" in CSS and ".vm.vm-fview .vm-views,.vm.vm-fview .vm-zoom{z-index:8}" in CSS
+    # while it is open, the old map's cards are out of the way and only the View and Zoom buttons and the timeline stay on top
+    assert ".vm.vm-fview .vm-colwrap" in CSS and ".vm.vm-fview .vm-views,.vm.vm-fview .vm-zoom,.vm.vm-fview .vm-dock{z-index:8}" in CSS
 
 
 def test_script_is_loaded_before_the_map_script():
@@ -39,8 +39,12 @@ def test_draws_in_its_own_shadow_root_from_one_database_function():
     assert "O.sb.rpc('v2_founders_data')" in JS
     # founder's decisions: no tick box for giant rounds, no "Whole map" button, no word "then" between two sectors
     assert 'Include rounds of $1B' not in JS and 'Whole map' not in JS and "', then '" not in JS
-    assert 'Rounds of $1B or more are not counted in the cash.' in JS
+    # every round counts in the cash, however big (founder, 25 Nov: "count everything")
+    assert 'not counted in the cash' not in JS and 'r[1] < 1000' not in JS
     # the three choices and the two ways to draw them
+    # one timeline for the whole map: Founders reads the page's own handles, it has no year buttons of its own
+    assert 'seg-year' not in JS and 'setSpan' in JS and 'window.REGRET_FOUNDERS.setSpan(span())' in MAP
+    assert '.vm.vm-fview .vm-dock' in CSS and '.vm.vm-fview .vm-map,.vm.vm-fview .vm-dock' not in CSS
     for word in ('data-v="places"', 'data-v="unis"', 'data-v="cos"', 'data-v="map"', 'data-v="blocks"'):
         assert word in JS
 

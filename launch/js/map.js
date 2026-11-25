@@ -264,11 +264,19 @@
   function marks() {
     el.classList.toggle('vm-hotview', S.view === 'hot');
     el.classList.toggle('vm-fview', S.view === 'founders');
+    // in the Founders view the map underneath may not be drawn yet, so the Zoom buttons are marked here too
+    el.querySelectorAll('[data-level]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.level === S.level));
     el.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === S.view));
     el.querySelectorAll('[data-days]').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.days === S.days));
   }
   // Founders (js/founders.js) covers the map with its own view; the two older views are drawn here.
-  function founders() { const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level }); }
+  // The timeline is shared: Founders reads the same handles, by the day the range starts and ends (founder, 25 Nov: "let's keep consistency").
+  const ymd = (d) => d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  function span() {
+    const a = qStart(S.q0), b = qEnd(S.q1), all = S.q0 === 0 && S.q1 === NQ - 1;
+    return { from: ymd(a), to: ymd(b), text: all ? 'since 2021' : `from ${MONTHS[a.getMonth()]} ${a.getFullYear()} to ${S.q1 === NQ - 1 ? 'today' : MONTHS[b.getMonth()] + ' ' + b.getFullYear()}` };
+  }
+  function founders() { const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, span: span() }); }
   function setView(v) {
     if (v === S.view) return;
     stop(); S.view = v; S.list = null; S.pinned = null; marks();
@@ -284,7 +292,7 @@
       from = {}; stage._rows.forEach((p) => { if (ZOOM[p.p] === l) from[p.p] = { x: S.ox + p.x * S.k, y: S.oy + p.y * S.k }; });
     }
     S.list = null; S.pinned = null; S.level = l; draw(from); drawSide();
-    if (S.view === 'founders' && window.REGRET_FOUNDERS) { window.REGRET_FOUNDERS.setLevel(l); remember(); }
+    if (S.view === 'founders' && window.REGRET_FOUNDERS) { window.REGRET_FOUNDERS.setLevel(l); marks(); remember(); }
   }
 
   // ---------- drawing the map
@@ -651,6 +659,7 @@ ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.m
   let asked = 0;
   async function refresh() {
     remember();
+    if (S.view === 'founders') { if (window.REGRET_FOUNDERS) window.REGRET_FOUNDERS.setSpan(span()); return; }  // Founders counts on the page: nothing to ask for
     if (S.view !== 'hot') loadUpdates();  // asked alongside the map's numbers; does nothing when the pick has not changed
     const mine = ++asked, msg = $('#vm-msg');
     const busy = setTimeout(() => { if (mine === asked) el.classList.add('vm-busy'); }, 120);  // the scan runs only when the answer is not instant
