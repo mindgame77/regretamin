@@ -1224,6 +1224,7 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-tip .vm-tr span:nth-child(2){flex:1}
 .vm-tip .vm-pc{font-family:'Geist Mono',ui-monospace,monospace}
 .vm-tip .vm-btn{height:34px;line-height:34px;margin-top:4px;border-radius:8px;font-size:12px}
+#vm-cta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}  /* always one line; a long text is cut with … (founder, 25 Nov: it wrapped and fell out of the button) */
 .vm-colwrap{display:contents}
 /* Column layout (founder's choice "A"): a grey rail on the left holds two separate cards, controls and news; the map has the rest. */
 .vm-col .vm-colwrap{position:absolute;left:0;top:0;bottom:0;width:424px;display:flex;flex-direction:column;gap:16px;padding:20px;background:var(--ms);border-right:1px solid var(--ml);z-index:3}
@@ -1287,6 +1288,7 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-unit button[aria-pressed="true"]{background:var(--mi);color:#fff;font-weight:600}
 .vm-unit button:focus-visible{outline:2px solid var(--mi);outline-offset:-2px}
 .vm-lh2{margin-top:14px}
+.vm-side .vm-lhp{flex-wrap:nowrap;gap:10px;align-items:flex-start}.vm-lhp h2{flex:1;min-width:0}.vm-lhp .vm-unit{flex:none}  /* Money flow: the place and its firms, the % / # switch, the close button */
 .vm-lh2 h3{margin:0;font-size:16px;font-weight:600}
 .vm-srows{margin-top:6px}
 .vm-secp{min-height:44px}
@@ -1856,6 +1858,10 @@ main.prof #where .wmap b span{color:#46544F}  /* the count under a name can sit 
 @media (max-width:520px){.ckbar{left:12px;right:12px;bottom:12px;max-width:none}}
 /* The Founders view (js/founders.js) covers the map and draws inside its own shadow root; only the View and Zoom buttons stay on top. */
 #vf{position:absolute;inset:0;z-index:6}
-.vm.vm-fview .vm-colwrap,.vm.vm-fview .vm-map,.vm.vm-fview .vm-dock,.vm.vm-fview .vm-legend,.vm.vm-fview .vm-fp,.vm.vm-fview .vm-msg{display:none!important}
-.vm.vm-fview .vm-views,.vm.vm-fview .vm-zoom{z-index:8}
-@media (max-width:900px){#vf{position:static;order:4}}
+.vm.vm-fview .vm-colwrap,.vm.vm-fview .vm-legend,.vm.vm-fview .vm-fp,.vm.vm-fview .vm-msg{display:none!important}
+/* The land stays: Founders lays its colours over the same picture, so the map never changes between the views.
+   Only Money flow's own circles, names and hover card go. */
+.vm.vm-fview #vm-pls,.vm.vm-fview #vm-labs,.vm.vm-fview .vm-wave,.vm.vm-fview .vm-map .vm-tip{display:none!important}
+.vm.vm-fview.vm-busy .vm-bg{animation:none}
+.vm.vm-fview .vm-views,.vm.vm-fview .vm-zoom,.vm.vm-fview .vm-dock{z-index:8}  /* the timeline is the same one as on Money flow */
+@media (max-width:900px){.vm.vm-fview .vm-map{display:none!important}#vf{position:static;order:5}.vm.vm-fview .vm-dock{order:4}}

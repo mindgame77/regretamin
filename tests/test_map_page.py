@@ -142,3 +142,42 @@ def test_hot_view_sectors_first_switch_and_lines():
     assert "deal_date_precision::text <> 'year'" in sql
     fx = json.loads((ROOT / "tests/fixtures/map_hot_detail.json").read_text())
     assert all(len(r) == 5 and len(r[4]) == 8 for r in fx["sectors"])
+
+
+def test_money_flow_opens_a_place_on_its_sectors_like_hot_right_now():
+    """Founder, 25 Nov: pressing a circle in Money flow shows all its sectors first; a sector opens its firms in the
+    panel beside it; the button on top names the place (and the sector) and opens those firms in the Investors list."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    js = (root / 'launch/js/map.js').read_text()
+    # one way to open a place, for both views; Money flow asks for the place's sectors over the timeline's stretch of time
+    assert "const det = await (S.view === 'hot' ? detail(place) : placeSectors(place));" in js
+    assert "sb.rpc('v2_map_place_sectors', a)" in js
+    # the firms panel, Escape, the Investors-list link and coming back to the map no longer depend on the Hot view
+    assert "if (!(L && L.step === 'firms'))" in js and "const open = S.list && S.list.step === 'firms'" in js
+    assert "const sec = S.list && S.list.sector ? [S.list.sector] : S.sectors;" in js
+    assert "S.view === 'hot' && b.step === 'firms'" not in js
+    # the words in Money flow: what was there before plus the four things he said yes to on 25 Nov (the place in the card's
+    # title, the sector in the pop-up's title, the button naming what it opens, the % / # switch). Nothing else: no place
+    # label with an x, no "stands out for" line, no "Sectors here", no "share of deals", no labels in the firms pop-up.
+    card = js[js.index('if (S.list) {  // Money flow works the same way'):js.index("// The firms behind a place (or one of its sectors) open in a panel of their own")].split('side.innerHTML')[1]
+    assert "<h2>${esc(L.place.n)} · ${det ? num(det.firms) + ' firm'" in card and '${unitSw()}' in card
+    for word in ('vm-chip', 'stands out', 'Sectors here', 'vm-tag', 'share of deals'):
+        assert word not in card, word
+    assert "(S.view !== 'hot' && L.sector ? ' ' + esc(L.sector) : '') + ' firm'" in js
+    assert "S.view === 'hot' ? `<div class=\"vm-chips\">${tags.map(" in js
+    assert "$('#vm-cta').textContent = S.list ? `See the ${num(ctaN)}" in js
+    # the button is always one line; a long text ("See the 31 Enterprise software investors in Seattle") is cut with …
+    assert '#vm-cta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' in (root / 'launch/style.css').read_text()
+    # the database function is recorded, read-only, and skips where the v2 tables are missing (the test database)
+    sql = (root / 'supabase/migrations/20261125161908_v2_map_place_sectors.sql').read_text()
+    assert 'create or replace function public.v2_map_place_sectors(' in sql and 'language sql stable security definer' in sql
+    assert "if to_regclass('public.v2_deals') is null" in sql and 'to anon, authenticated' in sql
+    for word in ('insert into', 'update ', 'delete from', 'drop ', 'alter '):
+        assert word not in sql.lower()
+
+
+def test_the_second_view_is_called_trends():
+    """Founder, 25 Nov: "Hot right now" is renamed "Trends" on the button; old links with ?view=hot keep working."""
+    assert '<button type="button" data-view="hot">Trends</button>' in JS and '>Hot right now<' not in JS
+    assert "'hot'" in JS  # the view's own name in links and code is unchanged
