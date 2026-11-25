@@ -157,8 +157,12 @@ def test_money_flow_opens_a_place_on_its_sectors_like_hot_right_now():
     assert "if (!(L && L.step === 'firms'))" in js and "const open = S.list && S.list.step === 'firms'" in js
     assert "const sec = S.list && S.list.sector ? [S.list.sector] : S.sectors;" in js
     assert "S.view === 'hot' && b.step === 'firms'" not in js
-    # the old straight-to-firms list in the side card is gone
-    assert 'aria-label="Close list"' not in js
+    # the words in Money flow are the ones it had before (the count of firms, the close button, "See the investors"):
+    # no place label, no extra lines, no labels in the firms pop-up (founder, 25 Nov: "don't add more text", ask first)
+    assert "hotList ? `See the ${num(ctaN)}" in js and "S.view === 'hot' ? `<div class=\"vm-chips\">${tags.map(" in js
+    card = js[js.index('if (S.list) {  // Money flow works the same way'):js.index("// The firms behind a place (or one of its sectors) open in a panel of their own")]
+    for word in ('vm-chip', 'stands out', 'Sectors here', 'unitSw', 'vm-tag', 'share of deals'):
+        assert word not in card.split('side.innerHTML')[1], word
     # the database function is recorded, read-only, and skips where the v2 tables are missing (the test database)
     sql = (root / 'supabase/migrations/20261125161908_v2_map_place_sectors.sql').read_text()
     assert 'create or replace function public.v2_map_place_sectors(' in sql and 'language sql stable security definer' in sql
