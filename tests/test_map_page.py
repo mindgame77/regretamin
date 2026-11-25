@@ -209,3 +209,42 @@ def test_head_card_is_the_same_four_rows_in_every_view():
         assert "to_regclass('public.v2_founders_cache') is null" in sql and 'raise exception' not in sql.lower()
     assert "v_fkind is null or s.firm_id in (select v2_founders_firm_ids(v_fkind, p_place, p_deal_from, p_deal_to))" in a
     assert 'create or replace function public.v2_founders_firm_ids(' in c and 'fl as materialized' in c
+
+
+def test_which_firms_count_on_the_map_is_one_rule_with_a_register():
+    """Founder, 25 Nov: only VC-like firms count on the map (accelerators, incubators and, for now, PE and hedge funds
+    do not); the rule is kept in one place and every change to it is registered."""
+    sql = (ROOT / 'supabase/migrations/20261125201804_v2_map_type_rules.sql').read_text()
+    assert 'create table if not exists public.v2_map_type_rules' in sql and 'create table if not exists public.v2_map_rules_log' in sql
+    assert 'create trigger v2_map_type_rules_log before insert or update or delete on public.v2_map_type_rules' in sql
+    assert "t.name not in ('Accelerator', 'Incubator', 'PE', 'Hedge fund')" in sql
+    assert 'create or replace view public.v2_map_counted_places' in sql
+    # only the functions that count for the map read the counted view; the Investors list and firm pages are not in the list
+    assert "p.proname in ('v2_map_summary', 'v2_map_firms', 'v2_map_firm_ids', 'v2_map_hot', 'v2_map_hot_detail', 'v2_map_place_sectors')" in sql
+    assert 'firm_directory_page_v5' not in sql.split('do $wrapci$')[1]
+    for s in (sql, (ROOT / 'supabase/migrations/20261125201859_v2_firm_type_fixes_haiku_high.sql').read_text()):
+        assert "to_regclass('public.v2_firm_types_firms') is null" in s and 'raise exception' not in s.lower()
+        assert 'v2_firm_type_retag_20261125' in s  # old tags are kept
+
+
+def test_money_flow_and_trends_can_be_zoomed_like_founders():
+    """Founder, 25 Nov: "Zoom on all three maps, phone and computer." Money flow and Trends get + and - (same spot as in
+    Founders), the wheel, a pinch and a drag. At rest nothing changes; no text is added."""
+    js = (ROOT / 'launch/js/map.js').read_text(); css = (ROOT / 'launch/style.css').read_text(); F = (ROOT / 'launch/js/founders.js').read_text()
+    # the only new control: two buttons with no words
+    assert '<div class="vm-pm" role="group" aria-label="Zoom the map"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button></div>' in js
+    assert '.vm-pm{position:absolute;right:24px;bottom:108px;' in css and '.vm .vm-pm{right:10px;bottom:10px}' in css
+    assert '.zoom{right:24px;bottom:108px}' in F and '.zoom{right:10px;bottom:10px}' in F  # the same spots as in Founders
+    assert '.vm.vm-fview .vm-pm{display:none}' in css  # Founders has its own
+    # at rest the map is drawn exactly as before: the zoom only multiplies
+    assert "if (z <= 1.001) { S.z = 1;" in js and 'const RZ = () => 1 / Math.sqrt(S.z || 1)' in js
+    # zoom goes back to rest with the view and with World / United States / Europe
+    assert "S.view = v; S.list = null; S.pinned = null; zoomReset();" in js and "S.level = l; zoomReset(); land();" in js
+    # wheel, pinch, drag; the end of a drag is not a click on a place
+    for s in ("addEventListener('wheel'", "ptrs.size === 2 && pinch", "panBy(dx, dy)", "if (dragged) { dragged = false; return; }", "addEventListener('dragstart'"):
+        assert s in js, s
+    # a phone: a finger scrolls the page at rest and moves the map when zoomed in, in Founders too
+    assert '.vm-map{touch-action:pan-y}.vm-map.vm-zoomed{touch-action:none;' in css
+    assert '.stage.zoomed svg{touch-action:none}' in F and "classList.toggle('zoomed', z > 1)" in F
+    # names and lines keep their size on the screen
+    assert '.vm-lab{position:absolute;font-size:calc(12px*var(--lz,1))' in css and "calc(${p.getAttribute('stroke-width')}px * var(--lz, 1))" in js
