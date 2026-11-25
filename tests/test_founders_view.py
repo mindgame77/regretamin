@@ -60,11 +60,7 @@ def test_draws_in_its_own_shadow_root_from_one_database_function():
     assert '.vm-map' not in rule and '.vm.vm-fview #vm-pls,.vm.vm-fview #vm-labs' in CSS
     assert '@media (max-width:900px){.vm.vm-fview .vm-map{display:none!important}' in CSS  # on a phone it is a block of its own
     assert 'function land()' in MAP and 'function founders() { land();' in MAP
-    # the colours take the place of the picture as it really is on the screen (never worked out a second time), and
-    # both fit again when a box changes size without the window doing so (his screenshot of 25 Nov: ~30 px apart)
-    assert 'function pictureBox()' in MAP and 'picture: pictureBox' in MAP and 'window.REGRET_FOUNDERS.refit()' in MAP
-    assert 'O.picture()' in JS and 'pic.level === S.level' in JS and 'preserveAspectRatio="xMinYMin meet"' in JS
-    assert 'ResizeObserver' in MAP and 'ResizeObserver' in JS
+    assert '<g clip-path="url(#frame)">' in JS  # land outside the picture's frame (the tip of Alaska's islands, Fiji) is cut as the picture cuts it
     assert '.shp.plain{fill:transparent;stroke:none}' in JS and '.stage.own .shp.plain{fill:#CCD5D1;stroke:#fff}' in JS
     assert '.soft .shp.tint{animation:tint' in JS  # the colours fade in
     # the white lines of its own land are as thick as the ones build.py draws into <level>-land.svg
@@ -110,3 +106,36 @@ def test_database_addition_is_recorded_and_skips_a_database_without_the_v2_table
     assert 'revoke all on function public.v2_founders_build() from public, anon, authenticated' in sql
     faster = (ROOT / 'supabase/migrations/20261125091305_v2_founders_build_faster.sql').read_text()
     assert "to_regprocedure('public.v2_founders_build()') is null" in faster
+
+
+def test_founders_shapes_lie_on_the_sites_own_map():
+    """The Founders view lays its states and countries over the site's grey land picture, so both must be the same
+    drawing. On 25 Nov the US was fitted to a different outline in the two generators and every state sat 25 to 35 px
+    beside the land (founder: "we got a little fucked up here"). Compare the land itself, not only the frames."""
+    import json, re
+    land = json.loads((ROOT / 'launch/assets/map/land.json').read_text())
+    geo = json.loads((ROOT / 'launch/assets/founders/geo.json').read_text())
+    places = json.loads((ROOT / 'launch/assets/map/places.json').read_text())
+
+    def box(paths):
+        xs, ys = [], []
+        for d in paths:
+            nums = [float(n) for n in re.findall(r'-?\d+(?:\.\d+)?', d)]
+            xs += nums[0::2]; ys += nums[1::2]
+        return min(xs), min(ys), max(xs), max(ys)
+
+    for level in ('world', 'us', 'eu'):  # the same frame
+        assert (geo['views'][level]['w'], geo['views'][level]['h']) == (places[level]['w'], places[level]['h'])
+    # the United States: all states together cover exactly what the site's US land covers
+    a, b = box([land['us']]), box([s['d'] for s in geo['shapes']['us']])
+    assert all(abs(x - y) <= 1.5 for x, y in zip(a, b)), (a, b)
+    # Europe: the frame cuts both at the same edges
+    a, b = box([land['eu']]), box([s['d'] for s in geo['shapes']['eu']])
+    assert all(abs(x - y) <= 1.5 for x, y in zip(a, b)), (a, b)
+    # and the two generators say so: one fit per view, word for word
+    A = (ROOT / 'tools/map/gen_assets.cjs').read_text(); F = (ROOT / 'tools/map/gen_founders.cjs').read_text()
+    assert "d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], usa)" in A and "find((f) => f.id === '840')" in A
+    assert "d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], topo.feature(A110, A110.objects.countries).features.find((f) => f.id === '840'))" in F
+    for fit in ("d3.geoNaturalEarth1().fitExtent([[20, 70], [1040, 580]], { type: 'MultiPoint', coordinates: [[-170, -52], [180, 72], [-170, 72], [180, -52]] })",
+                "d3.geoMercator().fitExtent([[0, 0], [876, 600]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [50.5, 34.5], [-25, 67], [50.5, 67]] })"):
+        assert fit in A and fit in F

@@ -196,7 +196,6 @@ button.row:hover b{text-decoration:underline}
     hide() { if (host) host.hidden = true; },
     setSpan(sp) { span = sp; if (api.setSpan) api.setSpan(sp); },
     setLevel(l) { want = l; if (api.setLevel) api.setLevel(l); },
-    refit() { if (api.refit) api.refit(); },
   };
 
 async function boot(O) {
@@ -293,15 +292,7 @@ async function boot(O) {
   const view = () => M.views[S.level];
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   function base() {  // the whole map at rest, in map units, for the box it is drawn in
-    const st = $('#stage'), V = view();
-    // On the page's own land picture: take the place of that picture as it really is on the screen, so the colours
-    // cannot sit beside the land whatever the browser or the window does (founder's screenshot, 25 Nov: they were ~30 px off).
-    const pic = !NARROW.matches && O.picture ? O.picture() : null;
-    if (pic && pic.level === S.level) {
-      const s = st.getBoundingClientRect(), k = pic.w / V.w;
-      if (s.width > 0 && k > 0) return { W: s.width, x: (s.left - pic.x) / k, y: (s.top - pic.y) / k, w: s.width / k, h: s.height / k };
-    }
-    const W = st.clientWidth || 1, H = st.clientHeight || 1, [l, r, t, b] = W < 700 ? [6, 6, 6, 6] : ROOM[S.level];
+    const st = $('#stage'), W = st.clientWidth || 1, H = st.clientHeight || 1, V = view(), [l, r, t, b] = W < 700 ? [6, 6, 6, 6] : ROOM[S.level];
     const k = Math.max(0.2, Math.min((W - l - r) / V.w, (H - t - b) / V.h)), ox = l + (W - l - r - V.w * k) / 2;
     return { W, x: -ox / k, y: -t / k, w: W / k, h: H / k };
   }
@@ -321,7 +312,7 @@ async function boot(O) {
       if (a && S.sel === s.k) selD = s.d;
       h += `<path class="shp${a ? ' has tint' : ' plain'}${a && S.sel === s.k ? ' on' : ''}" d="${s.d}"${a ? ` fill="${col(a.top)}"` : ''}${a ? ` data-k="${s.k}" tabindex="0" role="button" aria-label="${esc(s.n)}"` : ''}/>`;
     }
-    st.innerHTML = `<svg preserveAspectRatio="xMinYMin meet" width="100%" height="100%" class="${S.sel != null && (places || S.area == null) ? 'dim' : ''}${!places && S.area != null ? ' areaon' : ''}${fresh ? ' soft' : ''}" style="--k:1"><style>.lab{font-size:calc(12px * var(--k))}</style><defs><clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath></defs><g>${h}</g><path class="ring sel" d="${selD}"/><path class="ring hov" d=""/><g id="marks"></g></svg><div class="zoom"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button></div>`;
+    st.innerHTML = `<svg preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="${S.sel != null && (places || S.area == null) ? 'dim' : ''}${!places && S.area != null ? ' areaon' : ''}${fresh ? ' soft' : ''}" style="--k:1"><style>.lab{font-size:calc(12px * var(--k))}</style><defs><clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath><clipPath id="frame"><rect width="${view().w}" height="${view().h}"/></clipPath></defs><g clip-path="url(#frame)">${h}</g><path class="ring sel" d="${selD}"/><path class="ring hov" d=""/><g id="marks"></g></svg><div class="zoom"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button></div>`;
     fresh = false; applyView();
   }
   function applyView() {
@@ -467,8 +458,6 @@ async function boot(O) {
   let rz = 0; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (host.hidden) return; if (S.mode === 'blocks') drawBlocks(); else applyView(); }, 150); });
   api.setLevel = (l) => { if (!['world', 'us', 'eu'].includes(l) || l === S.level) return; S.level = l; S.sel = null; S.area = null; fresh = true; hideTip(); render(); };
   // shown again after another view: the map at rest, nothing pressed, so it is the very map the visitor was looking at
-  api.refit = () => { if (!host.hidden && S.mode === 'map') applyView(); };  // the page fitted its picture again
-  if (window.ResizeObserver) { let raf = 0; new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (host.hidden) return; if (S.mode === 'blocks') drawBlocks(); else applyView(); }); }).observe($('#stage')); }
   api.redraw = () => { for (const k of Object.keys(Z)) delete Z[k]; S.sel = null; S.area = null; fresh = true; hideTip(); render(); };
   // the page's timeline moved: count again for that stretch of time
   api.setSpan = (sp) => { if (!sp || (sp.from === S.from && sp.to === S.to)) return; S.from = sp.from; S.to = sp.to; S.when = sp.text; hideTip(); render(); };

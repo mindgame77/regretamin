@@ -31,7 +31,10 @@ const nice = (n) => n.replace('United States of America', 'United States');
 const V = { world: { w: 1060, h: 620 }, us: { w: 900, h: 540 }, eu: { w: 876, h: 600 } };
 const P = {
   world: d3.geoNaturalEarth1().fitExtent([[20, 70], [1040, 580]], { type: 'MultiPoint', coordinates: [[-170, -52], [180, 72], [-170, 72], [180, -52]] }),
-  us: d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], topo.feature(US, US.objects.nation)),
+  // The US must be fitted exactly as the site's own US map is (tools/map/gen_assets.cjs fits it to the United States of
+  // the 1:110m world atlas, country 840), not to the detailed outline: with another fit the states land 25 to 35 px beside
+  // the grey land they are laid over (founder, 25 Nov). The shapes themselves still come from the detailed outline.
+  us: d3.geoAlbersUsa().fitExtent([[10, 10], [890, 530]], topo.feature(A110, A110.objects.countries).features.find((f) => f.id === '840')),
   eu: d3.geoMercator().fitExtent([[0, 0], [876, 600]], { type: 'MultiPoint', coordinates: [[-25, 34.5], [50.5, 34.5], [-25, 67], [50.5, 67]] }).clipExtent([[0, 0], [876, 600]]) };
 const geo = { views: V, shapes: { world: [], us: [], eu: [] }, dots: {}, europe: EUROPE };
 function countries(A, view, skip) {
