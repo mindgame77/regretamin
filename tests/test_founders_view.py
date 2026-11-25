@@ -54,6 +54,20 @@ def test_draws_in_its_own_shadow_root_from_one_database_function():
     assert "{ world: [16, 16, 84, 104], us: [24, 24, 96, 120], eu: [24, 24, 62, 100] }" in MAP  # the main map's own numbers: keep the two in step
     for word in ('data-v="places"', 'data-v="unis"', 'data-v="cos"', 'data-v="map"', 'data-v="blocks"'):
         assert word in JS
+    # one map for every view (founder, 25 Nov: "why we cannot use the same map?"): the page's land picture stays on
+    # screen in the Founders view, which only lays its colours over it; only Money flow's circles and names are hidden
+    rule = next(l for l in CSS.splitlines() if l.startswith('.vm.vm-fview .vm-colwrap'))
+    assert '.vm-map' not in rule and '.vm.vm-fview #vm-pls,.vm.vm-fview #vm-labs' in CSS
+    assert '@media (max-width:900px){.vm.vm-fview .vm-map{display:none!important}' in CSS  # on a phone it is a block of its own
+    assert 'function land()' in MAP and 'function founders() { land();' in MAP
+    assert '.shp.plain{fill:transparent;stroke:none}' in JS and '.stage.own .shp.plain{fill:#CCD5D1;stroke:#fff}' in JS
+    assert '.soft .shp.tint{animation:tint' in JS  # the colours fade in
+    # the white lines of its own land are as thick as the ones build.py draws into <level>-land.svg
+    assert 'const LINE = { world: 1.1, us: 1.5, eu: 1.3 };' in JS
+    assert '1.5 if level == "us" else 1.3 if level == "eu" else 1.1' in (ROOT / 'launch/build.py').read_text()
+    # the head card in the order of Money flow's: title, the three choices as buttons, then one "Based on" line
+    assert JS.index('id="h1"') < JS.index('class="picks" id="seg-kind"') < JS.index('<p id="based">')
+    assert 'that raised ${when}' not in JS
 
 
 def test_every_logo_named_in_the_list_is_a_file():

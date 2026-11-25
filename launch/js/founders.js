@@ -116,14 +116,16 @@ button.row:hover b{text-decoration:underline}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 /* ---- The same look as Money flow and Hot right now (founder, 25 Nov: "unify all 3 maps in size and design"). ----
    Values are the site's own (style.css: .vm-card, .vm-head, .vm-side, .vm-lh, .vm-unit, .vm-tip, .vm-views). */
-:host{--mi:#10201C;--mm:#586964;--ml:#E2E7E5;--ms:#F3F5F4}
+:host{--mi:#10201C;--mm:#586964;--ml:#E2E7E5;--ms:#F3F5F4;background:transparent}
 .side{gap:16px;padding:20px;background:var(--ms);border-right:1px solid var(--ml)}
 .card{border:1px solid var(--ml);border-radius:16px;padding:20px;background:#fff}
 .head{display:flex;flex-direction:column;gap:12px}
 .head h1{margin:0;font-size:27px;font-weight:600;letter-spacing:-.05em;line-height:1.02}
 .head p{margin:0;font:13px/1.35 var(--mono);color:var(--mm)}
-.head .seg{display:flex;padding:5px;gap:2px;border:1px solid var(--ml);border-radius:14px}
-.head .seg button{flex:1;height:40px;padding:0 6px;border-radius:10px;font-size:14px}
+/* the three choices look like the site's own drop-down buttons (.vm-pickbtn) and sit where Money flow has them: under the title */
+.picks{display:flex;gap:6px;flex-wrap:wrap}
+.picks button{height:44px;padding:0 12px;border-radius:10px;border:1px solid #8A9893;background:#fff;font-size:14px;white-space:nowrap}
+.picks button[aria-pressed="true"]{background:var(--mi);border-color:var(--mi);color:#fff;font-weight:600}
 .panel{padding:16px 20px 8px;display:flex;flex-direction:column;overflow:hidden}
 .lh{display:flex;justify-content:space-between;align-items:center;gap:10px;flex:none;padding-bottom:10px}
 .lh h2{margin:0;font-size:20px;font-weight:600;letter-spacing:0;min-width:0;overflow-wrap:anywhere}
@@ -135,7 +137,20 @@ button.row:hover b{text-decoration:underline}
 .row{padding:10px 0;border-top:1px solid var(--ml)}
 .row b{font-size:14px}.row small{font-size:13px}.row strong{font-size:14px}
 .main{padding:0;position:relative}
-.stage{position:absolute;inset:0;flex:none;border:0;border-radius:0;background:#fff}
+.stage{position:absolute;inset:0;flex:none;border:0;border-radius:0;background:transparent}
+/* ---- One map for every view (founder, 25 Nov: "why we cannot use the same map?"). ----
+   At rest the land is the page's own picture (#vm-bg, the one Money flow and Hot right now use): this view only lays its
+   colours and circles over it, so nothing moves or blinks when the view changes. It draws its own land (".own") only where
+   that picture cannot follow: zoomed in, something pressed (the rest goes pale), Blocks, and on a phone. */
+.stage.own{background:#fff}
+.shp{stroke-width:var(--lw,1px)}
+.shp.plain{fill:transparent;stroke:none}
+.stage.own .shp.plain{fill:#CCD5D1;stroke:#fff}
+@keyframes tint{from{fill-opacity:0;stroke-opacity:0}to{fill-opacity:1;stroke-opacity:1}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.soft .shp.tint{animation:tint .6s ease both}  /* countries and states softly take their sector colour */
+.soft #marks{animation:fadein .6s ease both}
+@media (prefers-reduced-motion:reduce){.soft .shp.tint,.soft #marks{animation:none}}
 .blocks{inset:96px 24px 112px 24px}
 .zoom{right:24px;bottom:108px}
 .zoom button{border:1px solid var(--ml);border-radius:12px;box-shadow:0 8px 28px rgba(16,32,28,.08)}
@@ -158,8 +173,9 @@ button.row:hover b{text-decoration:underline}
 `;
   const HTML = `<div class="app">
   <aside class="side">
-    <section class="card head"><h1 id="h1">Loading…</h1><p id="based"></p>
-      <div class="seg" id="seg-kind" role="group" aria-label="What to show"><button data-v="places">Places</button><button data-v="unis">Universities</button><button data-v="cos">Companies</button></div></section>
+    <section class="card head"><h1 id="h1">Loading…</h1>
+      <div class="picks" id="seg-kind" role="group" aria-label="What to show"><button data-v="places">Places</button><button data-v="unis">Universities</button><button data-v="cos">Companies</button></div>
+      <p id="based"></p></section>
     <section class="card panel"><div class="lh"><h2 id="ptitle"></h2><span class="unit" id="seg-mode" role="group" aria-label="Show as"><button data-v="map">Map</button><button data-v="blocks">Blocks</button></span></div><div id="panel"></div></section>
   </aside>
   <section class="main"><div class="stage" id="stage"></div></section>
@@ -199,7 +215,7 @@ async function boot(O) {
     ST = D.startups || [];
   } catch (e) { $('#h1').textContent = 'This view is not available right now.'; $('#based').textContent = 'Reload the page to try again.'; return; }
   const S = { kind: 'places', mode: 'map', level: ['world', 'us', 'eu'].includes(want) ? want : 'us', from: (O.span || {}).from || 0, to: (O.span || {}).to || 99999999, when: (O.span || {}).text || 'since 2021', sel: null, area: null };
-  const EU = new Set(M.europe), OTHER = 18, GREY = '#CBD3CF';
+  const EU = new Set(M.europe), OTHER = 18;
   const col = (sid) => M.colors[M.sectors[sid]] || '#DADFDD', sname = (sid) => M.sectors[sid] || 'Other';
   const num = (n) => n.toLocaleString('en-US');
   const money = (m) => m >= 1000 ? '$' + (+(m / 1000).toFixed(1)) + 'B' : m >= 10 ? '$' + Math.round(m) + 'M' : m > 0 ? '$' + (+m.toFixed(1)) + 'M' : '';
@@ -270,6 +286,9 @@ async function boot(O) {
   // (map.js: ROOM), so switching views does not make the map jump. Zoom and position are kept per region.
   const ROOM = { world: [16, 16, 84, 104], us: [24, 24, 96, 120], eu: [24, 24, 62, 100] };
   const Z = {};
+  const LINE = { world: 1.1, us: 1.5, eu: 1.3 };  // width of the white border lines in map units, as build.py draws them into <level>-land.svg
+  const NARROW = matchMedia('(max-width:900px)');  // on a phone this view is a block of its own, not a layer over the page's map
+  let fresh = true;  // the colours fade in when the view, the zoom or the choice changes, not on every count
   const view = () => M.views[S.level];
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   function base() {  // the whole map at rest, in map units, for the box it is drawn in
@@ -288,16 +307,19 @@ async function boot(O) {
     const live = new Set(); if (!places) for (const a of agg.values()) { const e = ent()[a.k]; if (e.p[S.level] && entArea(e)) live.add(entArea(e)); }
     for (const s of M.shapes[S.level]) {
       const a = places && s.k ? agg.get(s.k) : null;
-      if (S.level === 'eu' && s.k && !EU.has(s.k)) { h += `<path class="shp" d="${s.d}" fill="${GREY}"/>`; continue; }
-      if (!places && live.has(shapeArea(s))) { const id = shapeArea(s); if (S.area === id) selD = s.d; h += `<path class="shp has${S.area === id ? ' on' : ''}" d="${s.d}" fill="${S.area === id ? '#B1BDB8' : GREY}" data-a="${esc(id)}" tabindex="0" role="button" aria-label="${esc(s.n)}"/>`; continue; }
+      if (S.level === 'eu' && s.k && !EU.has(s.k)) { h += `<path class="shp plain" d="${s.d}"/>`; continue; }
+      if (!places && live.has(shapeArea(s))) { const id = shapeArea(s); if (S.area === id) selD = s.d; h += `<path class="shp has${S.area === id ? ' on" fill="#B1BDB8' : ' plain'}" d="${s.d}" data-a="${esc(id)}" tabindex="0" role="button" aria-label="${esc(s.n)}"/>`; continue; }
       if (a && S.sel === s.k) selD = s.d;
-      h += `<path class="shp${a ? ' has' : ''}${a && S.sel === s.k ? ' on' : ''}" d="${s.d}" fill="${a ? col(a.top) : GREY}"${a ? ` data-k="${s.k}" tabindex="0" role="button" aria-label="${esc(s.n)}"` : ''}/>`;
+      h += `<path class="shp${a ? ' has tint' : ' plain'}${a && S.sel === s.k ? ' on' : ''}" d="${s.d}"${a ? ` fill="${col(a.top)}"` : ''}${a ? ` data-k="${s.k}" tabindex="0" role="button" aria-label="${esc(s.n)}"` : ''}/>`;
     }
-    st.innerHTML = `<svg preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="${S.sel != null && (places || S.area == null) ? 'dim' : ''}${!places && S.area != null ? ' areaon' : ''}" style="--k:1"><style>.lab{font-size:calc(12px * var(--k))}</style><defs><clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath></defs><g>${h}</g><path class="ring sel" d="${selD}"/><path class="ring hov" d=""/><g id="marks"></g></svg><div class="zoom"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button></div>`;
-    applyView();
+    st.innerHTML = `<svg preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="${S.sel != null && (places || S.area == null) ? 'dim' : ''}${!places && S.area != null ? ' areaon' : ''}${fresh ? ' soft' : ''}" style="--k:1"><style>.lab{font-size:calc(12px * var(--k))}</style><defs><clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath></defs><g>${h}</g><path class="ring sel" d="${selD}"/><path class="ring hov" d=""/><g id="marks"></g></svg><div class="zoom"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button></div>`;
+    fresh = false; applyView();
   }
   function applyView() {
     const svg = $('#stage svg'); if (!svg) return; const { v, k, z } = vbox();
+    // its own land only where the page's picture cannot follow; the white lines are as thick as the picture's
+    $('#stage').classList.toggle('own', NARROW.matches || z > 1 || S.sel != null || S.area != null);
+    svg.style.setProperty('--lw', (LINE[S.level] / (k * z)).toFixed(2) + 'px');
     svg.setAttribute('viewBox', v.map((n) => +n.toFixed(2)).join(' ')); svg.style.setProperty('--k', k); drawMarks(k, z);
   }
   // everything that keeps its size on screen while the map is zoomed: numbers, small-country circles, university and company circles
@@ -340,7 +362,7 @@ async function boot(O) {
   const toUser = (x, y) => { const m = $('#stage svg').getScreenCTM(); return [(x - m.e) / m.a, (y - m.f) / m.d]; };
   // ---------- the blocks ----------
   function drawBlocks() {
-    const st = $('#stage'); st.innerHTML = '<div class="blocks"></div>'; const W = st.firstChild.clientWidth, H = st.firstChild.clientHeight;
+    const st = $('#stage'); st.classList.add('own'); st.innerHTML = '<div class="blocks"></div>'; const W = st.firstChild.clientWidth, H = st.firstChild.clientHeight;
     const items = shown().filter((a) => a.cash > 0).sort((x, y) => y.cash - x.cash).slice(0, 18);
     if (!items.length) { st.innerHTML = '<div class="empty">No rounds with a known amount for this choice. Try a longer stretch of time.</div>'; return; }
     let h = '';
@@ -360,12 +382,11 @@ async function boot(O) {
   const where = () => S.level === 'us' ? 'the US' : S.level === 'eu' ? 'Europe' : 'a country we know';
   function drawHead() {
     const unit = S.kind === 'unis' ? 'university' : S.kind === 'cos' ? 'company' : S.level === 'us' ? 'state' : 'country', a = S.sel != null ? C.agg.get(S.sel) : null;
-    const ar = !isPlace() && S.area != null && !a, cashNote = isPlace() ? '' : ' Rounds of $1B or more are not counted in the cash here.';
+    const ar = !isPlace() && S.area != null && !a, cashNote = isPlace() ? '' : '. Rounds of $1B or more are not counted in the cash here.';
     $('#h1').textContent = ar ? (S.kind === 'unis' ? `What founders from universities in ${areaName()} are building.` : `What founders who worked at companies in ${areaName()} are building.`) : a ? (S.kind === 'unis' ? `What ${label(S.sel)} founders are building.` : S.kind === 'cos' ? `What founders who worked at ${label(S.sel)} are building.` : `What founders in ${label(S.sel)} are building.`) : (!isPlace() ? `What founders from each ${unit} are building.` : `What founders in each ${unit} are building.`);
-    const when = S.when;
-    if (ar) { const ids = new Set(); for (const x of shown()) for (const l of x.list) ids.add(l[0]); $('#based').textContent = `Based on ${num(ids.size)} startups that raised ${when} and have a founder from one of the ${shown().length} ${S.kind === 'unis' ? 'universities' : 'companies'} here.` + cashNote; }
-    else $('#based').textContent = (a ? `Based on ${num(a.n)} startups that raised ${when} and have a founder ${S.kind === 'unis' ? 'who studied there' : S.kind === 'cos' ? 'who worked there' : 'living there'}.`
-      : `Based on ${num(C.total)} startups that raised ${when} and have a founder ${!isPlace() ? (S.kind === 'unis' ? 'from one of ' + M.unis.length + ' universities' : 'who worked at one of ' + M.cos.length + ' companies') + (S.level === 'world' ? '' : ' in ' + (S.level === 'us' ? 'the US' : 'Europe')) : (S.level === 'world' ? 'whose home country we know' : 'living in ' + where())}.`) + cashNote;
+    if (ar) { const ids = new Set(); for (const x of shown()) for (const l of x.list) ids.add(l[0]); $('#based').textContent = `Based on ${num(ids.size)} startups with a founder from one of the ${shown().length} ${S.kind === 'unis' ? 'universities' : 'companies'} here` + cashNote; }
+    else $('#based').textContent = (a ? `Based on ${num(a.n)} startups with a founder ${S.kind === 'unis' ? 'who studied there' : S.kind === 'cos' ? 'who worked there' : 'living there'}`
+      : `Based on ${num(C.total)} startups with a founder ${!isPlace() ? (S.kind === 'unis' ? 'from one of ' + M.unis.length + ' universities' : 'who worked at one of ' + M.cos.length + ' companies') + (S.level === 'world' ? '' : ' in ' + (S.level === 'us' ? 'the US' : 'Europe')) : (S.level === 'world' ? 'whose home country we know' : 'living in ' + where())}`) + cashNote;
   }
   function drawPanel() {
     const p = $('#panel'), unit = S.kind === 'unis' ? 'Universities' : S.kind === 'cos' ? 'Companies' : S.level === 'us' ? 'States' : 'Countries';
@@ -398,7 +419,7 @@ async function boot(O) {
   function select(k) { if (k == null) S.sel = null; else { k = !isPlace() ? Number(k) : k; S.sel = S.sel === k ? null : k; } hideTip(); render(); }
 
   // ---------- events ----------
-  for (const [id, key] of [['#seg-kind', 'kind'], ['#seg-mode', 'mode']]) $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const v = b.dataset.v; if (S[key] === v) return; S[key] = v; if (key === 'kind' || key === 'level') S.sel = null; if (key === 'level') S.area = null; render(); });
+  for (const [id, key] of [['#seg-kind', 'kind'], ['#seg-mode', 'mode']]) $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; const v = b.dataset.v; if (S[key] === v) return; S[key] = v; fresh = true; if (key === 'kind' || key === 'level') S.sel = null; if (key === 'level') S.area = null; render(); });
   $('#panel').addEventListener('click', (e) => { if (e.target.closest('#backarea')) { S.area = null; return render(); } if (e.target.closest('#back')) return select(null); const r = e.target.closest('button.row'); if (r) select(r.dataset.k); });
   let dragged = false, drag = null, pinch = 0; const ptrs = new Map();
   $('#stage').addEventListener('click', (e) => {
@@ -435,8 +456,9 @@ async function boot(O) {
   });
   $('#stage').addEventListener('mouseleave', () => { hideTip(); const hv = $('#stage .ring.hov'); if (hv) hv.setAttribute('d', ''); });
   let rz = 0; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (host.hidden) return; if (S.mode === 'blocks') drawBlocks(); else applyView(); }, 150); });
-  api.setLevel = (l) => { if (!['world', 'us', 'eu'].includes(l) || l === S.level) return; S.level = l; S.sel = null; S.area = null; hideTip(); render(); };
-  api.redraw = () => { if (S.mode === 'blocks') drawBlocks(); else applyView(); };
+  api.setLevel = (l) => { if (!['world', 'us', 'eu'].includes(l) || l === S.level) return; S.level = l; S.sel = null; S.area = null; fresh = true; hideTip(); render(); };
+  // shown again after another view: the map at rest, nothing pressed, so it is the very map the visitor was looking at
+  api.redraw = () => { for (const k of Object.keys(Z)) delete Z[k]; S.sel = null; S.area = null; fresh = true; hideTip(); render(); };
   // the page's timeline moved: count again for that stretch of time
   api.setSpan = (sp) => { if (!sp || (sp.from === S.from && sp.to === S.to)) return; S.from = sp.from; S.to = sp.to; S.when = sp.text; hideTip(); render(); };
   if (['world', 'us', 'eu'].includes(want) && want !== S.level) S.level = want;

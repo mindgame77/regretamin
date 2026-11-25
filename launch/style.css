@@ -1856,6 +1856,10 @@ main.prof #where .wmap b span{color:#46544F}  /* the count under a name can sit 
 @media (max-width:520px){.ckbar{left:12px;right:12px;bottom:12px;max-width:none}}
 /* The Founders view (js/founders.js) covers the map and draws inside its own shadow root; only the View and Zoom buttons stay on top. */
 #vf{position:absolute;inset:0;z-index:6}
-.vm.vm-fview .vm-colwrap,.vm.vm-fview .vm-map,.vm.vm-fview .vm-legend,.vm.vm-fview .vm-fp,.vm.vm-fview .vm-msg{display:none!important}
+.vm.vm-fview .vm-colwrap,.vm.vm-fview .vm-legend,.vm.vm-fview .vm-fp,.vm.vm-fview .vm-msg{display:none!important}
+/* The land stays: Founders lays its colours over the same picture, so the map never changes between the views.
+   Only Money flow's own circles, names and hover card go. */
+.vm.vm-fview #vm-pls,.vm.vm-fview #vm-labs,.vm.vm-fview .vm-wave,.vm.vm-fview .vm-map .vm-tip{display:none!important}
+.vm.vm-fview.vm-busy .vm-bg{animation:none}
 .vm.vm-fview .vm-views,.vm.vm-fview .vm-zoom,.vm.vm-fview .vm-dock{z-index:8}  /* the timeline is the same one as on Money flow */
-@media (max-width:900px){#vf{position:static;order:5}.vm.vm-fview .vm-dock{order:4}}
+@media (max-width:900px){.vm.vm-fview .vm-map{display:none!important}#vf{position:static;order:5}.vm.vm-fview .vm-dock{order:4}}

@@ -276,7 +276,7 @@
     const a = qStart(S.q0), b = qEnd(S.q1), all = S.q0 === 0 && S.q1 === NQ - 1;
     return { from: ymd(a), to: ymd(b), text: all ? 'since 2021' : `from ${MONTHS[a.getMonth()]} ${a.getFullYear()} to ${S.q1 === NQ - 1 ? 'today' : MONTHS[b.getMonth()] + ' ' + b.getFullYear()}` };
   }
-  function founders() { const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, span: span() }); }
+  function founders() { land(); const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, span: span() }); }
   function setView(v) {
     if (v === S.view) return;
     stop(); S.view = v; S.list = null; S.pinned = null; marks();
@@ -291,7 +291,7 @@
     if (S.level === 'world' && stage._rows) {
       from = {}; stage._rows.forEach((p) => { if (ZOOM[p.p] === l) from[p.p] = { x: S.ox + p.x * S.k, y: S.oy + p.y * S.k }; });
     }
-    S.list = null; S.pinned = null; S.level = l; draw(from); drawSide();
+    S.list = null; S.pinned = null; S.level = l; land(); draw(from); drawSide();
     if (S.view === 'founders' && window.REGRET_FOUNDERS) { window.REGRET_FOUNDERS.setLevel(l); marks(); remember(); }
   }
 
@@ -383,17 +383,24 @@
       b.style.setProperty('--vm-a' + k, Math.min(100, acc) + '%');
     }
   };
-  function draw(from) {  // from: where the new circles fly out of when zooming in ({ parentPlace: {x, y} } in page pixels)
-    if (!S.data || !S.geo) return;
-    const g = S.geo[S.level], rows = placesNow(), lit = litPlace(), sector = S.sectors.length > 0;
-    const bg = $('#vm-bg'), pls = $('#vm-pls'), src = `${ROOT}assets/map/${S.level}-land.svg${MAPV}`;  // smooth grey land, made by build.py from the dotted file (founder, 23 Nov)
+  // The grey land of the zoom we are on. Every view sits on this one picture: Money flow and Hot right now put their
+  // circles on it, Founders lays its colours over it (founder, 25 Nov: the map must not change between the views).
+  function land() {
+    const g = S.geo && S.geo[S.level]; if (!g) return;
+    const bg = $('#vm-bg');
     if (bg.dataset.l !== S.level) {
       bg.dataset.l = S.level; bg.style.opacity = 0; bg.onload = () => { bg.style.opacity = 1; };
-      bg.src = src; bg.width = g.w; bg.height = g.h;
+      bg.src = `${ROOT}assets/map/${S.level}-land.svg${MAPV}`; bg.width = g.w; bg.height = g.h;  // smooth grey land, made by build.py (founder, 23 Nov)
       $('#vm-wave').style.webkitMaskImage = $('#vm-wave').style.maskImage = `url(${ROOT}assets/map/${S.level}.svg${MAPV})`;  // the dots the land dissolves into while loading
       els.forEach((b) => b.remove()); els.clear();
     }
     fit();
+  }
+  function draw(from) {  // from: where the new circles fly out of when zooming in ({ parentPlace: {x, y} } in page pixels)
+    if (!S.data || !S.geo) return;
+    const g = S.geo[S.level], rows = placesNow(), lit = litPlace(), sector = S.sectors.length > 0;
+    const pls = $('#vm-pls');
+    land();
     const boxes = rows.map((p) => ({ x0: p.x - p.r, y0: p.y - p.r, x1: p.x + p.r, y1: p.y + p.r }));
     const hit = (b) => b.x0 < 0 || b.x1 > g.w || boxes.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
     const seen = new Set(), fresh = [];
@@ -674,7 +681,7 @@ ${placeFacts(L.place, true)}<div class="vm-rows">${!L.data ? '' : L.data.firms.m
   if (S.view === 'founders') founders();
   // The map's places, its numbers and the latest updates are asked for at the same time, not one after another.
   // draw() does nothing until both the places and the numbers are in, so the order they arrive in does not matter.
-  const places = fetch(ROOT + 'assets/map/places.json' + MAPV).then((r) => r.json()).then((g) => { S.geo = g; });
+  const places = fetch(ROOT + 'assets/map/places.json' + MAPV).then((r) => r.json()).then((g) => { S.geo = g; if (S.view === 'founders') land(); });
   // The side panel is drawn again once the numbers are in: the updates can arrive first and draw it empty.
   Promise.all([places, refresh()]).then(() => { draw(); if (!S.list) drawSide(); reopen(); });
   loadUpdates();
