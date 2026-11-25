@@ -181,3 +181,31 @@ def test_the_second_view_is_called_trends():
     """Founder, 25 Nov: "Hot right now" is renamed "Trends" on the button; old links with ?view=hot keep working."""
     assert '<button type="button" data-view="hot">Trends</button>' in JS and '>Hot right now<' not in JS
     assert "'hot'" in JS  # the view's own name in links and code is unchanged
+
+
+def test_head_card_is_the_same_four_rows_in_every_view():
+    """Founder, 25 Nov: one fixed title line, the buttons, one "Based on" line, the black button, in all three views.
+    The title never names the place or the sector (it wrapped onto a second line when it did)."""
+    F = (ROOT / 'launch/js/founders.js').read_text(); L = (ROOT / 'launch/js/firms.js').read_text()
+    assert "$('#vm-h1').textContent = 'What VCs are investing in.';" in JS and "$('#vm-h1').textContent = 'Where it is heating up.';" in JS
+    assert "$('#h1').textContent = 'What founders are building.';" in F
+    for old in ('What US investors are backing.', 'Who backs ${sec}', 'heating up${where}', 'What founders in ${label('):
+        assert old not in JS and old not in F, old
+    # Trends has a "Based on" line too, in Money flow's pattern
+    hot = JS[JS.index('function drawHotHead()'):JS.index('function drawHead()')]
+    assert "$('#vm-based').textContent = `Based on ${num(t.deals)} deal" in hot and 'VC firm' in hot
+    # Founders: one line, and the black button, which opens the firms behind what the map shows
+    assert "`Based on ${num(isPlace() ? C.total : ids.size)} startups, ${num(n)} ${things}`" in F
+    assert '<a class="cta" id="cta" href="#">See the investors</a>' in F and "$('#cta').href = listUrl();" in F
+    assert "'zoom=' + (isPlace() ? 'fplace' : S.kind === 'unis' ? 'funi' : 'fco')" in F
+    # the note about rounds of $1B or more sits on the map (Universities and Companies), not in the head card
+    assert '<p class="mapnote">Rounds of $1B or more are not counted in the cash here.</p>' in F
+    # the Investors list takes the three Founders words and shows the map's name for them as its label
+    assert "founders = ['fplace', 'funi', 'fco'].indexOf(zoom) !== -1" in L
+    # database: the new function and the one extra filter are recorded and skip where the tables are missing
+    m = ROOT / 'supabase/migrations'
+    a = (m / '20261125190940_founders_see_the_investors.sql').read_text(); b = (m / '20261125191132_founders_see_the_investors_own_dates.sql').read_text(); c = (m / '20261125191257_v2_founders_firm_ids_faster.sql').read_text()
+    for sql in (a, b, c):
+        assert "to_regclass('public.v2_founders_cache') is null" in sql and 'raise exception' not in sql.lower()
+    assert "v_fkind is null or s.firm_id in (select v2_founders_firm_ids(v_fkind, p_place, p_deal_from, p_deal_to))" in a
+    assert 'create or replace function public.v2_founders_firm_ids(' in c and 'fl as materialized' in c

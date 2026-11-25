@@ -125,6 +125,8 @@ button.row:hover b{text-decoration:underline}
 .head p{margin:0;font:13px/1.35 var(--mono);color:var(--mm)}
 /* the three choices look like the site's own drop-down buttons (.vm-pickbtn) and sit where Money flow has them: under the title */
 .picks{display:flex;gap:6px;flex-wrap:wrap}
+.cta{display:block;height:44px;line-height:44px;padding:0 16px;border-radius:10px;background:var(--mi);color:#fff;font-weight:600;text-align:center;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mapnote{position:absolute;right:72px;bottom:108px;width:176px;margin:0;font-size:12px;line-height:1.35;color:var(--mm);text-align:right;text-wrap:balance;pointer-events:none}
 .picks button{height:44px;padding:0 12px;border-radius:10px;border:1px solid #8A9893;background:#fff;font-size:14px;white-space:nowrap}
 .picks button[aria-pressed="true"]{background:var(--mi);border-color:var(--mi);color:#fff;font-weight:600}
 .panel{padding:16px 20px 8px;display:flex;flex-direction:column;overflow:hidden}
@@ -170,13 +172,14 @@ button.row:hover b{text-decoration:underline}
   .panel{overflow:visible}#panel{overflow:visible}
   .blocks{inset:6px}
   .zoom{right:10px;bottom:10px}
+  .mapnote{right:58px;bottom:10px;width:150px}
 }
 `;
   const HTML = `<div class="app">
   <aside class="side">
     <section class="card head"><h1 id="h1">Loading…</h1>
       <div class="picks" id="seg-kind" role="group" aria-label="What to show"><button data-v="places">Places</button><button data-v="unis">Universities</button><button data-v="cos">Companies</button></div>
-      <p id="based"></p></section>
+      <p id="based"></p><a class="cta" id="cta" href="#">See the investors</a></section>
     <section class="card panel"><div class="lh"><h2 id="ptitle"></h2><span class="unit" id="seg-mode" role="group" aria-label="Show as"><button data-v="map">Map</button><button data-v="blocks">Blocks</button></span></div><div id="panel"></div></section>
   </aside>
   <section class="main"><div class="stage" id="stage"></div></section>
@@ -285,6 +288,7 @@ async function boot(O) {
   // ---------- the map ----------
   // The map sits exactly where the main map sits: the same room is left for the buttons above it and the timeline below
   // (map.js: ROOM), so switching views does not make the map jump. Zoom and position are kept per region.
+  const NOW = new Date(), TODAY = NOW.getFullYear() * 10000 + (NOW.getMonth() + 1) * 100 + NOW.getDate();
   const ROOM = { world: [16, 16, 84, 104], us: [24, 24, 96, 120], eu: [24, 24, 62, 100] };
   const Z = {};
   const LINE = { world: 1.1, us: 1.5, eu: 1.3 };  // width of the white border lines in map units, as build.py draws them into <level>-land.svg
@@ -313,7 +317,7 @@ async function boot(O) {
       if (a && S.sel === s.k) selD = s.d;
       h += `<path class="shp${a ? ' has tint' : ' plain'}${a && S.sel === s.k ? ' on' : ''}" d="${s.d}"${a ? ` fill="${col(a.top)}"` : ''}${a ? ` data-k="${s.k}" tabindex="0" role="button" aria-label="${esc(s.n)}"` : ''}/>`;
     }
-    st.innerHTML = `<svg preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="${S.sel != null && (places || S.area == null) ? 'dim' : ''}${!places && S.area != null ? ' areaon' : ''}${fresh ? ' soft' : ''}" style="--k:1"><style>.lab{font-size:calc(12px * var(--k))}</style><defs><clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath><clipPath id="frame"><rect width="${view().w}" height="${view().h}"/></clipPath></defs><g clip-path="url(#frame)">${h}</g><path class="ring sel" d="${selD}"/><path class="ring hov" d=""/><g id="marks"></g></svg><div class="zoom"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button></div>`;
+    st.innerHTML = `<svg preserveAspectRatio="xMidYMid meet" width="100%" height="100%" class="${S.sel != null && (places || S.area == null) ? 'dim' : ''}${!places && S.area != null ? ' areaon' : ''}${fresh ? ' soft' : ''}" style="--k:1"><style>.lab{font-size:calc(12px * var(--k))}</style><defs><clipPath id="round" clipPathUnits="objectBoundingBox"><circle cx=".5" cy=".5" r=".5"/></clipPath><clipPath id="frame"><rect width="${view().w}" height="${view().h}"/></clipPath></defs><g clip-path="url(#frame)">${h}</g><path class="ring sel" d="${selD}"/><path class="ring hov" d=""/><g id="marks"></g></svg><div class="zoom"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button></div>${places ? '' : '<p class="mapnote">Rounds of $1B or more are not counted in the cash here.</p>'}`;
     fresh = false; applyView();
   }
   function applyView() {
@@ -381,13 +385,26 @@ async function boot(O) {
 
   // ---------- the left side ----------
   const where = () => S.level === 'us' ? 'the US' : S.level === 'eu' ? 'Europe' : 'a country we know';
+  // The head card is the same four rows in every view (founder, 25 Nov): one fixed title line, the three choices, one
+  // "Based on" line, the black button. What is pressed is named by the list card, not by the title.
+  const iso = (d) => `${Math.floor(d / 10000)}-${String(Math.floor(d / 100) % 100).padStart(2, '0')}-${String(d % 100).padStart(2, '0')}`;
+  const keyOf = (k) => isPlace() ? String(k) : ent()[k].n;  // how the Investors list is told what the map shows
+  function listUrl() {  // the firms that backed the startups shown: the pressed one, or everything in the list
+    const a = S.sel != null ? C.agg.get(S.sel) : null, all = shown(), n = all.length;
+    const group = isPlace() ? (S.level === 'us' ? 'United States' : S.level === 'eu' ? 'Europe' : 'all countries')
+      : `${num(n)} ${S.kind === 'unis' ? (n === 1 ? 'university' : 'universities') : (n === 1 ? 'company' : 'companies')}${S.area != null ? ' in ' + areaName() : ''}`;
+    const q = ['zoom=' + (isPlace() ? 'fplace' : S.kind === 'unis' ? 'funi' : 'fco'),
+      'place=' + encodeURIComponent(a ? keyOf(S.sel) : all.map((x) => keyOf(x.k)).join('|')),
+      'pname=' + encodeURIComponent('Founders: ' + (a ? label(S.sel) : group)),
+      'from=' + iso(Math.max(S.from, 20210101)), 'to=' + iso(Math.min(S.to, TODAY))];
+    return O.root + 'investors/?' + q.join('&');
+  }
   function drawHead() {
-    const unit = S.kind === 'unis' ? 'university' : S.kind === 'cos' ? 'company' : S.level === 'us' ? 'state' : 'country', a = S.sel != null ? C.agg.get(S.sel) : null;
-    const ar = !isPlace() && S.area != null && !a, cashNote = isPlace() ? '' : '. Rounds of $1B or more are not counted in the cash here.';
-    $('#h1').textContent = ar ? (S.kind === 'unis' ? `What founders from universities in ${areaName()} are building.` : `What founders who worked at companies in ${areaName()} are building.`) : a ? (S.kind === 'unis' ? `What ${label(S.sel)} founders are building.` : S.kind === 'cos' ? `What founders who worked at ${label(S.sel)} are building.` : `What founders in ${label(S.sel)} are building.`) : (!isPlace() ? `What founders from each ${unit} are building.` : `What founders in each ${unit} are building.`);
-    if (ar) { const ids = new Set(); for (const x of shown()) for (const l of x.list) ids.add(l[0]); $('#based').textContent = `Based on ${num(ids.size)} startups with a founder from one of the ${shown().length} ${S.kind === 'unis' ? 'universities' : 'companies'} here` + cashNote; }
-    else $('#based').textContent = (a ? `Based on ${num(a.n)} startups with a founder ${S.kind === 'unis' ? 'who studied there' : S.kind === 'cos' ? 'who worked there' : 'living there'}`
-      : `Based on ${num(C.total)} startups with a founder ${!isPlace() ? (S.kind === 'unis' ? 'from one of ' + M.unis.length + ' universities' : 'who worked at one of ' + M.cos.length + ' companies') + (S.level === 'world' ? '' : ' in ' + (S.level === 'us' ? 'the US' : 'Europe')) : (S.level === 'world' ? 'whose home country we know' : 'living in ' + where())}`) + cashNote;
+    $('#h1').textContent = 'What founders are building.';
+    $('#cta').href = listUrl();
+    const n = shown().length, ids = new Set(); for (const x of shown()) for (const l of x.list) ids.add(l[0]);
+    const things = isPlace() ? (S.level === 'us' ? (n === 1 ? 'state' : 'states') : (n === 1 ? 'country' : 'countries')) : S.kind === 'unis' ? (n === 1 ? 'university' : 'universities') : (n === 1 ? 'company' : 'companies');
+    $('#based').textContent = `Based on ${num(isPlace() ? C.total : ids.size)} startups, ${num(n)} ${things}`;
   }
   let showRest = () => '';
   function drawPanel() {
