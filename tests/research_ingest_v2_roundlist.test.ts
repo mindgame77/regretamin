@@ -77,15 +77,21 @@ Deno.test("claim_next_round: at 10 held rounds the bot gets 409 with its round_i
   replies.roundlist_claim_next_round = keep;
 });
 
-Deno.test("finish_round: checks round_id, result and note before the database", async () => {
+Deno.test("finish_round: checks round_id, result, note and source_url before the database", async () => {
   calls.length = 0;
-  eq((await h(req({ action: "finish_round", round_id: "7", result: "done", note: "x" }))).status, 400, "round_id");
-  eq((await h(req({ action: "finish_round", round_id: 7, result: "skip", note: "x" }))).status, 400, "result");
-  eq((await h(req({ action: "finish_round", round_id: 7, result: "done", note: " " }))).status, 400, "note");
+  const src = "https://news.example/a";
+  eq((await h(req({ action: "finish_round", round_id: "7", result: "done", note: "x", source_url: src }))).status, 400, "round_id");
+  eq((await h(req({ action: "finish_round", round_id: 7, result: "skip", note: "x", source_url: src }))).status, 400, "result");
+  eq((await h(req({ action: "finish_round", round_id: 7, result: "done", note: " ", source_url: src }))).status, 400, "note");
+  eq((await h(req({ action: "finish_round", round_id: 7, result: "done", note: "x" }))).status, 400, "source_url");
+  eq((await h(req({ action: "finish_round", round_id: 7, result: "done", note: "x", source_url: src, investors: { firm_id: 1 } }))).status, 400, "investors");
   eq(calls.some((x) => x.name === "roundlist_finish_round"), false, "no rpc on bad input");
-  const r = await h(req({ action: "finish_round", round_id: 7, result: "done", note: "saved 2 deals" }));
+  const r = await h(req({ action: "finish_round", round_id: 7, result: "done", note: "saved 2 deals", source_url: src, amount: 8000000, investors: [{ firm_id: 8 }] }));
   eq(r.status, 200, "status");
-  eq(calls.find((x) => x.name === "roundlist_finish_round")!.args, { p_key_id: KEY, p_round_id: 7, p_result: "done", p_note: "saved 2 deals" }, "rpc args");
+  eq(calls.find((x) => x.name === "roundlist_finish_round")!.args, {
+    p_key_id: KEY, p_round_id: 7, p_result: "done", p_note: "saved 2 deals", p_source_url: src,
+    p_report: { amount: 8000000, investors: [{ firm_id: 8 }] },
+  }, "rpc args");
   replies.roundlist_finish_round = { ok: false, bot_id: "bot-a", error: "finish_round done refused: ..." };
-  eq((await h(req({ action: "finish_round", round_id: 7, result: "done", note: "x" }))).status, 400, "refused done");
+  eq((await h(req({ action: "finish_round", round_id: 7, result: "done", note: "x", source_url: src }))).status, 400, "refused done");
 });

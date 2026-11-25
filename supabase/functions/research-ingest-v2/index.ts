@@ -37,7 +37,7 @@ const sha256 = async (s: string) => [...new Uint8Array(await crypto.subtle.diges
   .map((b) => b.toString(16).padStart(2, "0")).join("");
 const HINT = "POST {\"action\":\"claim\"} or {\"action\":\"done\",\"firm_id\":N} or {\"action\":\"add_firm\",\"firm\":{\"name\",\"website\",\"registry_id\"}} or {\"action\":\"submit\",\"dry_run\":false,\"items\":[{\"firm_id\":2,\"box\":\"F5\",\"table\":\"v2_investor_principles\",\"fact\":{...}}]} or {\"action\":\"results\",\"days\":30,\"limit\":100,\"firm_id\":N} or {\"action\":\"deals\",\"firm_id\":N,\"only_gaps\":false,\"limit\":500,\"offset\":0} or {\"action\":\"next_firm\"} or {\"action\":\"missing\",\"firm_id\":N} or {\"action\":\"firm_done\",\"firm_id\":N} or {\"action\":\"notes\"} or {\"action\":\"notes_ack\",\"note_ids\":[\"...\"]} or {\"action\":\"lookup\",\"firm\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"startup\":{\"name\",\"website\"}} or {\"action\":\"lookup\",\"founder\":{\"name\",\"linkedin_url\"}} or {\"action\":\"add_founder\",\"startup_id\":N,\"founder\":{\"name\",\"linkedin_url\"},\"role\":{\"source_url\"},\"facts\":[]} or {\"action\":\"claim_next_founder_startups\",\"count\":1} or {\"action\":\"finish_founder_startup\",\"startup_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}; max 10 firms per batch. Section: {\"action\":\"claim\",\"block\":\"legal|reviews|youtube\"} or {\"action\":\"done\",\"block\":\"legal|reviews|youtube\",\"firm_id\":N}";
 const LOOKUP_HINT = "{\"action\":\"lookup\",\"firm\":{\"name\":\"All Aboard Fund\",\"website\":\"allaboard.vc\"}} or {\"action\":\"lookup\",\"startup\":{\"name\":\"Rivercell\",\"website\":\"rivercell.ai\"}} or {\"action\":\"lookup\",\"founder\":{\"name\":\"Ada Lovelace\",\"linkedin_url\":\"https://www.linkedin.com/in/ada\"}}; firm and startup take a name, a website, or both; a founder takes a name, a LinkedIn link, or both";
-const ROUND_HINT = "Round list: {\"action\":\"add_round\",\"round\":{\"startup_name\",\"startup_website\",\"country\",\"round\",\"round_date\":\"YYYY-MM-DD\",\"source_url\"}} or {\"action\":\"claim_next_round\",\"count\":1} or {\"action\":\"finish_round\",\"round_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
+const ROUND_HINT = "Round list: {\"action\":\"add_round\",\"round\":{\"startup_name\",\"startup_website\",\"country\",\"round\",\"round_date\":\"YYYY-MM-DD\",\"source_url\"}} or {\"action\":\"claim_next_round\",\"count\":1} or {\"action\":\"finish_round\",\"round_id\":N,\"result\":\"done|rejected\",\"note\":\"...\",\"source_url\":\"https://...\",\"amount\":N,\"investors\":[{\"firm_id\":N}|{\"name\",\"website\"}]}";
 const FOUNDER_HINT = "{\"action\":\"add_founder\",\"startup_id\":10,\"founder\":{\"name\":\"Ada Lovelace\",\"linkedin_url\":\"https://www.linkedin.com/in/ada\",\"founder_id\":7},\"role\":{\"value\":\"CEO\",\"source_url\":\"https://example.com/about\"},\"facts\":[{\"fact\":\"current_country\",\"value\":\"GB\",\"source_url\":\"https://example.com/about\"},{\"fact\":\"past_job\",\"value\":\"Babbage Co\",\"role\":\"Mathematician\",\"company_website\":\"https://babbage.example\",\"source_url\":\"https://news.example/ada\"},{\"fact\":\"founded_before\",\"value\":\"yes: Analytical Kids\",\"exit_outcome\":\"acquired\",\"exit_acquirer\":\"Babbage Co\",\"exit_source_url\":\"https://news.example/ada\"}]}";
 const FOUNDERLIST_HINT = "Founder list: {\"action\":\"claim_next_founder_startups\",\"count\":1} or {\"action\":\"finish_founder_startup\",\"startup_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
 const LOCATION_HINT = "{\"action\":\"fill_startup_location\",\"startup_id\":10,\"country\":\"US\",\"city\":\"San Francisco\",\"source\":{\"source_url\":\"https://example.com/contact\",\"source_level\":1,\"source_date\":\"2025-03-01\",\"source_type\":\"company site\"}} (country and/or city; add \"correction\":true and \"note\" only when a saved value is wrong). Location list: {\"action\":\"claim_next_location_startups\",\"count\":1} or {\"action\":\"finish_location_startup\",\"startup_id\":N,\"result\":\"done|rejected\",\"note\":\"...\"}";
@@ -403,7 +403,19 @@ Deno.serve(async (req) => {
         if (typeof body.note !== "string" || body.note.trim() === "" || body.note.length > 4000) {
           return json({ error: "note is required (up to 4000 characters)", hint: ROUND_HINT }, 400);
         }
-        rpc = "roundlist_finish_round"; args = { p_key_id: auth.key_id, p_round_id: roundId, p_result: body.result, p_note: body.note };
+        const sourceUrl = typeof body.source_url === "string" ? body.source_url.trim() : "";
+        if (!HTTP_URL.test(sourceUrl) || sourceUrl.length > 2000) {
+          return json({ error: "source_url is required (the http(s) link to the announcement, or to the page that shows you found nothing)", hint: ROUND_HINT }, 400);
+        }
+        const report = isObj(body.report) ? { ...body.report } : {};
+        if (body.amount !== undefined) report.amount = body.amount;
+        if (body.amount_not_in_source !== undefined) report.amount_not_in_source = body.amount_not_in_source;
+        if (body.no_lead_named !== undefined) report.no_lead_named = body.no_lead_named;
+        if (body.investors !== undefined) report.investors = body.investors;
+        if (report.investors !== undefined && !Array.isArray(report.investors)) {
+          return json({ error: "investors must be an array of {firm_id} or {name, website}", hint: ROUND_HINT }, 400);
+        }
+        rpc = "roundlist_finish_round"; args = { p_key_id: auth.key_id, p_round_id: roundId, p_result: body.result, p_note: body.note, p_source_url: sourceUrl, p_report: report };
       }
       const { data, error } = await db.rpc(rpc, args);
       if (error || !data) return json({ error: "server error" }, 500);
@@ -414,7 +426,7 @@ Deno.serve(async (req) => {
       }
       if (body.action === "claim_next_round") {
         const hint = data.round
-          ? "save each round's deals with submit, then send {\"action\":\"finish_round\",\"round_id\":" + data.round.round_id + ",\"result\":\"done\",\"note\":\"...\"} for each round (up to 10 held at once)"
+          ? "save each round's deals with submit, then send {\"action\":\"finish_round\",\"round_id\":" + data.round.round_id + ",\"result\":\"done\",\"note\":\"...\",\"source_url\":\"...\",\"amount\":N,\"investors\":[{\"firm_id\":N}]} for each round (up to 10 held at once)"
           : "no open round left";
         return json({ ...data, hint }, 200);
       }
