@@ -1535,7 +1535,7 @@ main.prof #deals .adl>.adp~.ad{flex:0 0 auto;display:inline-flex;align-items:cen
 main.prof #deals .adl>.adp~.ad[hidden]{display:none}
 main.prof #deals .adl>.adp~.ad>*{display:none}
 main.prof #deals .adl>.adp~.ad>b{display:inline;font-weight:500;order:2}
-main.prof #deals .adl>.adp~.ad>.arty{display:inline-flex;font-size:0;gap:0;order:1}
+main.prof #deals .adl>.adp~.ad>.arty{display:inline-flex;font-size:0!important;gap:0;order:1}  /* only the sector's dot; "!important" because the type standard's 13px rule below had brought the name back, glued to the dot */
 main.prof #deals .adl>.pmore{flex:0 0 auto;height:36px;padding:0 12px;border:1.5px solid #10201C;border-radius:9px;background:#fff;font-size:14px;font-weight:600;cursor:pointer}
 
 /* ---------- How we check (pages/how_we_check.py). Everything sits on one 1040px grid; the video is a 9:16 frame. */

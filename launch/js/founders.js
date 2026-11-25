@@ -172,7 +172,7 @@ button.row:hover b{text-decoration:underline}
   .panel{overflow:visible}#panel{overflow:visible}
   .blocks{inset:6px}
   .zoom{right:10px;bottom:10px}
-  .mapnote{right:58px;bottom:10px;width:150px}
+  .mapnote{display:none}  /* not shown on a phone: less crowded (founder, 25 Nov) */
 }
 `;
   const HTML = `<div class="app">
@@ -346,15 +346,18 @@ async function boot(O) {
       for (const [key, d] of Object.entries(M.dots)) { const p = d[lv], a = agg.get(key); if (p && a && (lv !== 'eu' || EU.has(key))) marker(p[0], p[1], key, d.n, a); }
     } else {
       const g = Math.sqrt(z);  // circles grow as the map is zoomed in
+      const fit = NARROW.matches ? clamp(($('#stage').clientWidth || 350) / 900, 0.36, 1) : 1;
       const pins = [...agg.values()].filter((a) => ent()[a.k].p[lv]).sort((x, y) => y.cash - x.cash), mx = Math.max(1, ...pins.map((a) => a.cash)), big = lv === 'world' ? 26 : 34, put = [];
       for (const a of pins) {
-        const p = ent()[a.k].p[lv], rs = Math.min(64, Math.max(5.5, Math.sqrt(a.cash / mx) * big) * g), r = rs * k, n = ent()[a.k].n;
+        // On a phone the circles are sized to the map, not to a computer screen: at full size they covered the small map
+        // and pushed each other far from their places (founder's phone, 25 Nov). Only the biggest then carry a logo.
+        const p = ent()[a.k].p[lv], rs = Math.min(64 * fit, Math.max(fit < 1 ? 3 : 5.5, Math.sqrt(a.cash / mx) * big * fit) * g), r = rs * k, n = ent()[a.k].n;
         // circles that share a city: the bigger one keeps its spot, the next one moves to the nearest free spot beside it
         let x = p[0], y = p[1];
         for (let t = 1; t < 3000 && put.some((q) => Math.hypot(q[0] - x, q[1] - y) < q[2] + r + 1.5 * k); t++) { const d = 0.55 * r * Math.sqrt(t), an = t * 2.39996; x = p[0] + d * Math.cos(an); y = p[1] + d * Math.sin(an); }
         put.push([x, y, r]);
         const fits = rs >= 20 && n.length * 6.6 < rs * 2 - 8, off = !inArea(a.k), lg = ent()[a.k].lg, q = lg && ent()[a.k].fb ? 0.82 : 0.6;  // a logo on a filled or white square is cut round and fills the circle; a logo on a clear ground sits whole inside it
-        h += `<g class="pin${S.sel === a.k ? ' on' : ''}${off ? ' off' : ''}" data-k="${a.k}" tabindex="0" role="button" aria-label="${esc(n)}"><circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${r.toFixed(2)}" fill="${col(a.top)}"/>${lg && rs >= 9 ? `<circle class="in" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${(r * 0.82).toFixed(2)}" fill="#fff"/><image href="${lg}"${ent()[a.k].fb ? ' clip-path="url(#round)"' : ''} x="${(x - r * q).toFixed(2)}" y="${(y - r * q).toFixed(2)}" width="${(r * q * 2).toFixed(2)}" height="${(r * q * 2).toFixed(2)}"/>` : rs >= 13 ? `<text class="lab" x="${x.toFixed(2)}" y="${y.toFixed(2)}" dy="0.35em" style="font-size:${((fits ? 12 : Math.min(13, rs * 0.62)) * k).toFixed(2)}px;font-weight:600">${esc(fits ? n : initials(n))}</text>` : ''}</g>`;
+        h += `<g class="pin${S.sel === a.k ? ' on' : ''}${off ? ' off' : ''}" data-k="${a.k}" tabindex="0" role="button" aria-label="${esc(n)}"><circle cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${r.toFixed(2)}" fill="${col(a.top)}"/>${lg && rs >= (fit < 1 ? 7 : 9) ? `<circle class="in" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${(r * 0.82).toFixed(2)}" fill="#fff"/><image href="${lg}"${ent()[a.k].fb ? ' clip-path="url(#round)"' : ''} x="${(x - r * q).toFixed(2)}" y="${(y - r * q).toFixed(2)}" width="${(r * q * 2).toFixed(2)}" height="${(r * q * 2).toFixed(2)}"/>` : rs >= 13 ? `<text class="lab" x="${x.toFixed(2)}" y="${y.toFixed(2)}" dy="0.35em" style="font-size:${((fits ? 12 : Math.min(13, rs * 0.62)) * k).toFixed(2)}px;font-weight:600">${esc(fits ? n : initials(n))}</text>` : ''}</g>`;
       }
     }
     $('#marks').innerHTML = h;

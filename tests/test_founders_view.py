@@ -143,3 +143,17 @@ def test_founders_shapes_lie_on_the_sites_own_map():
         assert own not in A and own not in F, own
         assert own in V
     assert "find((f) => f.id === '840')" in V  # the US is fitted to the world atlas's United States
+
+
+def test_founders_on_a_phone_circles_fit_the_map_and_the_note_is_hidden():
+    """Founder's phone, 25 Nov: universities and companies were a cloud of computer-sized circles hiding the small map.
+    On a phone the circles are sized to the map, only the biggest carry a logo, and the $1B note is not shown."""
+    assert "const fit = NARROW.matches ? clamp(($('#stage').clientWidth || 350) / 900, 0.36, 1) : 1;" in JS
+    assert "Math.sqrt(a.cash / mx) * big * fit" in JS and "rs >= (fit < 1 ? 7 : 9)" in JS
+    assert ".mapnote{display:none}" in JS
+
+
+def test_portfolio_chips_show_only_the_sector_dot():
+    """Firm page, "Also in the portfolio": a chip is the sector's dot and the company's name. The type standard's 13px
+    rule had brought the sector's name back, glued to the dot (founder, 25 Nov: "what is this?")."""
+    assert "main.prof #deals .adl>.adp~.ad>.arty{display:inline-flex;font-size:0!important;gap:0;order:1}" in CSS
