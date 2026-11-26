@@ -23,7 +23,7 @@ You get a short description of the startup taken from its pitch deck. Search the
 1. COMPETITORS: the top competitors, 5 at most: the companies a buyer would compare this startup with (same buyer, same problem). Prefer funded startups. Include a large incumbent only when it is what buyers use today. Check the competitors the deck names and include the real ones.
    For each: "name"; "website" (its domain, for example acme.com); "what" (what it does, 16 words or fewer, neutral); "raised" (its latest round or total as the source reports it, for example "$12M Series A, 2025"; "" when no source reports it); "backers" (investor names exactly as the source lists them, 5 at most; [] when none are reported); "your_move" (what the founder should say when an investor brings up this competitor: one sentence, 18 words or fewer, built only on the founder's own facts below; never claim the competitor lacks something; "" when the facts give nothing); "source" (the address of a page from your search results that states the funding or describes the company).
    Also "strengths": up to 3 things that make this competitor strong, as a page reports them: who its founders are and where they worked or studied, its customers or revenue, its technology, the weight of its backers. For each: "what" (16 words or fewer, only what the page reports) and "source" (the address of that page, from your search results). [] when you found none.
-   Also "news": up to 2 things a founder should know about this competitor, each with its own page: it was acquired or bought a company, it shut down or cut staff, it raised a large round, it changed direction, it entered this market. For each: "what" (14 words or fewer, with the year, only what the page reports) and "source" (the address of that page, from your search results). [] when you found none.
+   Also "news": up to 2 things from the last 10 years (nothing older) that a founder should know about this competitor, each with its own page: it was acquired or bought a company, it shut down or cut staff, it raised a large round, it changed direction, it entered this market. For each: "what" (14 words or fewer, with the year, only what the page reports) and "source" (the address of that page, from your search results). [] when you found none.
 2. TRIED BEFORE: up to 4 companies that tried substantially the same idea earlier and then shut down, were sold, or moved away from it. Only when a source says so.
    For each: "name"; "years" (for example "2016 to 2020"); "outcome" (exactly one of: Shut down, Acquired, Changed direction); "what_happened" (one sentence, only what the source reports, no judgement; when it was acquired, say by whom); "founders" (names as the source gives them, 3 at most; [] when it names none); "source" (the address of the page that reports it).
 
@@ -108,6 +108,13 @@ export function answerText(content) {
 
 const OUTCOMES = ['Shut down', 'Acquired', 'Changed direction'];
 
+// News older than ten years is not shown (founder, 26 Nov: "no news from more than ... 10 years ... it just doesn't make sense").
+// The year is read from the line itself; a line that names no year is kept.
+export function tooOld(text, now = new Date()) {
+  const years = (String(text || '').match(/\b(19|20)\d{2}\b/g) || []).map(Number);
+  return years.length > 0 && Math.max(...years) < now.getUTCFullYear() - 10;
+}
+
 // A list of one-line facts, each with its own page: kept only when the search really returned that page.
 function linked(list, name, seen, max) {
   return (Array.isArray(list) ? list : []).map((n) => { const u = n && n.what ? checkSource(n.source, name, seen) : ''; return u ? { what: clip(n.what, 120), src: u } : null; }).filter(Boolean).slice(0, max);
@@ -125,7 +132,7 @@ export function vetted(model, seen) {
       backers: (Array.isArray(c.backers) ? c.backers : []).map((b) => clip(b, 50)).filter(Boolean).slice(0, 5), move: clip(c.your_move || c.you_have, 150), src,
       strong: linked(c.strengths, name, seen, 3),
       // What a founder should know about this competitor (an acquisition, a shutdown, a large round), each with its own page.
-      news: linked(c.news, name, seen, 2) };
+      news: linked((Array.isArray(c.news) ? c.news : []).filter((n) => !tooOld(n && n.what)), name, seen, 2) };
   }).filter(Boolean).slice(0, 5);   // founder, 26 Nov: "no more than 5 top competitors"
   const tried = (Array.isArray(m.tried_before) ? m.tried_before : []).map((t) => {
     const name = clip(t && t.name, 60), src = name ? checkSource(t.source, name, seen) : '';
@@ -197,10 +204,12 @@ export function buildResearch(rows, ours, report, meta, tips, signals) {
   const ask = Number(co.ask_usd) > 0 ? Number(co.ask_usd) : null;
   const investors = investorTips(report && report.firms, tips, co.sector, signals);
   const nf = Array.isArray(report && report.firms) ? report.firms.length : 0;
+  const deck = report && report.scores ? report.scores.deck : null;
+  const ready = deck == null || deck >= 8;   // the same line as READY_SCORE in rules.js: no "go now" while the deck is not ready
   // One thing to do per part (founder, 26 Nov: "make it useful for someone who's reading and actionable"). Fixed wording, by rule.
   const todo = {
     competitors: competitors.length ? 'Put these on your competition slide. Have your answer ready for each one.' : '',
-    firms: investors.some((f) => f.apply) ? `Press Pitch on the first one today.${skip.length ? ' Leave out the firms that hold a competitor.' : ''}` : nf ? 'Write to the first one today, with the line under its name.' : skip.length ? 'Take the firms that hold a competitor off your target list.' : '',
+    firms: !ready && nf ? 'Fix the red flags in step 1 first. Then press Pitch.' : investors.some((f) => f.apply) ? `Press Pitch on the first one today.${skip.length ? ' Leave out the firms that hold a competitor.' : ''}` : nf ? 'Write to the first one today, with the line under its name.' : skip.length ? 'Take the firms that hold a competitor off your target list.' : '',
     tried: rows.tried.length ? 'Message one of these founders this week. Ask the three questions.' : '',
     ask: r ? (ask ? 'Be ready to defend your number against these rounds.' : 'Add your ask to the deck: the amount and what it pays for.') : '',
   };

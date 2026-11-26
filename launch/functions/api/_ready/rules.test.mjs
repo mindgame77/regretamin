@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CHECKLIST } from './checklist.js';
-import { importance, score, marksOf, assemble, parseModelJson, systemPrompt, FROM_OUR_DATA, sayTo } from './rules.js';
+import { importance, score, marksOf, assemble, parseModelJson, systemPrompt, FROM_OUR_DATA, sayTo, READY_SCORE } from './rules.js';
 
 test('the checklist holds the 216 questions of the sheet', () => {
   assert.equal(CHECKLIST.length, 216);
@@ -96,4 +96,20 @@ test('at most ten red flags, ten improvements and ten good things', () => {
 test('the line for a firm with no mark is plain English', () => {
   const say = assemble({ company: { stage: 'Pre-seed', sector: 'Hardware' } }, { firms: [{ slug: 'a', name: 'A', fit: 3, n90: 1, stage_pct: 30, sector_pct: 10 }] }).firms[0].say;
   assert.equal(say, 'It backed 3 pre-seed startups in your field in the last 12 months. Tell them why yours should be the next one.');
+});
+
+test('nothing says "go now" while the deck scores under 8', () => {
+  const firm = { slug: 'a', name: 'A', fit: 3, n90: 9, stage_pct: 30, sector_pct: 10 };
+  const weak = assemble({ company: { stage: 'Seed' }, flags: [{ n: 4, level: 'red' }, { n: 14, level: 'red' }] }, { firms: [firm] });
+  assert.ok(weak.scores.deck < READY_SCORE);
+  assert.equal(weak.firms[0].say, 'It is investing fast right now. Fix your red flags first, then go.');
+  assert.equal(sayTo(firm, 'Seed', 'Fintech', true), 'It is investing fast right now. Go now.');
+  assert.equal(READY_SCORE, 8);
+});
+
+test('each flag says whether words can fix it or the founder has to earn it', () => {
+  const a = assemble({ company: { stage: 'Seed' }, flags: [{ n: 4, level: 'red', fix_by: 'proof' }, { n: 51, level: 'yellow', fix_by: 'words' }, { n: 14, level: 'red' }] }, null);
+  const by = Object.fromEntries([...a.reds, ...a.yellows].map((f) => [f.n, f.by]));
+  assert.deepEqual(by, { 4: 'proof', 51: 'words', 14: null });
+  assert.ok(/"fix_by":"words\|proof"/.test(systemPrompt()) && /needs something real/.test(systemPrompt()));
 });

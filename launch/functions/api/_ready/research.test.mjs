@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { researchPrompt, researchAsk, normUrl, domainOf, pagesSeen, checkSource, answerText, vetted, buildResearch, askLine, investorTips } from './research.js';
+import { researchPrompt, researchAsk, normUrl, domainOf, pagesSeen, checkSource, answerText, vetted, buildResearch, askLine, investorTips, tooOld } from './research.js';
 import { onRequestPost } from '../research.js';
 
 const CONTENT = [
@@ -154,4 +154,17 @@ test('a round we hold without a name reads "round", not "Other"', () => {
   const rows = { competitors: [{ name: 'Oura', site: 'ouraring.com', what: 'x', raised: '', backers: [], move: '', src: 'https://ouraring.com' }], tried: [] };
   const r = buildResearch(rows, { competitors: [{ asked: 'Oura', name: 'Oura', round: 'Other', date: '2025-10-14', amount: 900000000, currency: 'USD', backers: [] }] }, {}, {});
   assert.equal(r.competitors[0].raised.text, '$900M round');
+});
+
+test('news older than ten years is dropped, and "press Pitch" waits for a ready deck', () => {
+  const now = new Date('2026-11-26T00:00:00Z');
+  assert.equal(tooOld('Raised Series C from Global Brain and 500 Startups in 2014', now), true);
+  assert.equal(tooOld('Raised $12.5M in 2022 in a round led by Sam Altman', now), false);
+  assert.equal(tooOld('Founded in 2012, acquired in 2021', now), false);   // the newest year counts
+  assert.equal(tooOld('Bought a smaller rival', now), false);              // no year named: kept
+  const firms = [{ slug: 'true-ventures', name: 'True Ventures' }], tips = [{ slug: 'true-ventures', apply: 'https://www.trueventures.com/pitch', deals: 24, led: 6 }];
+  const weak = buildResearch({ competitors: [], tried: [] }, {}, { company: {}, scores: { deck: 5 }, firms }, {}, tips, {});
+  assert.equal(weak.todo.firms, 'Fix the red flags in step 1 first. Then press Pitch.');
+  const good = buildResearch({ competitors: [], tried: [] }, {}, { company: {}, scores: { deck: 8 }, firms }, {}, tips, {});
+  assert.equal(good.todo.firms, 'Press Pitch on the first one today.');
 });

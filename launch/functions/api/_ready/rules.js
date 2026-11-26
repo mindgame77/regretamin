@@ -79,7 +79,9 @@ export function assemble(model, firms) {
     if (it.stage !== 'Both' && it.stage !== stage) return null;
     seen.add(n);
     return { n, level, area: it.area, what: clip(f.what || (level === 'red' ? it.red : it.yellow), 110), where: clip(f.where || '', 24),
-      why: clip(f.why || '', 150), fix: clip(f.fix || it.fix, 170), matters: importance(n, level, stage), score: score(n, level, stage) };
+      why: clip(f.why || '', 150), fix: clip(f.fix || it.fix, 170), matters: importance(n, level, stage), score: score(n, level, stage),
+      // Can better wording fix it, or does the founder need something real first? (founder, 26 Nov: "sometimes pitch deck is not to change words, it also achievements")
+      by: /^(proof|achieve)/i.test(String(f.fix_by || '')) ? 'proof' : /^word/i.test(String(f.fix_by || '')) ? 'words' : null };
   }).filter(Boolean).sort((x, y) => y.matters - x.matters || x.n - y.n);
   const reds = flags.filter((f) => f.level === 'red').slice(0, LIMIT), yellows = flags.filter((f) => f.level === 'yellow').slice(0, LIMIT);
   const lead = m.lead_with && m.lead_with.text ? { text: clip(m.lead_with.text, 220), where: clip(m.lead_with.where || '', 24) } : null;
@@ -100,6 +102,8 @@ export function assemble(model, firms) {
   const judged = [...reds, ...yellows, ...good, ...(lead ? [{ area: 'Founders and team', score: 10 }] : []),
     ...special.map((x) => ({ area: x.founders ? 'Founders and team' : 'Solution and product', score: x.score }))];   // the two overall scores still stop at 10
   const f = firms && typeof firms === 'object' ? firms : {};
+  const scores = { deck: overall(judged, stage, false), founders: overall(judged, stage, true) };
+  const ready = scores.deck == null || scores.deck >= READY_SCORE;
   return {
     v: 2,
     company: { name: clip(co.name, 60), one_line: clip(co.one_line, 140), stage, stage_stated: !!co.stage && !/unknown/i.test(String(co.stage)),
@@ -107,10 +111,10 @@ export function assemble(model, firms) {
       based_in: clip(co.based_in, 60), slides: Number(co.slides) > 0 ? Math.round(Number(co.slides)) : null },
     verdict: reds.length ? `Fix ${reds.length} thing${reds.length === 1 ? '' : 's'} first.` : 'Ready to send.',
     reds, yellows, lead, good, special,
-    scores: { deck: overall(judged, stage, false), founders: overall(judged, stage, true) },
+    scores,
     facts: (Array.isArray(m.facts) ? m.facts : []).slice(0, 20).map((x) => ({ claim: clip(x && x.claim, 140), proof: ['proven', 'shown', 'claimed', 'assumed'].includes(x && x.proof) ? x.proof : 'claimed', where: clip(x && x.where, 24) })),
     competitors_named: (Array.isArray(m.competitors_named) ? m.competitors_named : []).slice(0, 10).map((x) => clip(x, 60)),
-    firms: (Array.isArray(f.firms) ? f.firms : []).map((x) => ({ ...x, say: sayTo(x, stage, co.sector), marks: marksOf(x) })),
+    firms: (Array.isArray(f.firms) ? f.firms : []).map((x) => ({ ...x, say: sayTo(x, stage, co.sector, ready), marks: marksOf(x) })),
     then: Array.isArray(f.then) ? f.then : [],
   };
 }
@@ -129,11 +133,15 @@ export function marksOf(x) {
 export const LIMIT = 10;
 
 // One line of advice per firm, from its own numbers only.
-export function sayTo(x, stage, sector) {
+// A deck scoring under this is not ready to send (founder, 26 Nov: "we cannot say go now if the pitch deck is not ready ...
+// pitch deck has to be at least 8"). Under it, nothing in the report or the research says "go now".
+export const READY_SCORE = 8;
+export const NOT_YET = 'Fix your red flags first, then go.';
+export function sayTo(x, stage, sector, ready = true) {
   const out = [];
   if (Number(x.stage_pct) >= 70) out.push(`Almost only first cheques. Keep the ask at ${stage.toLowerCase()} size.`);
   if (Number(x.sector_pct) >= 40 && sector) out.push(`${sector} is its main field. Skip the basics and go deep.`);
-  if (Number(x.n90) >= 5) out.push('It is investing fast right now. Go now.');
+  if (Number(x.n90) >= 5) out.push(`It is investing fast right now. ${ready ? 'Go now.' : NOT_YET}`);
   if (!out.length) out.push(`It backed ${x.fit} ${stage.toLowerCase()} startup${Number(x.fit) === 1 ? '' : 's'} in your field in the last 12 months. Tell them why yours should be the next one.`);
   return out.slice(0, 2).join(' ');
 }
@@ -156,6 +164,7 @@ For every flag write, about THIS deck, in plain words:
 - "what": what is wrong, in 12 words or fewer.
 - "where": "Slide N", or "Not in the deck".
 - "why": one sentence on why an investor cares.
+- "fix_by": "words" when rewriting or rearranging the deck fixes it; "proof" when no wording can fix it and the founder first needs something real (paying customers, a signed pilot, a co-founder, a working product, a registered company). Be honest: do not call it "words" when the deck would only be hiding the gap.
 - "fix": one concrete instruction the founder can act on today.
 6. Look for what is SPECIAL in this field: at most three things from the SPECIAL list below, and only where the deck or the note shows what the "counts" column asks for. This is rare; most decks have none or one, and an empty list is the normal answer. Never list what the "does not count" column describes. Never guess a founder's age, and never treat age, sex, origin or nationality as special or as a flag. The thing chosen for "lead_with" is not repeated here.
 
@@ -167,7 +176,7 @@ Never say the company will or will not raise money. Never tell the founder to dr
 Answer with ONE JSON object and nothing else, in exactly this shape:
 {"company":{"name":"","one_line":"","stage":"Pre-seed|Seed|unknown","sector":"one of: ${SECTORS.join(', ')}","ask_usd":0,"based_in":"","slides":0},
 "facts":[{"claim":"","proof":"proven|shown|claimed|assumed","where":"Slide N"}],
-"flags":[{"n":0,"level":"red|yellow","what":"","where":"","why":"","fix":""}],
+"flags":[{"n":0,"level":"red|yellow","what":"","where":"","why":"","fix":"","fix_by":"words|proof"}],
 "strengths":[{"n":0,"what":"","where":"Slide N","why":""}],
 "special":[{"kind":"","what":"","where":"Slide N","why":""}],
 "lead_with":{"text":"","where":"Slide N"},
