@@ -129,8 +129,7 @@
   // One lettered part: what is going on, the facts, and one thing to do next (founder, 26 Nov: "the actionable map").
   const part = (letter, title, tags, now, body, next) => `<div class="rd-ab"><div class="rd-abh"><span class="rd-let">${letter}</span><h3>${title}</h3>${tags}</div>${now ? `<p class="rd-rs">${esc(now)}</p>` : ''}${body}${next ? `<div class="rd-next"><span class="rd-tag">Do this next</span><span>${esc(next)}</span></div>` : ''}</div>`;
   function researchHtml(x) {
-    const comp = x.competitors || [], skip = x.skip || [], inst = x.instead || [], tried = x.tried || [], rr = x.rounds, now = x.now || {}, todo = x.todo || {};
-    const stage = String(x.stage || '').toLowerCase(), field = x.sector && x.sector !== 'Other' ? x.sector.toLowerCase() + ' ' : '';
+    const comp = x.competitors || [], skip = x.skip || [], tried = x.tried || [], rr = x.rounds, now = x.now || {}, todo = x.todo || {};
     const letters = 'ABCD'.split(''); const parts = [];
     const has = (c) => [
       c.raised ? li(esc(c.raised.text) + (c.raised.date ? ` <span class="rd-pl">${esc(day(c.raised.date))}</span>` : ''), c.raised.ours) : '',
@@ -145,9 +144,8 @@
     parts.push(['Your competitors', OURS + WEB, now.competitors, comp.length
       ? `<div class="rd-crow rd-hd"><span>Company</span><span>They have</span><span>In the news</span><span>Your move</span></div>${cRows}`
       : '<p class="rd-none">None found with a source we could check.</p>', todo.competitors]);
-    if (skip.length) parts.push(['Your investor list', OURS, now.firms,
-      `<div class="rd-two"><div><p class="rd-cap">Skip these firms</p>${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}</div>`
-      + `<div><p class="rd-cap">Pitch these instead</p>${inst.map((f) => `<div class="rd-fl">${firmA(f)}<span>${f.fit} ${esc(field)}${esc(stage)} deal${f.fit === 1 ? '' : 's'} in 12 months</span></div>`).join('')}</div></div>`, todo.firms]);
+    if (skip.length) parts.push(['Firms that hold a competitor', OURS, now.firms,
+      skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join(''), todo.firms]);
     const who = (t) => (t.founders || []).map((f) => ext('https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(f + ' ' + t.name), f)).join(', ');
     parts.push(['Who tried this before', WEB, now.tried, tried.length
       ? tried.map((t) => `<div class="rd-trow"><span class="rd-wh">${esc(t.years)}</span><div><b>${esc(t.name)}</b>${t.outcome ? `<span class="rd-out">${esc(t.outcome)}</span>` : ''}<p>${esc(t.happened)}</p><p class="rd-pl">${ext(t.src, 'Read what happened')}${t.founders && t.founders.length ? ' · Founders to ask, on LinkedIn: ' + who(t) : ''}</p></div></div>`).join('')

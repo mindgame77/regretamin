@@ -91,7 +91,8 @@ def test_the_full_research():
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
     js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
     assert "fetch('/api/research'" in js and 'id="rd-s3"' in js and "researchHtml(r.research)" in js   # saved research reopens with the report
-    for words in ("Your competitors", "Skip these firms", "Pitch these instead", "Who tried this before", "Your ask against similar rounds", "Our data", "Looked up",
+    assert "Pitch these instead" not in js   # it repeated step 4 (founder, 26 Nov)
+    for words in ("Your competitors", "Firms that hold a competitor", "Who tried this before", "Your ask against similar rounds", "Our data", "Looked up",
                   "They have", "In the news", "Your move", "Do this next", "Read what happened", "'ABCD'"):   # lettered parts, each ending with one thing to do
         assert words in js, words
     fn = open(os.path.join(ROOT, "launch", "functions", "api", "research.js")).read()
