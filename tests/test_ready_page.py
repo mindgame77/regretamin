@@ -63,3 +63,13 @@ def test_the_same_deck_sent_again_shows_the_saved_report():
     assert "crypto.subtle.digest('SHA-256'" in js                      # the file's fingerprint
     assert ".like('deck_path', session.user.id + '/' + mark + '-%')" in js   # looked up among the founder's own reports only
     assert js.index("const mark = await fingerprint(file)") < js.index("sb.storage.from('decks').upload")   # before any upload or model call
+
+
+def test_firm_links_open_in_a_new_page_and_reports_are_listed_in_the_account():
+    """Founder, 26 Nov: "those links should open in new pages" and "we should save reports in your account"."""
+    js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
+    assert js.count('target="_blank" rel="noopener" href="/vc/') == 2 and 'href="/vc/${' not in js.replace('rel="noopener" href="/vc/${', '')
+    app = open(os.path.join(ROOT, "launch", "js", "app.js")).read()
+    assert "from('ready_reports')" in app and "ready/?report=" in app
+    page = open(os.path.join(ROOT, "site-launch", "account", "index.html")).read() if os.path.exists(os.path.join(ROOT, "site-launch", "account", "index.html")) else ""
+    assert not page or ('id="myrep" hidden' in page and "My reports" in page)   # hidden until the account has a report

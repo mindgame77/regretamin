@@ -41,7 +41,7 @@ test('the model is not asked what only our data can answer, and its answer is re
   assert.ok(FROM_OUR_DATA.size === 9 && !/\n207 \| /.test(p) && /\n4 \| Deck itself \| Is there one clear ask\?/.test(p));
   assert.deepEqual(parseModelJson('Here it is:\n```json\n{"a":1}\n```'), { a: 1 });
   assert.equal(parseModelJson('no json'), null);
-  assert.match(sayTo({ fit: 1, stage_pct: 10, sector_pct: 5, n90: 0 }, 'Seed', 'Fintech'), /1 seed deal in your field/);
+  assert.match(sayTo({ fit: 1, stage_pct: 10, sector_pct: 5, n90: 0 }, 'Seed', 'Fintech'), /1 seed startup in your field/);
 });
 
 test('scores run the other way: 10 is as good as it gets, a red flag is at the bottom', () => {
@@ -82,4 +82,18 @@ test('what is special is rare, comes from the written list, and only ever adds',
   assert.ok(a.scores.deck >= none.scores.deck && a.scores.founders >= none.scores.founders);    // having none costs nothing
   const p = systemPrompt();
   assert.ok(/University \| Did a founder study/.test(p) && /Never guess a founder's age/.test(p));
+});
+
+test('at most ten red flags, ten improvements and ten good things', () => {
+  const ns = CHECKLIST.filter((r) => r[3] === 'Both' && r[1] !== 'Investor fit').map((r) => r[0]);
+  const a = assemble({ company: { stage: 'Seed' }, flags: [...ns.slice(0, 14).map((n) => ({ n, level: 'red' })), ...ns.slice(14, 28).map((n) => ({ n, level: 'yellow' }))],
+    strengths: ns.slice(28, 42).map((n) => ({ n, what: 'x', where: 'Slide 1', why: 'y' })) }, null);
+  assert.deepEqual([a.reds.length, a.yellows.length, a.good.length], [10, 10, 10]);
+  assert.equal(a.verdict, 'Fix 10 things first.');
+  assert.ok(/more than 10 red and 10 yellow/.test(systemPrompt()) && /up to 10 checklist rows/.test(systemPrompt()));
+});
+
+test('the line for a firm with no mark is plain English', () => {
+  const say = assemble({ company: { stage: 'Pre-seed', sector: 'Hardware' } }, { firms: [{ slug: 'a', name: 'A', fit: 3, n90: 1, stage_pct: 30, sector_pct: 10 }] }).firms[0].say;
+  assert.equal(say, 'It backed 3 pre-seed startups in your field in the last 12 months. Tell them why yours should be the next one.');
 });

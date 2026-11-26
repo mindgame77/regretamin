@@ -163,6 +163,11 @@
     const n = (rows || []).length;
     $('#mcn').textContent = n ? pl(n, T.checked_n, { n }) : T.no_checks;
     $('#mcl').textContent = n ? fmt(T.latest, { name: rows[0].name, date: fmtDate(rows[0].checked_at) }) : T.first_check;
+    // "Am I ready to pitch?" reports of this account (founder, 26 Nov: "we should save reports in your account"). Hidden when there are none.
+    const rep = await sb.from('ready_reports').select('id,created_at,deck_name,verdict:result->>verdict,deck:result->scores->>deck').eq('status', 'done').order('created_at', { ascending: false }).limit(50);
+    const list = (rep && rep.data) || [];
+    $('#myrep').hidden = !list.length;
+    $('#myrepl').innerHTML = list.map(r => '<a href="' + ROOT + 'ready/?report=' + encodeURIComponent(r.id) + '"><span>' + esc(fmtDate(r.created_at)) + '</span><b>' + esc(r.deck_name || 'Deck') + '</b><span>' + esc(r.verdict || '') + '</span><span class="rps">' + (r.deck ? esc(r.deck) + '<i>/10</i>' : '') + '</span></a>').join('');
   }
   const BM = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
   if ($('#account')) {
