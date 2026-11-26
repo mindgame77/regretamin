@@ -388,6 +388,7 @@
   // /badge/<slug>/<signal>-<look>.png (edge/card/badge.mjs) and are only asked for once the pop-up is opened.
   const BADGE_SIGNALS = [['top', 'The Magnificent 100'], ['lead', 'Shot Caller'], ['up', 'Fast & Curious'], ['chain', 'Pathfinder'], ['spec', 'Laser Focus'], ['fund', 'Hot & Fresh']];
   const BADGE_LOOKS = ['round-dark', 'round-light', 'pill'];
+  const BADGE_V = '?v=2';  // raise it when the badge design changes, so nobody is shown a picture kept from before
   // A zip file made in the browser. The pictures are stored as they are: a PNG is compressed already.
   function zipOf(files) {
     const T = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; T[n] = c >>> 0; }
@@ -421,14 +422,14 @@
     if (!ov) { ov = document.createElement('div'); ov.className = 'ov tall'; ov.id = 'badges'; ov.hidden = true; document.body.appendChild(ov); }
     ov.innerHTML = '<div class="md amd bdgm" role="dialog" aria-modal="true" aria-label="Badges"><div class="amh"><button class="x" data-close aria-label="Close">×</button><b>Badges</b><button type="button" class="bdga">Download all</button></div><div class="amb">' + have.map(b =>
       '<div class="bdgr">' + BADGE_LOOKS.map(l =>
-        '<a href="' + base + b[0] + '-' + l + '.png" download="' + esc(file(b, l)) + '" title="Download"><img loading="lazy" alt="' + esc(b[1]) + ' badge" src="' + base + b[0] + '-' + l + '.png"></a>').join('')
+        '<a href="' + base + b[0] + '-' + l + '.png' + BADGE_V + '" download="' + esc(file(b, l)) + '" title="Download"><img loading="lazy" alt="' + esc(b[1]) + ' badge" src="' + base + b[0] + '-' + l + '.png' + BADGE_V + '"></a>').join('')
       + '<button type="button" class="bdgc" data-code="' + esc('<a href="' + page + '"><img src="' + base + b[0] + '-pill.png" alt="' + b[1] + ' on Regretamin" height="60"></a>') + '">Copy code</button></div>').join('') + '</div></div>';
     ov.onclick = e => {
       const t = e.target, copy = t.closest && t.closest('.bdgc'), all = t.closest && t.closest('.bdga');
       if (copy && navigator.clipboard) navigator.clipboard.writeText(copy.dataset.code).then(() => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy code'; }, 1600); }).catch(() => {});
       if (!all || all.disabled) return;
       all.disabled = true;
-      const list = []; have.forEach(b => BADGE_LOOKS.forEach(l => list.push([base + b[0] + '-' + l + '.png', file(b, l)])));
+      const list = []; have.forEach(b => BADGE_LOOKS.forEach(l => list.push([base + b[0] + '-' + l + '.png' + BADGE_V, file(b, l)])));
       Promise.all(list.map(f => fetch(f[0]).then(r => { if (!r.ok) throw new Error('badge'); return r.arrayBuffer(); }).then(a => ({ name: f[1], bytes: new Uint8Array(a) }))))
         .then(files => {
           const a = document.createElement('a'), u = URL.createObjectURL(zipOf(files));
