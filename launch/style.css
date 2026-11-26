@@ -2137,7 +2137,9 @@ a.rd-bg:hover{border-color:#F0861E}.rd-ar{color:#B85F0A}
 @media print{
   .rdy *{box-shadow:none!important}
   .rd-box,.rd-verdict,.rd-good,.rd-cc,.rd-ic,.rd-sp,.rd-lead,.rd-next,.rd-move,.rd-q3,.rd-sum,.rd-score,.rd-skip,.rd-paid .rd-box{background:none!important;border:0!important;border-radius:0!important;padding-left:0!important;padding-right:0!important}
-  .rd-cc,.rd-ic{padding:6px 0!important;margin-top:6px!important;border-bottom:1px solid #D5DAD7!important}
+  .rd-cc,.rd-ic{padding:6px 0!important;margin-top:10px!important}
+  .rdy *{border-top:0!important;border-bottom:0!important;border-left:0!important;border-right:0!important}   /* founder, 26 Nov: "take out those lines ... everything plain" */
+  .rd-ab{margin-top:16px!important;padding-top:0!important}.rd-row,.rd-frow,.rd-crow,.rd-trow,.rd-fl{padding:7px 0!important}
   .rd-step{display:block!important;margin-top:14px}.rd-rail{display:block;float:left;margin:0 8px 0 0}.rd-rail i{display:none}.rd-rail span{font-size:22px!important;line-height:1.3}
   .rd-box{break-inside:auto!important;padding-top:0!important}.rd-box h2{break-after:avoid}
   .rd-rail span,.rd-let,.rd-ci,.rd-cch .rd-lg{background:none!important;color:#10201C!important;border:0!important;width:auto!important;height:auto!important;margin:0!important;font-weight:600}
