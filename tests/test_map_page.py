@@ -299,7 +299,8 @@ def test_pathfinders_view_shows_the_small_firms_the_top_100_follow():
     mig = (ROOT / 'supabase/migrations/20261126030945_v2_map_pathfinders.sql').read_text()
     assert '<button type="button" data-view="founders">Founders</button><button type="button" data-view="path">Pathfinders</button></div>' in js
     assert "sb.rpc('v2_map_pathfinders', a)" in js and "$('#vm-h1').textContent = 'Who the top firms follow.';" in js
-    assert "<h2>Most followed</h2><span class=\"vm-tag\">startups followed</span>" in js
+    assert "<h2>Most followed</h2></div>" in js and "startups followed" not in js  # he had the small label removed (26 Nov)
+    assert "if (S.view === 'path' && !S.list) drawSide();" in js  # the list follows the timeline
     assert "qs.get('view') === 'pathfinders'" in js and "S.view === 'path' ? 'pathfinders' : S.view" in js  # a link can open it and the share link names it
     assert '.vm-pl.vm-path{background:#F0861E;' in css
     # the rule lives in the database: followed = the top firm came in later; it can also leave out big firms (not used)
