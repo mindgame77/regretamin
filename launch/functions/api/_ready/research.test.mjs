@@ -46,14 +46,13 @@ test('our data replaces looked-up funding where we hold the company, and firms t
   const rows = vetted(JSON.parse(answerText(CONTENT)), pagesSeen(CONTENT));
   const ours = { competitors: [{ asked: 'Halter', name: 'Halter', round: 'Series D', date: '2025-06-01', amount: 100000000, currency: 'USD', backers: [{ slug: 'bessemer-venture-partners', name: 'Bessemer Venture Partners' }], founders: 2, worked_at: ['Rocket Lab'], studied_at: ['Auckland'], built_before: [{ name: 'Farm Co', outcome: 'acquired', acquirer: 'Big Ag' }, { name: 'Other Co', outcome: 'shut_down', acquirer: null }] }],
     skip: [{ slug: 'bessemer-venture-partners', name: 'Bessemer Venture Partners', backed: ['Halter'] }], rounds: { n: 14, p25: 1325000, p50: 1500000, p75: 2012500, p90: 4265000 }, stage: 'Pre-seed', sector_known: true };
-  const fit = { firms: [{ slug: 'bessemer-venture-partners', name: 'Bessemer Venture Partners', fit: 4 }, { slug: 'a-fund', name: 'A Fund', fit: 3, city: 'Austin', country: 'US' }] };
-  const r = buildResearch(rows, ours, fit, { company: { stage: 'Pre-seed', sector: 'Hardware', ask_usd: 1200000 } }, { at: '2026-11-26T22:00:00Z', searches: 6, model: 'claude-opus-5-5', tokens_in: 1, tokens_out: 2 });
+  const r = buildResearch(rows, ours, { company: { stage: 'Pre-seed', sector: 'Hardware', ask_usd: 1200000 } }, { at: '2026-11-26T22:00:00Z', searches: 6, model: 'claude-opus-5-5', tokens_in: 1, tokens_out: 2 });
   assert.deepEqual(r.competitors[0].raised, { ours: true, text: '$100M Series D', date: '2025-06-01' });
   assert.equal(r.competitors[0].backers.ours, true);
   assert.equal(r.competitors[1].raised, null);                       // nothing reported, nothing shown
   assert.deepEqual(r.competitors[1].backers, { ours: false, list: [] });
   assert.deepEqual(r.skip.map((s) => s.slug), ['bessemer-venture-partners']);
-  assert.deepEqual(r.instead.map((f) => f.slug), ['a-fund']);
+  assert.ok(!('instead' in r));   // the firms to pitch are step 4 of the report; the research does not repeat them
   assert.equal(r.rounds.n, 14);
   assert.equal(r.rounds.line, 'Your ask is below most rounds like yours. Announced rounds lean large, so the true middle is lower than $1.5M.');
   assert.equal(r.tried[0].src, 'https://blog.example/why-cowlar-closed');
@@ -61,9 +60,9 @@ test('our data replaces looked-up funding where we hold the company, and firms t
   assert.deepEqual(r.competitors[0].team, ['Founders worked at Rocket Lab', 'Founders studied at Auckland', 'A founder built Farm Co before (acquired by Big Ag)', 'A founder built Other Co before (shut down)']);
   assert.deepEqual(r.competitors[1].team, []);   // a competitor we do not hold: nothing is said about its founders from our side
   assert.deepEqual(r.now, { competitors: '2 companies an investor will compare you with.', firms: '1 firm we list already holds one of them.', tried: '1 company tried this before you.' });
-  assert.deepEqual(r.todo, { competitors: 'Put these on your competition slide. Have your answer ready for each one.', firms: 'Take the first list off your target list. Start with the second.',
+  assert.deepEqual(r.todo, { competitors: 'Put these on your competition slide. Have your answer ready for each one.', firms: 'Take these off your target list. The firms to pitch are in step 4.',
     tried: 'Message one of these founders this week. Ask the three questions.', ask: 'Be ready to defend your number against these rounds.' });
-  assert.equal(buildResearch({ competitors: [], tried: [] }, { rounds: ours.rounds }, null, { company: {} }, {}).todo.ask, 'Add your ask to the deck: the amount and what it pays for.');
+  assert.equal(buildResearch({ competitors: [], tried: [] }, { rounds: ours.rounds }, { company: {} }, {}).todo.ask, 'Add your ask to the deck: the amount and what it pays for.');
 });
 
 test('the ask is placed in plain words, never as a forecast, and not at all on thin data', () => {
@@ -73,7 +72,7 @@ test('the ask is placed in plain words, never as a forecast, and not at all on t
   assert.match(askLine(2e7, r), /above most rounds like yours/);
   assert.equal(askLine(null, r), 'Your deck names no ask, so we cannot place it.');
   assert.equal(askLine(3e6, { ...r, n: 3 }), '');
-  assert.equal(buildResearch({ competitors: [], tried: [] }, { rounds: { n: 3 } }, null, {}, {}).rounds, null);
+  assert.equal(buildResearch({ competitors: [], tried: [] }, { rounds: { n: 3 } }, {}, {}).rounds, null);
   for (const t of [3e6, 7e6, 2e7]) assert.ok(!/will|won't|cannot raise|too much|too little/i.test(askLine(t, r)));
 });
 
@@ -104,7 +103,6 @@ test('the function: only the owner of a finished report, made once, saved on the
       return ok({ stop_reason: 'end_turn', content: CONTENT.slice(3), usage: { input_tokens: 200, output_tokens: 300 } });
     }
     if (u.includes('/rpc/v2_ready_research')) { const b = JSON.parse(opt.body); assert.deepEqual(b.p_names, ['Halter', 'Nofence']); assert.deepEqual(b.p_domains, ['halterhq.com', 'nofence.no']); return ok({ competitors: [], skip: [], rounds: { n: 14, p25: 1325000, p50: 1500000, p75: 2012500, p90: 4265000 }, stage: 'Pre-seed', sector_known: true }); }
-    if (u.includes('/rpc/v2_ready_firms')) return ok({ firms: [{ slug: 'a-fund', name: 'A Fund', fit: 3 }] });
     throw new Error('unexpected ' + u);
   };
   const ask = (token) => onRequestPost({ env: { SUPABASE_URL: 'https://db.example', SUPABASE_ANON_KEY: 'k', ANTHROPIC_API_KEY: 'k' },
@@ -120,4 +118,11 @@ test('the function: only the owner of a finished report, made once, saved on the
     assert.equal(calls.filter((c) => c.includes('anthropic')).length, before);
     assert.deepEqual(b.research.competitors.map((c) => c.name), ['Halter', 'Nofence']);
   } finally { globalThis.fetch = real; }
+});
+
+test('five competitors at most', () => {
+  const seen = new Map(Array.from({ length: 8 }, (_, i) => ['site.example/c' + i, { url: 'https://site.example/c' + i, title: 'C' + i }]));
+  const rows = vetted({ competitors: Array.from({ length: 8 }, (_, i) => ({ name: 'C' + i, source: 'https://site.example/c' + i })) }, seen);
+  assert.equal(rows.competitors.length, 5);
+  assert.ok(/5 at most/.test(researchPrompt()));
 });

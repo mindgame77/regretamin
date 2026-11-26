@@ -4,8 +4,8 @@
 //   1. who is asking, and their own finished report;
 //   2. the model searches the web (Claude's own web search tool) for competitors and for who tried the idea before;
 //   3. rows without a source the search really returned are dropped (./_ready/research.js);
-//   4. our database adds who funded the competitors, the firms that hold one, firms to pitch instead, and the range of
-//      rounds like the founder's (v2_ready_research, v2_ready_firms).
+//   4. our database adds who funded the competitors, what we know about their founders, the firms that hold one, and the
+//      range of rounds like the founder's (v2_ready_research).
 // Needs the Cloudflare secret ANTHROPIC_API_KEY (the search tool is Claude's). READY_MODEL may name another Claude model.
 import { parseModelJson } from './_ready/rules.js';
 import { researchPrompt, researchAsk, pagesSeen, answerText, vetted, buildResearch, SEARCHES } from './_ready/research.js';
@@ -46,12 +46,9 @@ export async function onRequestPost(ctx) {
   const rpc = async (fn, args) => {
     try { const r = await fetch(`${SB}/rest/v1/rpc/${fn}`, { method: 'POST', headers: mine, body: JSON.stringify(args) }); return r.ok ? await r.json() : null; } catch (e) { return null; }
   };
-  const [ours, fit] = await Promise.all([
-    rpc('v2_ready_research', { p_names: rows.competitors.map((c) => c.name), p_domains: rows.competitors.map((c) => c.site || null), p_stage: String(co.stage || 'Seed'), p_sector: String(co.sector || 'Other') }),
-    rpc('v2_ready_firms', { p_stage: String(co.stage || 'Seed'), p_sector: String(co.sector || 'Other'), p_limit: 12 }),
-  ]);
+  const ours = await rpc('v2_ready_research', { p_names: rows.competitors.map((c) => c.name), p_domains: rows.competitors.map((c) => c.site || null), p_stage: String(co.stage || 'Seed'), p_sector: String(co.sector || 'Other') });
 
-  const research = buildResearch(rows, ours, fit, row.result, { at: new Date().toISOString(), searches: got.searches, model: got.model, tokens_in: got.usage.in, tokens_out: got.usage.out });
+  const research = buildResearch(rows, ours, row.result, { at: new Date().toISOString(), searches: got.searches, model: got.model, tokens_in: got.usage.in, tokens_out: got.usage.out });
   await save({ result: { ...row.result, research }, error: null });
   return json({ research, id });
 }

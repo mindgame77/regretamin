@@ -1,8 +1,8 @@
 // The full research behind step 3 of "Am I ready to pitch?" (founder, 26 Nov 2026: "What's next? Full research.").
 // Two sources, kept apart and labelled in the report:
 //   - looked up: the model searches the web for competitors and for companies that tried the idea before;
-//   - our data: who funded those competitors, which listed firms hold one, firms to pitch instead, and the range of
-//     rounds like the founder's (v2_ready_research and v2_ready_firms).
+//   - our data: who funded those competitors, what we know about their founders, which listed firms hold one, and the
+//     range of rounds like the founder's (v2_ready_research).
 // Rules that hold whatever the model says:
 //   - a looked-up row is shown only with a source address that the search really returned (no invented sources);
 //   - nothing here says the founder will or will not raise, and nothing tells them to drop the idea;
@@ -20,7 +20,7 @@ export function researchPrompt() {
 
 You get a short description of the startup taken from its pitch deck. Search the web, then answer.
 
-1. COMPETITORS: up to 6 companies a buyer would compare this startup with (same buyer, same problem). Prefer funded startups. Include a large incumbent only when it is what buyers use today. Check the competitors the deck names and include the real ones.
+1. COMPETITORS: the top competitors, 5 at most: the companies a buyer would compare this startup with (same buyer, same problem). Prefer funded startups. Include a large incumbent only when it is what buyers use today. Check the competitors the deck names and include the real ones.
    For each: "name"; "website" (its domain, for example acme.com); "what" (what it does, 16 words or fewer, neutral); "raised" (its latest round or total as the source reports it, for example "$12M Series A, 2025"; "" when no source reports it); "backers" (investor names exactly as the source lists them, 5 at most; [] when none are reported); "your_move" (what the founder should say when an investor brings up this competitor: one sentence, 18 words or fewer, built only on the founder's own facts below; never claim the competitor lacks something; "" when the facts give nothing); "source" (the address of a page from your search results that states the funding or describes the company).
    Also "strengths": up to 3 things that make this competitor strong, as a page reports them: who its founders are and where they worked or studied, its customers or revenue, its technology, the weight of its backers. For each: "what" (16 words or fewer, only what the page reports) and "source" (the address of that page, from your search results). [] when you found none.
    Also "news": up to 2 things a founder should know about this competitor, each with its own page: it was acquired or bought a company, it shut down or cut staff, it raised a large round, it changed direction, it entered this market. For each: "what" (14 words or fewer, with the year, only what the page reports) and "source" (the address of that page, from your search results). [] when you found none.
@@ -126,7 +126,7 @@ export function vetted(model, seen) {
       strong: linked(c.strengths, name, seen, 3),
       // What a founder should know about this competitor (an acquisition, a shutdown, a large round), each with its own page.
       news: linked(c.news, name, seen, 2) };
-  }).filter(Boolean).slice(0, 6);
+  }).filter(Boolean).slice(0, 5);   // founder, 26 Nov: "no more than 5 top competitors"
   const tried = (Array.isArray(m.tried_before) ? m.tried_before : []).map((t) => {
     const name = clip(t && t.name, 60), src = name ? checkSource(t.source, name, seen) : '';
     if (!name || !src || !t.what_happened) return null;
@@ -147,8 +147,8 @@ export function askLine(ask, r) {
 }
 
 // Looked-up rows + our data -> what step 3 of the report draws.
-//   ours: the answer of v2_ready_research; fit: the answer of v2_ready_firms (asked with a longer list).
-export function buildResearch(rows, ours, fit, report, meta) {
+//   ours: the answer of v2_ready_research.
+export function buildResearch(rows, ours, report, meta) {
   const o = ours && typeof ours === 'object' ? ours : {};
   const co = (report && report.company) || {};
   const held = new Map((Array.isArray(o.competitors) ? o.competitors : []).map((c) => [String(c.asked || '').toLowerCase(), c]));
@@ -169,16 +169,13 @@ export function buildResearch(rows, ours, fit, report, meta) {
       backers };
   });
   const skip = (Array.isArray(o.skip) ? o.skip : []).map((s) => ({ slug: s.slug, name: s.name, backed: (Array.isArray(s.backed) ? s.backed : []).slice(0, 3) })).slice(0, 8);
-  const skipped = new Set(skip.map((s) => s.slug));
   const stage = o.stage || co.stage || 'Seed';
-  const instead = ((fit && Array.isArray(fit.firms)) ? fit.firms : []).filter((f) => !skipped.has(f.slug)).slice(0, 6)
-    .map((f) => ({ slug: f.slug, name: f.name, fit: Number(f.fit) || 0, city: f.city || '', country: f.country || '' }));
   const r = o.rounds && Number(o.rounds.n) >= 5 ? { n: Number(o.rounds.n), p25: Number(o.rounds.p25), p50: Number(o.rounds.p50), p75: Number(o.rounds.p75), p90: Number(o.rounds.p90) } : null;
   const ask = Number(co.ask_usd) > 0 ? Number(co.ask_usd) : null;
   // One thing to do per part (founder, 26 Nov: "make it useful for someone who's reading and actionable"). Fixed wording, by rule.
   const todo = {
     competitors: competitors.length ? 'Put these on your competition slide. Have your answer ready for each one.' : '',
-    firms: skip.length ? 'Take the first list off your target list. Start with the second.' : '',
+    firms: skip.length ? 'Take these off your target list. The firms to pitch are in step 4.' : '',
     tried: rows.tried.length ? 'Message one of these founders this week. Ask the three questions.' : '',
     ask: r ? (ask ? 'Be ready to defend your number against these rounds.' : 'Add your ask to the deck: the amount and what it pays for.') : '',
   };
@@ -189,7 +186,7 @@ export function buildResearch(rows, ours, fit, report, meta) {
     firms: k ? `${k} firm${k === 1 ? '' : 's'} we list already hold${k === 1 ? 's' : ''} one of them.` : '',
     tried: t ? `${t} compan${t === 1 ? 'y' : 'ies'} tried this before you.` : '',
   };
-  return { v: 2, at: (meta && meta.at) || null, competitors, skip, instead, tried: rows.tried, now, todo,
+  return { v: 2, at: (meta && meta.at) || null, competitors, skip, tried: rows.tried, now, todo,
     rounds: r ? { ...r, ask, stage, sector: o.sector_known ? co.sector || null : null, line: askLine(ask, r) } : null,
     stage, sector: co.sector || null,
     searches: (meta && meta.searches) || 0, model: (meta && meta.model) || null, tokens_in: (meta && meta.tokens_in) || null, tokens_out: (meta && meta.tokens_out) || null };
