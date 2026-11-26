@@ -2128,3 +2128,26 @@ a.rd-bg:hover{border-color:#F0861E}.rd-ar{color:#B85F0A}
 .rd-cch .rd-ord{flex:none;width:22px;font-weight:600;color:#6B7772;padding-top:9px}.rd-cch .rd-lg{flex:none}.rd-cch .rd-bg{align-self:center}.rd-cch .rd-pb{align-self:center;margin-left:6px}
 .rd-cch>div a{font-weight:600;font-size:17px}.rd-cc .rd-sum{margin:12px 0 0;background:#F2F4F3}
 @media (max-width:1000px){.rd-frow.rd-f2{grid-template-columns:26px 44px 1fr}.rd-frow.rd-f2 .rd-why{grid-column:3}.rd-over4{white-space:normal;width:86%;text-align:center}.rd-cch{flex-wrap:wrap}}
+/* The paid research looks different from the free report. */
+.rd-paid .rd-box{background:#FDEBD7;box-shadow:inset 0 0 0 2px #F0861E}.rd-paid .rd-rail span{background:#F0861E;color:#10201C}
+.rd-paid .rd-box h2 .rd-tag{font-weight:400;align-self:center}.rd-paid .rd-ab{border-top-color:#F3CFA6}.rd-paid .rd-rs{color:#10201C}
+.rd-fk{display:inline-block;font:400 11px 'Geist Mono',ui-monospace,monospace;font-style:normal;letter-spacing:.07em;text-transform:uppercase;background:#E6EAE8;color:#33413D;border-radius:5px;padding:2px 6px;margin-right:8px;vertical-align:1px}
+.rd-fk.rd-earn{background:#10201C;color:#fff}
+/* The PDF is plain text: paragraphs and small icons, no boxes (founder, 26 Nov: "for PDF version, it just should be text ... no squares"). */
+@media print{
+  .rdy *{box-shadow:none!important}
+  .rd-box,.rd-verdict,.rd-good,.rd-cc,.rd-ic,.rd-sp,.rd-lead,.rd-next,.rd-move,.rd-q3,.rd-sum,.rd-score,.rd-skip,.rd-paid .rd-box{background:none!important;border:0!important;border-radius:0!important;padding-left:0!important;padding-right:0!important}
+  .rd-cc,.rd-ic{padding:6px 0!important;margin-top:6px!important;border-bottom:1px solid #D5DAD7!important}
+  .rd-step{display:block!important;margin-top:14px}.rd-rail{display:block;float:left;margin:0 8px 0 0}.rd-rail i{display:none}.rd-rail span{font-size:22px!important;line-height:1.3}
+  .rd-box{break-inside:auto!important;padding-top:0!important}.rd-box h2{break-after:avoid}
+  .rd-rail span,.rd-let,.rd-ci,.rd-cch .rd-lg{background:none!important;color:#10201C!important;border:0!important;width:auto!important;height:auto!important;margin:0!important;font-weight:600}
+  .rd-rail span:after,.rd-let:after{content:"."}
+  .rd-ft>i,.rd-bg>i,.rd-bg.rd-o>i,.rd-ft.rd-o>i{background:none!important;color:#10201C!important;width:18px!important;height:18px!important}
+  .rd-bg{border:0!important;border-radius:0!important}.rd-bg>span{padding-left:4px!important}
+  .rd-tag,.rd-from,.rd-fk,.rd-out,.rd-kind,.rd-imp{background:none!important;color:#10201C!important;padding:0!important;font-weight:600}
+  .rd-tag:after,.rd-fk:after{content:":"}
+  .rd-pb,.rd-lb{background:none!important;border:0!important;padding:0!important;text-decoration:underline!important}
+  .rd-ig,.rd-tg,.rd-ccb,.rd-two{display:block!important}.rd-track{display:none!important}
+  .rd-dot,.rd-d{display:none!important}
+  .rd-row,.rd-frow,.rd-crow,.rd-trow{break-inside:avoid}
+}

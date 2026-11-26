@@ -117,3 +117,16 @@ def test_the_free_report_shows_two_firms_and_the_research_holds_the_reasoning():
     assert "Why we suggest it" in js and "How to get in" in js and "What to say" in js and "Then these: big firms" in js
     rules = open(os.path.join(ROOT, "launch", "functions", "api", "_ready", "research.js")).read()
     assert "followers on" not in rules and "k: 'aud'" not in rules
+
+
+def test_feedback_of_26_nov_after_the_first_real_research():
+    """Founder, 26 Nov: the paid part is orange and step 4 goes once it is there; no "go now" under 8; flags say Rewrite or Earn it;
+    no news older than ten years; the PDF is plain text."""
+    js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
+    css = open(os.path.join(ROOT, "launch", "style.css")).read()
+    assert "'rd-st3', 'rd-paid')" in js and "if (st4) st4.remove();" in js and 'Full research <span class="rd-tag">Paid</span>' in js
+    assert ".rd-paid .rd-box{background:#FDEBD7" in css
+    assert "deck >= 8" in js and "Fix your red flags first, then go." in js and "Fix the red flags in step 1 first. Then press Pitch." in js
+    assert "'Earn it' : 'Rewrite'" in js
+    assert "new Date().getFullYear() - 10" in js
+    assert "no squares" in css and ".rd-paid .rd-box{background:none!important" in css.replace(",.rd-paid .rd-box{", ".rd-paid .rd-box{")

@@ -100,14 +100,17 @@
   const money = (n) => (n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : '$' + Math.round(n / 1e3) + 'K');
   const day = (d) => { const t = new Date(d + 'T00:00:00Z'); return isNaN(t) ? '' : t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); };
   const sc = (f) => (f.score != null ? f.score : 11 - f.matters);   // reports saved before the scores were turned round
-  const rows = (list, cls) => list.map((f) => `<div class="rd-row"><i class="rd-dot ${cls}"></i><b>${esc(f.what)}</b><span class="rd-wh">${esc(f.where)}</span><span class="rd-imp ${cls}">${sc(f)}<i>/10</i></span><span>${esc(f.why)}</span><span>${esc(f.fix)}</span></div>`).join('');
+  const rows = (list, cls) => list.map((f) => `<div class="rd-row"><i class="rd-dot ${cls}"></i><b>${esc(f.what)}</b><span class="rd-wh">${esc(f.where)}</span><span class="rd-imp ${cls}">${sc(f)}<i>/10</i></span><span>${esc(f.why)}</span><span>${f.by ? `<i class="rd-fk${f.by === 'proof' ? ' rd-earn' : ''}">${f.by === 'proof' ? 'Earn it' : 'Rewrite'}</i>` : ''}${esc(f.fix)}</span></div>`).join('');
   const head = (fix) => `<div class="rd-row rd-hd"><span></span><span>What</span><span>Where</span><span>Score</span><span>Why it matters</span><span>${fix}</span></div>`;
   // The mark for what is great: a small cup, our own drawing (no emoji).
   const CUP = '<svg class="rd-cup" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 13v4M9 20h6M10 17h4"/></svg>';
   // The mark for what is special in this field: a flame, our own drawing.
   const FIRE = '<svg class="rd-fire" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12.5 2c.6 3.400 4.500 5.200 4.500 10.200A5 5 0 0 1 7 12.200c0-1.700.700-3 1.700-4 .2 1.500.9 2.400 1.900 2.900C10.300 8.200 11 4.600 12.500 2z" fill="#E8501E"/><path d="M12 13.500c1 .9 1.900 1.900 1.900 3.300a1.900 1.900 0 0 1-3.800 0c0-1.300.9-2.300 1.900-3.300z" fill="#FFD36B"/></svg>';
   const tile = (label, n) => `<div class="rd-score"><span>${label}</span><b>${n == null ? '–' : n}<i>/10</i></b></div>`;
-  const step = (n, body, last) => `<div class="rd-step"><div class="rd-rail"><span>${n}</span>${last ? '' : '<i></i>'}</div><div class="rd-box">${body}</div></div>`;
+  const step = (n, body, last, id, cls) => `<div class="rd-step${cls ? ' ' + cls : ''}"${id ? ` id="${id}"` : ''}><div class="rd-rail"><span>${n}</span>${last ? '' : '<i></i>'}</div><div class="rd-box">${body}</div></div>`;
+  // The paid part looks different from the free report (founder, 26 Nov: "paid background on a paid thing should be different,
+  // should be orange ... hey, this thing is different, so you paid for it"), and once it is there step 4 is gone: its firms are in part B.
+  const PAID_H = '<h2>Full research <span class="rd-tag">Paid</span></h2>';
 
   // Step 4 of the free report shows the first two firms: who they are. Why each one fits, what to say and how to get in are
   // in the full research (founder, 26 Nov: "on the first step we should show 2 VCs, and here we should show reasoning").
@@ -121,7 +124,6 @@
   function moreFirms(r) {
     const n = (r.firms || []).length, rest = n - FREE_FIRMS;
     if (rest <= 0) return '';
-    if (r.research) return `<p class="rd-more">All ${n} firms, with why each one fits you, are in step 3.</p>`;
     return `<div class="rd-lock rd-l4"><div class="rd-blur">${'<div class="rd-frow rd-f2"><span class="rd-ord">0</span><span class="rd-lg">Fi</span><div><b class="rd-nm">Firm name</b><div class="rd-pl">City, country</div></div><div class="rd-why">00 deals in the last 12 months</div></div>'.repeat(Math.min(rest, 3))}</div><p class="rd-more rd-over4">${rest} more firm${rest === 1 ? '' : 's'}, and why each one fits you, in the full research.</p></div>`;
   }
 
@@ -168,6 +170,8 @@
   const OUT = { 'Shut down': 'shut', Acquired: 'acq', 'Changed direction': 'turn' };
   function researchHtml(x, r) {
     const comp = x.competitors || [], skip = x.skip || [], tried = x.tried || [], rr = x.rounds, now = x.now || {}, todo = x.todo || {};
+    const deck = r && r.scores ? r.scores.deck : null, ready = deck == null || deck >= 8;   // no "go now" while the deck is not ready
+    const fresh = (g) => { const ys = (String(g.what || '').match(/\b(19|20)\d{2}\b/g) || []).map(Number); return !ys.length || Math.max(...ys) >= new Date().getFullYear() - 10; };   // no news older than ten years
     const letters = 'ABCD'.split(''); const parts = [];
     const has = (c) => [
       c.raised ? fact('chq', c.raised.text, c.raised.date ? 'Raised · ' + day(c.raised.date) : 'Raised', c.raised.ours) : '',
@@ -176,7 +180,7 @@
     ].join('');
     const cards = comp.map((c) => `<div class="rd-cc"><div class="rd-cch"><span class="rd-ci">${esc((c.name || '?').slice(0, 1).toUpperCase())}</span><div>${c.site ? ext('https://' + c.site, c.name, 'rd-cn') : `<b class="rd-cn">${esc(c.name)}</b>`}<p>${esc(c.what)}</p></div>${ext(c.src, 'Source', 'rd-src')}</div>`
       + `<div class="rd-ccb"><div><p class="rd-cap">They have</p><div class="rd-fts">${has(c) || '<span class="rd-pl">Nothing we could check.</span>'}</div>${c.backers && c.backers.list.length ? `<p class="rd-bk"><i class="rd-d${c.backers.ours ? ' rd-o' : ''}"></i>Backed by ${c.backers.list.map((b) => (b.slug ? firmA(b) : esc(b.name))).join(', ')}</p>` : ''}</div>`
-      + `<div><p class="rd-cap">In the news</p><div class="rd-fts rd-col">${(c.news || []).map((g) => fact('news', g.what, '', false, g.src)).join('') || '<span class="rd-pl">Nothing found.</span>'}</div></div></div>`
+      + `<div><p class="rd-cap">In the news</p><div class="rd-fts rd-col">${(c.news || []).filter(fresh).map((g) => fact('news', g.what, '', false, g.src)).join('') || '<span class="rd-pl">Nothing found.</span>'}</div></div></div>`
       + (c.move || c.you ? `<div class="rd-move"><i>${ico('move', 16)}</i><span class="rd-cap">Your move</span><b>${esc(c.move || c.you)}</b></div>` : '') + '</div>').join('');
     parts.push(['Your competitors', OURS + WEB, now.competitors, comp.length ? cards : '<p class="rd-none">None found with a source we could check.</p>', todo.competitors]);
     // Part B: every firm the report picked, with the reasoning (founder, 26 Nov: the free report shows two firms; "here we can
@@ -195,12 +199,12 @@
       const way = bs.filter((b) => !AWARDED.includes(b.v)).map((b) => fact(b.k, b.v, b.n, true)).join('');
       return `<div class="rd-cc"><div class="rd-cch"><span class="rd-ord">${i + 1}</span>${logo(f)}<div>${firmA(f)}<p>${esc(place)}</p>${(f.marks || []).map((m) => `<span class="rd-mark">${CUP}${esc(m)}</span>`).join('')}</div>${pill}${t.apply ? `<a class="rd-pb" target="_blank" rel="noopener nofollow" href="${esc(t.apply)}">Pitch<span aria-hidden="true"> ↗</span></a>` : ''}</div>`
         + `<div class="rd-ccb"><div><p class="rd-cap">Why we suggest it</p><div class="rd-fts">${why}</div>${sum}</div><div><p class="rd-cap">How to get in</p><div class="rd-fts rd-col">${way || '<span class="rd-pl">Nothing on record yet.</span>'}</div></div></div>`
-        + (f.say ? `<div class="rd-move"><i>${ico('move', 16)}</i><span class="rd-cap">What to say</span><b>${esc(f.say)}</b></div>` : '') + '</div>';
+        + (f.say ? `<div class="rd-move"><i>${ico('move', 16)}</i><span class="rd-cap">What to say</span><b>${esc(ready ? f.say : String(f.say).replace(/\s*Go now\.$/, ' Fix your red flags first, then go.'))}</b></div>` : '') + '</div>';
     };
     if (picks.length || skip.length) parts.push(['Your investors', OURS, now.firms,
       picks.map(firmBlock).join('')
       + (then.length ? `<p class="rd-cap rd-skipc">Then these: big firms that later invested where the firms above went first</p><div class="rd-cc rd-skips">${then.map((t) => `<div class="rd-fl">${firmA(t)}<span>after ${esc(t.after)}${t.n > 1 ? ', ' + t.n + ' startups' : ''}</span></div>`).join('')}</div>` : '')
-      + (skip.length ? `<p class="rd-cap rd-skipc">Skip these firms: they hold one of your competitors</p><div class="rd-cc rd-skips">${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}</div>` : ''), todo.firms]);
+      + (skip.length ? `<p class="rd-cap rd-skipc">Skip these firms: they hold one of your competitors</p><div class="rd-cc rd-skips">${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}</div>` : ''), !ready && picks.length ? 'Fix the red flags in step 1 first. Then press Pitch.' : todo.firms]);
     const who = (t) => (t.founders || []).map((f) => ext('https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(f + ' ' + t.name), f + ' on LinkedIn', 'rd-lb')).join('');
     parts.push(['Who tried this before', WEB, now.tried, tried.length
       ? `<div class="rd-tg">${tried.map((t) => `<div class="rd-cc rd-tc"><div class="rd-cch"><div><b class="rd-cn">${esc(t.name)}</b><p>${esc(t.happened)}</p></div></div><div class="rd-fts rd-col">${fact(OUT[t.outcome] || 'turn', t.outcome || 'Earlier attempt', t.years, false)}</div><div class="rd-lbs">${ext(t.src, 'Read what happened', 'rd-lb')}${who(t)}</div></div>`).join('')}</div>`
@@ -235,7 +239,9 @@
     }
     r.research = j.research;
     $('rd-s3').innerHTML = researchHtml(j.research, r);
-    if ($('rd-f4')) $('rd-f4').innerHTML = moreFirms(r);
+    const st3 = $('rd-st3'), st4 = $('rd-st4');
+    if (st3) { st3.classList.add('rd-paid'); const h = st3.querySelector('h2'); if (h) h.outerHTML = PAID_H; const line = st3.querySelector('.rd-rail i'); if (line) line.remove(); }
+    if (st4) st4.remove();
   }
 
   function draw(r, same) {
@@ -253,8 +259,10 @@
       + goodBox
       + step(1, `<h2>Get rid of the red flags <small>${reds.length ? reds.length + ' · most important first' : 'none found'}</small></h2>${reds.length ? head('How to fix it') + rows(reds, 'rd-red') : ''}`)
       + step(2, `<h2>Improve these <small>${yel.length ? yel.length + ' · not deal-breakers, but investors will notice' : 'nothing stood out'}</small></h2>${yel.length ? head('How to improve it') + rows(yel, 'rd-yel') : ''}`)
-      + step(3, `<h2>Know your competitors</h2><div id="rd-s3">${r.research ? researchHtml(r.research, r) : LOCK(!!REPORT)}</div>`)
-      + step(4, `<h2>Pitch these firms, in this order</h2>${firms.length ? `<div class="rd-sub"><span class="rd-tag">Start here</span><span>They fit your stage and field and are writing cheques now.</span></div>${firms.slice(0, FREE_FIRMS).map(firmRow).join('')}<div id="rd-f4">${moreFirms(r)}</div>` : '<p class="rd-none">We found no firm with a recent deal at your stage in your field.</p>'}`, true);
+      + (r.research
+        ? step(3, `${PAID_H}<div id="rd-s3">${researchHtml(r.research, r)}</div>`, true, 'rd-st3', 'rd-paid')
+        : step(3, `<h2>Know your competitors</h2><div id="rd-s3">${LOCK(!!REPORT)}</div>`, false, 'rd-st3')
+          + step(4, `<h2>Pitch these firms, in this order</h2>${firms.length ? `<div class="rd-sub"><span class="rd-tag">Start here</span><span>They fit your stage and field and are writing cheques now.</span></div>${firms.slice(0, FREE_FIRMS).map(firmRow).join('')}<div id="rd-f4">${moreFirms(r)}</div>` : '<p class="rd-none">We found no firm with a recent deal at your stage in your field.</p>'}`, true, 'rd-st4'));
     show(res);
     $('rd-pdf').addEventListener('click', () => window.print());
     if ($('rd-buy')) $('rd-buy').addEventListener('click', () => research(r));
