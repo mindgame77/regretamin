@@ -346,24 +346,33 @@
     x = Math.max(34, Math.min(box.width - w - 70, x)); y = Math.max(96, Math.min(box.height - h - 120, y));
     b.style.left = x + 'px'; b.style.top = y + 'px'; b.classList.toggle('vm-nopin', !r);
   }
-  async function showPost(q) {
+  // A post is made ready off screen first, so the line, the map and the post can change in the same instant (founder,
+  // 26 Nov). Long posts (a video plus a quoted post and the like) are not used: the next one of the quarter is tried.
+  const POST_MAX = 470;
+  async function preparePost(q, run) {
     const set = S.view === 'founders' ? null : POSTS[q];
-    if (!set) return;
-    const pick = set[Math.floor(Math.random() * set.length)], run = S.playing;
-    if (!(await xLoad()) || S.playing !== run || !run) return;
+    if (!set || !(await xLoad()) || S.playing !== run) return null;
+    const order = set.slice().sort(() => Math.random() - 0.5);
+    for (const pick of order) {
+      const next = document.createElement('div'); next.className = 'vm-post-in';
+      const hold = document.createElement('div'); hold.style.cssText = 'position:absolute;left:-9999px;top:0;width:300px'; document.body.appendChild(hold); hold.appendChild(next);
+      try { await window.twttr.widgets.createTweet(pick[0], next, { width: 300, dnt: true, conversation: 'none' }); } catch (e) { hold.remove(); continue; }
+      if (S.playing !== run) { hold.remove(); return null; }
+      const fr = next.querySelector('iframe'), hh = fr ? fr.getBoundingClientRect().height : 0;
+      if (!fr || hh < 60 || hh > POST_MAX) { hold.remove(); continue; }  // deleted, or too long
+      const tw = next.querySelector('.twitter-tweet'); if (tw) { tw.style.marginTop = '0'; tw.style.marginBottom = '0'; }
+      return { pick, next, hold, hh };
+    }
+    return null;
+  }
+  function commitPost(pp) {
+    if (!pp) return hidePost();
     let b = document.getElementById('vm-post');
     if (!b) { b = document.createElement('div'); b.id = 'vm-post'; b.className = 'vm-post'; b.hidden = true; mapBox.appendChild(b); }
-    const next = document.createElement('div'); next.className = 'vm-post-in';
-    const hold = document.createElement('div'); hold.style.cssText = 'position:absolute;left:-9999px;top:0;width:300px'; document.body.appendChild(hold); hold.appendChild(next);
-    try { await window.twttr.widgets.createTweet(pick[0], next, { width: 300, dnt: true, conversation: 'none' }); } catch (e) { hold.remove(); return; }
-    const fr = next.querySelector('iframe');
-    if (!fr || S.playing !== run) { hold.remove(); return; }  // a post that was deleted draws nothing: skip it
-    const tw = next.querySelector('.twitter-tweet'); if (tw) { tw.style.marginTop = '0'; tw.style.marginBottom = '0'; }
-    const hh = fr.getBoundingClientRect().height;
-    b.innerHTML = `<i class="vm-post-arm"></i><span class="vm-post-pill"><i></i><i></i><u></u></span><span class="vm-post-tag">${esc(pick[1])}</span><div class="vm-post-mini" style="height:${Math.round(hh * 0.8)}px"></div><button type="button" class="vm-post-hit" aria-label="Open this post"></button>`;
-    b.querySelector('.vm-post-mini').appendChild(next); hold.remove();
-    postNow = pick; b.hidden = false; placePost();
-    b.querySelector('.vm-post-hit').onclick = () => openPost(pick);
+    b.innerHTML = `<i class="vm-post-arm"></i><span class="vm-post-pill"><i></i><i></i><u></u></span><span class="vm-post-tag">${esc(pp.pick[1])}</span><div class="vm-post-mini" style="height:${Math.round(pp.hh * 0.8)}px"></div><button type="button" class="vm-post-hit" aria-label="Open this post"></button>`;
+    b.querySelector('.vm-post-mini').appendChild(pp.next); pp.hold.remove();
+    postNow = pp.pick; b.hidden = false; placePost();
+    b.querySelector('.vm-post-hit').onclick = () => openPost(pp.pick);
   }
   function openPost(pick) {  // the post at full size; Play waits until it is closed
     let ov = document.getElementById('postbig');
@@ -380,18 +389,25 @@
     if (S.playing) return stop();  // one press plays, the next stops and the post goes away; no speeding up (founder, 25 Nov, after trying it)
     closeList(); if (S.q1 >= NQ - 1) S.q1 = S.q0;  // play grows the range one quarter at a time, from the left handle
     const run = S.playing = {}; S.speed = 1;
-    drawTime(); xLoad(); await refresh(); showPost(S.q1);
-    // One step at a time: wait for the numbers, show them, pause, then move on. Never ahead of the data.
+    drawTime(); xLoad();
+    const first = await preparePost(S.q1, run);
+    if (S.playing !== run) return;
+    await refresh(); commitPost(first);
+    // One beat per quarter: the next quarter's numbers and its post are fetched quietly, and only when both are ready do
+    // the line, the map and the post change together. Never ahead of the data.
     while (S.playing === run && S.q1 < NQ - 1) {
-      // a quarter that shows a post stays long enough to read it
-      const wait = (POSTS[S.q1] && S.view !== 'founders' ? 2600 : 450) / (S.speed || 1);
-      await new Promise((r) => setTimeout(r, wait));
+      const t0 = Date.now(), next = S.q1 + 1, founders = S.view === 'founders';
+      S.q1 = next; const ask = founders ? null : summary(); S.q1 = next - 1;  // asks for the next quarter; nothing on screen moves yet
+      const [d, pp] = await Promise.all([ask, preparePost(next, run)]);
+      const left = (postNow ? 2600 : 450) - (Date.now() - t0);  // a quarter that shows a post stays long enough to read it
+      if (left > 0) await new Promise((r) => setTimeout(r, left));
       while (postHold && S.playing === run) await new Promise((r) => setTimeout(r, 200));
-      if (S.playing !== run) return;
-      S.q1 += 1; drawTime(); await refresh(); placePost();
-      if (POSTS[S.q1]) showPost(S.q1); else hidePost();
+      if (S.playing !== run) { if (pp) pp.hold.remove(); return; }
+      S.q1 = next; drawTime();
+      if (founders) refresh(); else if (d) { remember(); S.data = d; draw(); }
+      commitPost(pp);
     }
-    if (S.playing === run) { await new Promise((r) => setTimeout(r, 1200)); if (S.playing === run) stop(); }
+    if (S.playing === run) { await new Promise((r) => setTimeout(r, postNow ? 2600 : 1200)); if (S.playing === run) stop(); }
   });
 
   // ---------- zoom
