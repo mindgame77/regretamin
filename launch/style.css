@@ -1215,6 +1215,14 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-stage.vm-live .vm-pl{transition:none}#vm-labs.vm-still .vm-lab{animation:none}
 .vm-map{touch-action:pan-y}.vm-map.vm-zoomed{touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
 .vm.vm-fview .vm-pm{display:none}
+.vm-pl.vm-path{background:#F0861E;border:1.5px solid #10201C;opacity:.92}
+.vm.vm-pview #vm-cta{display:none}
+.vm-side .vm-pfs a.vm-pf{display:flex;align-items:center;gap:10px;padding:9px 0;margin:0;border:0;border-top:1px solid #E9EDEB;border-radius:0;background:none;color:inherit;text-decoration:none}
+.vm-pfk{flex:none;width:18px;font:400 12px 'Geist Mono',monospace;color:#5B6B66}
+.vm-pfl{flex:none;width:28px;height:28px;border-radius:7px;border:1px solid #E3E8E6;object-fit:cover;background:#fff}
+.vm-pfi{display:flex;align-items:center;justify-content:center;background:#E2E7E5;color:#586964;font:600 11px 'Geist',sans-serif}
+.vm-pft{min-width:0;flex:1}.vm-pft b{display:block;font:600 14px/1.3 'Geist',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vm-pft i{display:block;font:400 12px/1.3 'Geist',sans-serif;font-style:normal;color:#5B6B66;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vm-pfn{flex:none;font:600 15px 'Geist',sans-serif}
 .vm-sh{position:absolute;right:24px;bottom:196px;z-index:4;width:38px;height:38px;padding:0;border:1px solid #8A9893;border-radius:10px;background:#fff;color:#10201C;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .vm-sh svg{width:17px;height:17px}
 .vm.vm-fview .vm-sh{display:none}
