@@ -39,7 +39,7 @@ def test_every_metro_area_in_the_sql_has_a_spot():
 def test_backgrounds_exist_and_page_never_invents_data():
     for name in ('world', 'us', 'eu'):
         assert (ROOT / f'launch/assets/map/{name}.svg').read_text().startswith('<svg')
-    assert "'v2_map_summary'" in JS and "sb.rpc('v2_map_firms'" in JS and "sb.rpc('v2_map_updates'" in JS
+    assert "'v2_map_summary'" in JS and "sb.rpc('v2_map_firms_gated'" in JS and "sb.rpc('v2_map_updates'" in JS  # the firms list goes through the gated answer since 25 Nov
     # the saved test answer is only ever read on a local preview host
     assert 'const FIXTURE = LOCAL ?' in JS
 
@@ -328,4 +328,13 @@ def test_pathfinders_lists_are_locked_until_the_visitor_posts_on_x_and_signs_in(
     mig = next((ROOT / 'supabase/migrations').glob('*_v2_share_to_unlock.sql')).read_text()
     assert 'create table if not exists public.v2_share_codes' in mig and 'enable row level security' in mig
     assert 'r.k <= case when me.ok then 30 else 3 end' in mig  # the lock is in the database, not only a blur
+
+
+def test_the_firms_list_behind_a_place_is_short_until_unlocked():
+    """Founder, 25 Nov: "let's hide money flow, the firm list ... after 5, and fresh funds in trends after 3"."""
+    js = (ROOT / 'launch/js/map.js').read_text()
+    mig = next((ROOT / 'supabase/migrations').glob('*_v2_map_firms_gated.sql')).read_text()
+    assert "sb.rpc('v2_map_firms_gated'," in js and "sb.rpc('v2_map_firms'," not in js
+    assert "case when p_firms = 'fresh' then 3 else 5 end" in mig and 'create or replace function public.v2_map_firms(' not in mig  # the old function is untouched
+    assert "${lockedFirms(L.data)}<a class=\"vm-more\"" in js and "L.data && L.data.locked ? ' data-unlock' : ''" in js
 
