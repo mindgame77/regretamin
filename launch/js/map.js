@@ -640,7 +640,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     const t = (S.data.totals || {})[S.level] || { firms: 0 };
     $('#vm-h1').textContent = 'Who the top firms follow.';
     S.countId = (S.countId || 0) + 1; S.shown = null;
-    $('#vm-based').textContent = `Based on ${num(t.firms)} firm${t.firms === 1 ? '' : 's'} the Top 100 invested after`;
+    $('#vm-based').textContent = `Based on ${num(t.firms)} firm${t.firms === 1 ? '' : 's'} the Top 100 followed`;  // one line, as in every view
     $('#vm-legend').innerHTML = '';
   }
   function drawHead() {
