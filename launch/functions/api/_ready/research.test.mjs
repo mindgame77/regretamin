@@ -149,3 +149,9 @@ test('investor badges say only what we hold, and a firm with nothing to say is l
   assert.deepEqual(out[2].badges, [{ k: 'chq', v: '$1M-$2M', n: 'Cheque size' }]);                  // no recorded lead: nothing is said about leading
   assert.equal(investorTips(firms, tips, 'Fintech', {})[0].badges.find((b) => b.k === 'aud').n, 'Big audience');
 });
+
+test('a round we hold without a name reads "round", not "Other"', () => {
+  const rows = { competitors: [{ name: 'Oura', site: 'ouraring.com', what: 'x', raised: '', backers: [], move: '', src: 'https://ouraring.com' }], tried: [] };
+  const r = buildResearch(rows, { competitors: [{ asked: 'Oura', name: 'Oura', round: 'Other', date: '2025-10-14', amount: 900000000, currency: 'USD', backers: [] }] }, {}, {});
+  assert.equal(r.competitors[0].raised.text, '$900M round');
+});
