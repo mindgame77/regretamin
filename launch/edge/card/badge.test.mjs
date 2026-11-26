@@ -18,9 +18,11 @@ test('a badge address names a signal and a look, nothing else', () => {
   assert.equal(initials('Bessemer Venture Partners'), 'BV');
 });
 
-test('the titles are the words the firm page uses for the same signals', () => {
+test('every badge is one the firm page offers, under the same name, and "Slowing down" has none', () => {
   const co = fs.readFileSync(here('../../js/company.js'), 'utf8');
   for (const [code, b] of Object.entries(BADGES)) assert.ok(co.includes(`['${code}', '${b.title}']`), code);
+  assert.deepEqual(Object.keys(BADGES), ['top', 'lead', 'up', 'chain', 'spec', 'fund']);
+  assert.equal(badgeOf('down-pill.png'), null);
 });
 
 test('every badge draws as a picture with its words as outlines (the renderer loads no fonts)', async () => {

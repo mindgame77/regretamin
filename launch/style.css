@@ -1887,8 +1887,16 @@ main.prof .ph .ph1 .plg{width:52px;height:52px;flex:none;margin-right:14px;borde
 
 /* Firm badges (25 Nov): the small "Get your badge" button under the status tiles and the pictures it opens. */
 main.prof .ats .bdg{margin-top:2px}
-main.prof .bdgb{font:600 13px/1 'Geist',system-ui,sans-serif;color:#10201C;background:none;border:0;padding:6px 2px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-main.prof .bdgp{margin-top:6px;background:#fff;border:1px solid #C9D1CE;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:12px}
-main.prof .bdgr{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-main.prof .bdgr a{display:inline-flex}main.prof .bdgr img{height:64px;width:auto;display:block}main.prof .bdgr a:nth-child(3) img{height:30px}
-main.prof .bdgc{margin-left:auto;font:600 12px/1 'Geist',system-ui,sans-serif;height:32px;padding:0 12px;border-radius:99px;border:1px solid #8A9893;background:#fff;color:#10201C;cursor:pointer}
+main.prof .bdgb{font:600 13px/1 'Geist',system-ui,sans-serif;color:#10201C;background:#F0861D;border:1.5px solid #10201C;border-radius:99px;height:32px;padding:0 14px;cursor:pointer}
+main.prof .bdgb:hover{background:#F59A3C}
+.md.bdgm{width:620px;max-width:calc(100vw - 24px)}
+.bdgm .amh .bdga{order:1;margin-left:auto;font:600 13px/1 'Geist',system-ui,sans-serif;height:34px;padding:0 14px;border-radius:99px;border:0;background:#10201C;color:#fff;cursor:pointer}
+.bdgm .amh .bdga:disabled{opacity:.5;cursor:default}
+.bdgm .amh .x{margin-left:12px}
+.bdgm .amb{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 140px);overflow:auto}
+.bdgm .bdgr{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid #E3E8E6}
+.bdgm .bdgr:last-child{border-bottom:0}
+.bdgm .bdgr a{display:inline-flex;border-radius:12px;transition:transform .12s}.bdgm .bdgr a:hover{transform:translateY(-2px)}
+.bdgm .bdgr img{height:104px;width:auto;display:block}.bdgm .bdgr a:nth-child(3) img{height:44px}
+.bdgm .bdgc{margin-left:auto;font:600 12px/1 'Geist',system-ui,sans-serif;height:32px;padding:0 12px;border-radius:99px;border:1px solid #8A9893;background:#fff;color:#10201C;cursor:pointer}
+@media (max-width:640px){.bdgm .bdgr img{height:84px}.bdgm .bdgr a:nth-child(3) img{height:38px}.bdgm .bdgc{margin-left:0}}
