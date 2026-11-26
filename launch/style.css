@@ -2052,3 +2052,5 @@ nav a#readynav:hover{background:#E07810}
 .rpr .btn{flex:none;padding:8px 14px;font-size:14px}#myscore #msgo{margin-top:8px;background:#F0861E;border-color:#F0861E;color:#10201C}
 @media (max-width:640px){.rpr{flex-wrap:wrap;padding-bottom:12px}.rpr>a:first-child{flex-basis:100%;grid-template-columns:1fr 48px;row-gap:2px;padding-bottom:8px}.rpr>a:first-child span:first-child,.rpr>a:first-child span:nth-child(3){grid-column:1}.rpl .rps{grid-column:2;grid-row:1 / span 3}}
 #myscore h1{margin-bottom:24px}
+.rd-made{display:none}
+@media print{.rd-made{display:flex!important;align-items:center;gap:8px;margin:0 0 14px!important;font-weight:600;font-size:15px;color:#10201C}.rd-made img{width:26px;height:26px}}
