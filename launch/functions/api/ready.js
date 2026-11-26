@@ -48,7 +48,13 @@ export async function onRequestPost(ctx) {
     .filter(Boolean).join('\n\n') || 'The founder sent the deck only.';
   const deckUrl = `${SB}/storage/v1${link}`;
   const ask = `${note}\n\nReview this deck. Answer with the JSON object only.`;
-  const got = env.GEMINI_API_KEY ? await askGemini(env, deckUrl, ask) : await askClaude(env, deckUrl, ask);
+  let got = env.GEMINI_API_KEY ? await askGemini(env, deckUrl, ask) : await askClaude(env, deckUrl, ask);
+  // The spare key (founder, 26 Nov: "an extra key if Gemini will not work"): when Gemini fails or answers nonsense, Claude is asked.
+  if (env.GEMINI_API_KEY && env.ANTHROPIC_API_KEY && (got.error || !parseModelJson(got.text))) {
+    const first = got.error || 'model_answer_unreadable';
+    got = await askClaude(env, deckUrl, ask);
+    if (got.error) got.error = `${first}; then ${got.error}`;
+  }
   if (got.error) return fail(got.error);
   const { model, text, usage } = got;
   const answers = parseModelJson(text);
@@ -68,7 +74,7 @@ export async function onRequestPost(ctx) {
 
 // The model is one replaceable part: each maker's call takes the deck's link and the question, and gives back the text.
 async function askClaude(env, deckUrl, ask) {
-  const model = env.READY_MODEL || 'claude-opus-5-5';
+  const model = /^claude/.test(env.READY_MODEL || '') ? env.READY_MODEL : 'claude-opus-5-5';
   let r;
   try {
     r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -85,7 +91,7 @@ async function askClaude(env, deckUrl, ask) {
 
 // Gemini: the deck goes by its link (the maker fetches files up to 15 MB itself); if that is refused, the file is sent inside the request.
 async function askGemini(env, deckUrl, ask) {
-  const model = env.READY_MODEL || 'gemini-4-neon';
+  const model = /^gemini/.test(env.READY_MODEL || '') ? env.READY_MODEL : 'gemini-4-neon';
   const call = (filePart) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'x-goog-api-key': env.GEMINI_API_KEY, 'content-type': 'application/json' },
