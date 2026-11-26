@@ -1943,3 +1943,6 @@ main.prof .ph1 .bdgb svg{width:17px;height:17px}
 .vm-post-pill u{position:absolute;left:43px;top:17px;width:10px;height:5px;border:2px solid #10201C;border-top:0;border-radius:0 0 8px 8px}
 .md.vm-postbig{width:480px;max-width:calc(100vw - 24px);max-height:calc(100vh - 40px);overflow:auto;padding:34px 18px 10px;border-radius:20px;position:relative}.vm-postbig .x{position:absolute;top:8px;right:14px;float:none}
 .vm.vm-fview .vm-post{display:none}
+
+/* Pricing is hidden from the header for now (founder, 26 Nov). The page and the pop-up stay; only the link is gone. */
+nav a[href$="plans/"]{display:none}
