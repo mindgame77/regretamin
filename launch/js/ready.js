@@ -144,8 +144,10 @@
     parts.push(['Your competitors', OURS + WEB, now.competitors, comp.length
       ? `<div class="rd-crow rd-hd"><span>Company</span><span>They have</span><span>In the news</span><span>Your move</span></div>${cRows}`
       : '<p class="rd-none">None found with a source we could check.</p>', todo.competitors]);
-    if (skip.length) parts.push(['Firms that hold a competitor', OURS, now.firms,
-      skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join(''), todo.firms]);
+    const inv = x.investors || [];
+    if (inv.length || skip.length) parts.push(['Your investors', OURS, now.firms,
+      inv.map((f) => `<div class="rd-irow"><div>${firmA(f)}</div><div>${(f.tips || []).map((t) => li(t.url ? ext(t.url, t.t) : esc(t.t), true)).join('') || '–'}</div><div>${f.apply ? `<a class="rd-pb" target="_blank" rel="noopener nofollow" href="${esc(f.apply)}">Pitch<span aria-hidden="true"> ↗</span></a>` : ''}</div></div>`).join('')
+      + (skip.length ? `<p class="rd-cap rd-skipc">Skip these firms: they hold one of your competitors</p>${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}` : ''), todo.firms]);
     const who = (t) => (t.founders || []).map((f) => ext('https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(f + ' ' + t.name), f)).join(', ');
     parts.push(['Who tried this before', WEB, now.tried, tried.length
       ? tried.map((t) => `<div class="rd-trow"><span class="rd-wh">${esc(t.years)}</span><div><b>${esc(t.name)}</b>${t.outcome ? `<span class="rd-out">${esc(t.outcome)}</span>` : ''}<p>${esc(t.happened)}</p><p class="rd-pl">${ext(t.src, 'Read what happened')}${t.founders && t.founders.length ? ' · Founders to ask, on LinkedIn: ' + who(t) : ''}</p></div></div>`).join('')

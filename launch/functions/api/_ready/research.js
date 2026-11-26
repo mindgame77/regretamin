@@ -146,9 +146,24 @@ export function askLine(ask, r) {
   return `Your ask is ${where}. Announced rounds lean large, so the true middle is lower than ${usd(r.p50)}.`;
 }
 
+// Tips about the firms the report tells the founder to pitch (founder, 26 Nov: "extra insights about some investors ... if we
+// have a button to pitch, it's even better"). Our data only (v2_ready_firm_tips); a firm shows only what we hold about it.
+export function investorTips(firms, tips, sector) {
+  const by = new Map((Array.isArray(tips) ? tips : []).map((t) => [t && t.slug, t]));
+  return (Array.isArray(firms) ? firms : []).map((f) => {
+    const t = by.get(f.slug) || {}, lines = [], a = t.audience;
+    if (a && Number(a.followers) >= 10000) lines.push({ t: `Big audience: ${Number(a.followers).toLocaleString('en-US')} followers on ${clip(a.platform, 20)}.${/consumer/i.test(String(sector || '')) ? ' That helps when you sell to consumers.' : ''}`, url: /^https?:\/\//i.test(a.url || '') ? a.url : '' });
+    const deals = Number(t.deals) || 0, led = Number(t.led) || 0;   // only what we know: a firm with no recorded lead gets no line
+    if (deals >= 5 && led >= 1) lines.push({ t: led / deals >= 0.4 ? `Often leads: it led ${led} of its ${deals} deals in the last year. Ask it to lead.` : `Sometimes leads: it led ${led} of its ${deals} deals in the last year.` });
+    if (t.cheque) lines.push({ t: `Cheque size: ${clip(t.cheque, 40)}.` });
+    const apply = /^https?:\/\//i.test(t.apply || '') ? t.apply : '';
+    return apply || lines.length ? { slug: f.slug, name: f.name, apply, tips: lines } : null;
+  }).filter(Boolean).slice(0, 6);
+}
+
 // Looked-up rows + our data -> what step 3 of the report draws.
-//   ours: the answer of v2_ready_research.
-export function buildResearch(rows, ours, report, meta) {
+//   ours: the answer of v2_ready_research; tips: the answer of v2_ready_firm_tips for the report's firms.
+export function buildResearch(rows, ours, report, meta, tips) {
   const o = ours && typeof ours === 'object' ? ours : {};
   const co = (report && report.company) || {};
   const held = new Map((Array.isArray(o.competitors) ? o.competitors : []).map((c) => [String(c.asked || '').toLowerCase(), c]));
@@ -172,10 +187,11 @@ export function buildResearch(rows, ours, report, meta) {
   const stage = o.stage || co.stage || 'Seed';
   const r = o.rounds && Number(o.rounds.n) >= 5 ? { n: Number(o.rounds.n), p25: Number(o.rounds.p25), p50: Number(o.rounds.p50), p75: Number(o.rounds.p75), p90: Number(o.rounds.p90) } : null;
   const ask = Number(co.ask_usd) > 0 ? Number(co.ask_usd) : null;
+  const investors = investorTips(report && report.firms, tips, co.sector);
   // One thing to do per part (founder, 26 Nov: "make it useful for someone who's reading and actionable"). Fixed wording, by rule.
   const todo = {
     competitors: competitors.length ? 'Put these on your competition slide. Have your answer ready for each one.' : '',
-    firms: skip.length ? 'Take these off your target list. The firms to pitch are in step 4.' : '',
+    firms: investors.some((f) => f.apply) ? `Press Pitch on the first one today.${skip.length ? ' Leave out the firms that hold a competitor.' : ''}` : skip.length ? 'Take the firms that hold a competitor off your target list.' : '',
     tried: rows.tried.length ? 'Message one of these founders this week. Ask the three questions.' : '',
     ask: r ? (ask ? 'Be ready to defend your number against these rounds.' : 'Add your ask to the deck: the amount and what it pays for.') : '',
   };
@@ -183,10 +199,10 @@ export function buildResearch(rows, ours, report, meta) {
   const n = competitors.length, k = skip.length, t = rows.tried.length;
   const now = {
     competitors: n ? `${n} compan${n === 1 ? 'y' : 'ies'} an investor will compare you with.` : '',
-    firms: k ? `${k} firm${k === 1 ? '' : 's'} we list already hold${k === 1 ? 's' : ''} one of them.` : '',
+    firms: investors.length ? 'What we know about the firms in step 4 that helps you get in.' : k ? `${k} firm${k === 1 ? '' : 's'} we list already hold${k === 1 ? 's' : ''} one of your competitors.` : '',
     tried: t ? `${t} compan${t === 1 ? 'y' : 'ies'} tried this before you.` : '',
   };
-  return { v: 2, at: (meta && meta.at) || null, competitors, skip, tried: rows.tried, now, todo,
+  return { v: 2, at: (meta && meta.at) || null, competitors, investors, skip, tried: rows.tried, now, todo,
     rounds: r ? { ...r, ask, stage, sector: o.sector_known ? co.sector || null : null, line: askLine(ask, r) } : null,
     stage, sector: co.sector || null,
     searches: (meta && meta.searches) || 0, model: (meta && meta.model) || null, tokens_in: (meta && meta.tokens_in) || null, tokens_out: (meta && meta.tokens_out) || null };

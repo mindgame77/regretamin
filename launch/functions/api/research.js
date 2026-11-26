@@ -5,7 +5,7 @@
 //   2. the model searches the web (Claude's own web search tool) for competitors and for who tried the idea before;
 //   3. rows without a source the search really returned are dropped (./_ready/research.js);
 //   4. our database adds who funded the competitors, what we know about their founders, the firms that hold one, and the
-//      range of rounds like the founder's (v2_ready_research).
+//      range of rounds like the founder's (v2_ready_research), and tips about the firms to pitch (v2_ready_firm_tips).
 // Needs the Cloudflare secret ANTHROPIC_API_KEY (the search tool is Claude's). READY_MODEL may name another Claude model.
 import { parseModelJson } from './_ready/rules.js';
 import { researchPrompt, researchAsk, pagesSeen, answerText, vetted, buildResearch, SEARCHES } from './_ready/research.js';
@@ -46,9 +46,12 @@ export async function onRequestPost(ctx) {
   const rpc = async (fn, args) => {
     try { const r = await fetch(`${SB}/rest/v1/rpc/${fn}`, { method: 'POST', headers: mine, body: JSON.stringify(args) }); return r.ok ? await r.json() : null; } catch (e) { return null; }
   };
-  const ours = await rpc('v2_ready_research', { p_names: rows.competitors.map((c) => c.name), p_domains: rows.competitors.map((c) => c.site || null), p_stage: String(co.stage || 'Seed'), p_sector: String(co.sector || 'Other') });
+  const [ours, tips] = await Promise.all([
+    rpc('v2_ready_research', { p_names: rows.competitors.map((c) => c.name), p_domains: rows.competitors.map((c) => c.site || null), p_stage: String(co.stage || 'Seed'), p_sector: String(co.sector || 'Other') }),
+    rpc('v2_ready_firm_tips', { p_slugs: (Array.isArray(row.result.firms) ? row.result.firms : []).map((f) => f && f.slug).filter(Boolean).slice(0, 12) }),
+  ]);
 
-  const research = buildResearch(rows, ours, row.result, { at: new Date().toISOString(), searches: got.searches, model: got.model, tokens_in: got.usage.in, tokens_out: got.usage.out });
+  const research = buildResearch(rows, ours, row.result, { at: new Date().toISOString(), searches: got.searches, model: got.model, tokens_in: got.usage.in, tokens_out: got.usage.out }, tips);
   await save({ result: { ...row.result, research }, error: null });
   return json({ research, id });
 }
