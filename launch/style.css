@@ -1886,8 +1886,8 @@ main.prof .ph .ph1 .plg{width:52px;height:52px;flex:none;margin-right:14px;borde
 @media (max-width:640px){main.prof .ph .ph1 .plg{width:40px;height:40px;border-radius:10px;padding:5px;margin-right:10px}}
 
 /* Firm badges (25 Nov): the small "Get your badge" button under the status tiles and the pictures it opens. */
-main.prof .ph1 .bdgb{flex:none;margin-left:8px;width:36px;height:36px;padding:0;border-radius:50%;border:1px solid #8A9893;background:#fff;color:#10201C;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;position:relative;top:-.06em}
-main.prof .ph1 .bdgb:hover{background:#F0861E;border-color:#10201C}
+main.prof .ph1 .bdgb{flex:none;margin:0;width:36px;height:36px;padding:0;border-radius:50%;border:1px solid #8A9893;background:#fff;color:#10201C;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+main.prof .ph1 .bdgb:hover{border-color:#10201C}
 main.prof .ph1 .bdgb svg{width:17px;height:17px}
 .md.bdgm{width:760px;max-width:calc(100vw - 24px)}
 .bdgm .amh .bdga{order:1;margin-left:auto;font:600 13px/1 'Geist',system-ui,sans-serif;height:34px;padding:0 14px;border-radius:99px;border:0;background:#10201C;color:#fff;cursor:pointer}

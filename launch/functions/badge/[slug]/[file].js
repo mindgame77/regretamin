@@ -1,6 +1,7 @@
 import { badgeResponse } from '../../../edge/card/badge.mjs';
 import resvg from '../../../edge/card/resvg.wasm';
-// /badge/<slug>/<signal>-<look>.png: a firm's badge (edge/card/badge.mjs). The edge keeps a drawn badge for an hour.
+// /badge/<slug>/<signal>-<look>.png: a firm's badge (edge/card/badge.mjs). A drawn badge is kept for seven days (founder, 25 Nov), so it is drawn at most once a week;
+// company.js adds ?v=<n> to the address and raises it when the design changes, which refreshes them all at once.
 export async function onRequestGet(ctx) {
   const cache = caches.default, key = new Request(new URL(ctx.request.url).toString(), { method: 'GET' });
   const hit = await cache.match(key);

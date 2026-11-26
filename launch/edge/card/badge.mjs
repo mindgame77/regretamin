@@ -127,7 +127,7 @@ export async function badgeResponse({ request, env, assets, slug, file, wasm, fe
     if (lr.ok && /image\/png/.test(lr.headers.get('content-type') || '')) logo = 'data:image/png;base64,' + b64(await lr.arrayBuffer());
     const svg = badgeSvg({ signal: want.signal, look: want.look, year: now.getUTCFullYear(), logo, name: row.name });
     const png = await drawBadge(svg, { wasm });
-    return new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' } });
+    return new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=604800', 'access-control-allow-origin': '*' } });
   } catch (e) {
     return no();
   }
