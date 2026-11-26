@@ -2043,5 +2043,3 @@ nav a#readynav:hover{background:#E07810}
 .rd-sp .rd-fire{flex:none;margin-top:1px}.rd-sp>div{flex:1}.rd-sp b{font-weight:600}.rd-sp p{margin-top:2px!important;color:#33413D}
 .rd-kind{display:inline-block;font:400 11px 'Geist Mono',ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;background:#E8501E;color:#fff;border-radius:5px;padding:2px 6px;margin-right:8px;vertical-align:2px}
 .rd-imp.rd-hot{background:#fff;color:#B03A12;align-self:center}
-.rd-score{display:flex;flex-direction:column;justify-content:space-between;align-self:stretch}
-.rd-score span{max-width:108px;line-height:1.35}
