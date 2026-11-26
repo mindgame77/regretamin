@@ -931,6 +931,11 @@
     "description": "How Regretamin searches public records and checks venture capital firms.",
     "nav_label": "How we check"
    },
+   "ready": {
+    "title": "Am I ready to pitch? · Regretamin",
+    "description": "Upload your pitch deck and see what to fix and which investors to pitch.",
+    "nav_label": "Am I ready to pitch?"
+   },
    "account": {
     "title": "Account · Regretamin",
     "description": "Manage your Regretamin account, plan and checks.",

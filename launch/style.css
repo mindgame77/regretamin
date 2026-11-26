@@ -1946,3 +1946,77 @@ main.prof .ph1 .bdgb svg{width:17px;height:17px}
 
 /* Pricing is hidden from the header for now (founder, 26 Nov). The page and the pop-up stay; only the link is gone. */
 nav a[href$="plans/"]{display:none}
+
+/* ---------- "Am I ready to pitch?" (founder, 26 Nov 2026): the orange header link on every page, and the page itself (pages/ready.py, js/ready.js). */
+nav a#readynav{display:inline-flex;align-items:center;height:44px;padding:0 18px;border-radius:10px;background:#F0861E;color:#10201C;font-size:15px;font-weight:600;white-space:nowrap;text-decoration:none}
+nav a#readynav:hover{background:#E07810}
+@media (max-width:640px){nav a#readynav{height:34px;padding:0 12px;font-size:13px}}
+.rdy{max-width:1288px;margin:0 auto;padding:30px 24px 48px;color:#10201C;font-size:15px;line-height:1.45}
+.rdy *{box-sizing:border-box}
+.rdy [hidden]{display:none!important}
+.rdy h1,.rdy h2,.rdy p{margin:0}
+.rd-cap{font:400 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#6B7772}
+.rd-up{display:grid;grid-template-columns:minmax(0,1fr) 600px;gap:64px;align-items:center;min-height:560px}
+.rd-pitch h1{font-size:64px;line-height:1.02;font-weight:600;letter-spacing:-.02em;color:#F0861E;margin:12px 0 16px}
+.rd-lede{font-size:18px;color:#33413D;max-width:470px}
+.rd-card{background:#F2F4F3;border-radius:28px;padding:26px}
+.rd-drop{display:block;background:#fff;border:1.5px dashed #B9C0BD;border-radius:18px;padding:34px 22px;text-align:center;cursor:pointer}
+.rd-drop b{display:block;font-size:17px;font-weight:600;overflow-wrap:anywhere}.rd-drop span{color:#6B7772;font-size:14px}
+.rd-drop.rd-over,.rd-drop.rd-has{border-color:#10201C;border-style:solid}
+.rd-lab{display:block;font:400 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#6B7772;margin:16px 0 6px}
+.rd-in,.rd-ta textarea{width:100%;background:#fff;border:1px solid #DDE1DF;border-radius:12px;padding:0 14px;font:inherit;color:#10201C}
+.rd-in{height:44px}.rd-ta{position:relative}.rd-ta textarea{display:block;height:120px;padding:12px 14px 28px;resize:vertical}
+.rd-in::placeholder,.rd-ta textarea::placeholder{color:#9AA39F}
+.rd-ta span{position:absolute;right:12px;bottom:8px;font:400 12px 'Geist Mono',ui-monospace,monospace;color:#9AA39F}.rd-ta span.rd-over{color:#D7372F}
+.rd-go{width:100%;margin-top:18px;height:52px;border:0;border-radius:14px;background:#10201C;color:#fff;font:600 16px Geist,sans-serif;cursor:pointer}
+.rd-go:disabled{opacity:.6;cursor:default}
+.rd-msg{min-height:20px;margin-top:10px!important;font-weight:600;font-size:14px}
+.rd-wait{max-width:640px;margin:34px auto 0;text-align:center}
+.rd-wait h1{font-size:42px;line-height:1.08;font-weight:600;letter-spacing:-.02em;margin-bottom:16px}
+.rd-wait p{font-size:18px;color:#33413D;line-height:1.5}
+.rd-prog{list-style:none;margin:28px auto 0;padding:8px 22px;max-width:470px;text-align:left;background:#F2F4F3;border-radius:22px}
+.rd-prog li{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid #E1E5E3;font-size:16px;color:#9AA39F}
+.rd-prog li:first-child{border-top:0}
+.rd-prog li i{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid #C5CCC9}
+.rd-prog li.rd-done{color:#10201C}.rd-prog li.rd-done i{background:#10201C;border-color:#10201C}
+.rd-prog li.rd-now{color:#10201C;font-weight:600}.rd-prog li.rd-now i{border-color:#F0861E;border-top-color:transparent;animation:rd-spin .9s linear infinite}
+@keyframes rd-spin{to{transform:rotate(360deg)}}
+.rd-bar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.rd-bar h1{font-size:30px;font-weight:600;letter-spacing:-.02em}.rd-who{color:#6B7772;margin-left:6px}
+.rd-btn{height:42px;padding:0 18px;border-radius:12px;border:1px solid #C9CFCC;background:#fff;color:#10201C;font:600 15px Geist,sans-serif;cursor:pointer}
+.rd-btn.rd-k{background:#10201C;color:#fff;border-color:#10201C;margin-left:auto}
+.rd-verdict{background:#FFF4E8;border-radius:24px;padding:22px 26px;display:flex;align-items:center;gap:28px;flex-wrap:wrap}
+.rd-verdict h2{font-size:32px;line-height:1.1;font-weight:600;margin-top:4px}
+.rd-plan{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:14px;flex-wrap:wrap}
+.rd-plan span{background:#fff;border-radius:20px;padding:6px 12px;white-space:nowrap}.rd-plan i{font-style:normal;color:#B85F0A}
+.rd-step{display:grid;grid-template-columns:56px minmax(0,1fr);margin-top:18px}
+.rd-rail{display:flex;flex-direction:column;align-items:center}
+.rd-rail span{width:36px;height:36px;border-radius:50%;background:#10201C;color:#fff;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;margin-top:20px}
+.rd-rail i{flex:1;width:2px;background:#DDE1DF;margin-top:8px}
+.rd-box{background:#F2F4F3;border-radius:24px;padding:20px 24px 12px}
+.rd-box h2{font-size:22px;font-weight:600;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.rd-box h2 small{font-size:15px;font-weight:400;color:#6B7772}
+.rd-row{display:grid;grid-template-columns:18px 290px 96px 64px 1fr 1fr;gap:0 14px;align-items:start;padding:11px 0;border-top:1px solid #E1E5E3}
+.rd-row b{font-weight:600}
+.rd-hd{font:400 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#6B7772;border-top:0!important;padding:14px 0 6px!important}
+.rd-dot{width:10px;height:10px;border-radius:50%;margin-top:6px;background:#9AA39F}.rd-red{background:#D7372F}.rd-yel{background:#E3A90A}
+.rd-wh{font:400 12px 'Geist Mono',ui-monospace,monospace;color:#6B7772;letter-spacing:.04em;text-transform:uppercase;padding-top:3px}
+.rd-imp{font-weight:600;background:#fff;border-radius:8px;padding:1px 8px;justify-self:start}.rd-imp i{font-style:normal;font-weight:400;font-size:12px;color:#6B7772}
+.rd-lead{display:flex;gap:12px;background:#EFE9FB;border-radius:12px;padding:11px 14px;margin:6px 0 10px}.rd-lead>i{flex:none;width:10px;height:10px;border-radius:50%;background:#7A4FD0;margin-top:6px}
+.rd-lock{position:relative;margin-top:6px}.rd-blur{filter:blur(6px);opacity:.7;pointer-events:none;user-select:none}
+.rd-offer{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(640px,94%);background:#fff;border-radius:18px;padding:16px 20px;box-shadow:0 10px 40px rgba(16,32,28,.16);display:flex;align-items:center;gap:16px}
+.rd-offer p{font-size:14px;color:#33413D}
+.rd-pr{font:400 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;background:#F2F4F3;border-radius:8px;padding:6px 10px;white-space:nowrap}
+.rd-buy{height:44px;padding:0 16px;border:0;border-radius:12px;background:#10201C;color:#fff;font:600 15px Geist,sans-serif;white-space:nowrap}
+.rd-sub{display:flex;align-items:center;gap:10px;margin:8px 0 2px;flex-wrap:wrap}.rd-sub2{margin-top:14px}
+.rd-tag{font:400 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:6px;background:#F0861E}.rd-tag2{background:#10201C;color:#fff}
+.rd-frow{display:grid;grid-template-columns:26px 44px 190px 1fr 1fr;gap:0 14px;align-items:start;padding:13px 0;border-top:1px solid #E1E5E3}
+.rd-ord{font-weight:600;color:#6B7772;padding-top:10px}
+.rd-lg{width:44px;height:44px;border-radius:10px;border:1px solid #E1E5E3;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;overflow:hidden}.rd-lg img{width:100%;height:100%;object-fit:contain}
+.rd-nm{font-weight:600;font-size:16px;color:#10201C;text-decoration:none}.rd-nm:hover{text-decoration:underline}.rd-pl{color:#6B7772;font-size:14px}
+.rd-why{font-size:14px;color:#33413D}.rd-say{font-size:14px}
+.rd-sum{background:#fff;border-radius:10px;padding:7px 10px;margin-bottom:6px}.rd-sum span{font:400 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#6B7772}.rd-sum em{font-style:normal;color:#6B7772}
+.rd-then{display:grid;grid-template-columns:1fr 1fr;gap:0 24px;margin-bottom:8px}
+.rd-then a{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid #E1E5E3;font-size:14px;color:#10201C;text-decoration:none}.rd-then a span{color:#6B7772}
+.rd-none{padding:10px 0;color:#6B7772}
+@media (max-width:1000px){.rd-up{grid-template-columns:1fr;gap:28px;min-height:0}.rd-pitch h1{font-size:44px}.rd-row,.rd-frow{grid-template-columns:18px 1fr}.rd-row>*,.rd-frow>*{grid-column:2}.rd-row>.rd-dot,.rd-frow>.rd-ord{grid-column:1;grid-row:1}.rd-hd{display:none}.rd-lg{margin-bottom:6px}.rd-step{grid-template-columns:1fr}.rd-rail{display:none}.rd-offer{position:static;transform:none;width:auto;flex-direction:column;align-items:stretch;margin-top:10px}.rd-blur{display:none}.rd-then{grid-template-columns:1fr}.rd-btn.rd-k{margin-left:0}}
+@media print{body>nav,body>footer,.ckbar,.rd-bar button,.rd-lock{display:none!important}.rdy{padding:0}.rd-box,.rd-verdict{break-inside:avoid}}
