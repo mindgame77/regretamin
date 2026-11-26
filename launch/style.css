@@ -1884,3 +1884,11 @@ main.prof .ph .ph1 .plg{width:52px;height:52px;flex:none;margin-right:14px;borde
 .firms-pg .frow .flg{width:28px;height:28px;flex:none;border-radius:7px;border:1px solid #C9D1CE;background:#fff;object-fit:contain;padding:3px}
 .firms-pg .frow .flg-i{display:inline-flex;align-items:center;justify-content:center;border:0;padding:0;background:#E2E7E5;color:#586964;font:600 11px/1 'Geist',system-ui,sans-serif}
 @media (max-width:640px){main.prof .ph .ph1 .plg{width:40px;height:40px;border-radius:10px;padding:5px;margin-right:10px}}
+
+/* Firm badges (25 Nov): the small "Get your badge" button under the status tiles and the pictures it opens. */
+main.prof .ats .bdg{margin-top:2px}
+main.prof .bdgb{font:600 13px/1 'Geist',system-ui,sans-serif;color:#10201C;background:none;border:0;padding:6px 2px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+main.prof .bdgp{margin-top:6px;background:#fff;border:1px solid #C9D1CE;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:12px}
+main.prof .bdgr{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+main.prof .bdgr a{display:inline-flex}main.prof .bdgr img{height:64px;width:auto;display:block}main.prof .bdgr a:nth-child(3) img{height:30px}
+main.prof .bdgc{margin-left:auto;font:600 12px/1 'Geist',system-ui,sans-serif;height:32px;padding:0 12px;border-radius:99px;border:1px solid #8A9893;background:#fff;color:#10201C;cursor:pointer}

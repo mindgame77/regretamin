@@ -381,6 +381,30 @@
     im.onload = () => { if (main.dataset.firm === slug && !(row.querySelector && row.querySelector('.plg'))) row.insertBefore(im, row.firstChild); };
     im.src = (window.REGRET_ROOT || '/') + 'assets/logos/f-' + encodeURIComponent(slug) + '.png';
   }
+  // Badges a firm can put on its own website (founder, 25 Nov): one small button under the status tiles, only for a
+  // firm that has Top 100, Leads rounds or Speeding up today. It opens the three looks of each badge (round on dark,
+  // round on white, the pill); a picture opens on its own, "Copy code" gives the lines to paste on a website. The
+  // pictures are drawn by /badge/<slug>/<signal>-<look>.png (edge/card/badge.mjs) and are only asked for once opened.
+  const BADGE_SIGNALS = [['top', 'Top 100'], ['lead', 'Leads rounds'], ['up', 'Speeding up']];
+  function paintBadges(main, slug, signals) {
+    const have = BADGE_SIGNALS.filter(b => (Array.isArray(signals) ? signals : []).indexOf(b[0]) !== -1);
+    const col = main.querySelector && main.querySelector('.ats');
+    if (!have.length || !col || !col.appendChild || (col.querySelector && col.querySelector('.bdg'))) return;
+    const origin = (typeof location !== 'undefined' && location.origin) || '';
+    const base = origin + '/badge/' + encodeURIComponent(slug) + '/', page = origin + '/vc/' + encodeURIComponent(slug) + '/';
+    const box = document.createElement('div');
+    box.className = 'bdg';
+    box.innerHTML = '<button type="button" class="bdgb" aria-expanded="false">Get your badge</button><div class="bdgp" hidden>' + have.map(b =>
+      '<div class="bdgr">' + ['round-dark', 'round-light', 'pill'].map(l =>
+        '<a href="' + base + b[0] + '-' + l + '.png" target="_blank" rel="noopener"><img loading="lazy" alt="' + esc(b[1]) + ' badge" src="' + base + b[0] + '-' + l + '.png"></a>').join('')
+      + '<button type="button" class="bdgc" data-code="' + esc('<a href="' + page + '"><img src="' + base + b[0] + '-pill.png" alt="' + b[1] + ' on Regretamin" height="60"></a>') + '">Copy code</button></div>').join('') + '</div>';
+    col.appendChild(box);
+    box.addEventListener('click', e => {
+      const t = e.target, open = t.closest && t.closest('.bdgb'), copy = t.closest && t.closest('.bdgc');
+      if (open) { const p = box.querySelector('.bdgp'); p.hidden = !p.hidden; open.setAttribute('aria-expanded', String(!p.hidden)); }
+      if (copy && navigator.clipboard) navigator.clipboard.writeText(copy.dataset.code).then(() => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy code'; }, 1600); }).catch(() => {});
+    });
+  }
   function paintSignals(main) {
     paintLogo(main);
     const C = window.REGRET || {};
@@ -394,6 +418,7 @@
       body: JSON.stringify({ p_slug: slug })
     }).then(r => (r.ok ? r.json() : null)).then(d => {
       if (d && d.place) { PLACE = { slug: slug, place: d.place }; mapCard(main); }
+      if (d) paintBadges(main, slug, d.signals);
       const html = d ? signalsHtml(d) : '';
       const now = main.querySelector('.ats .att');
       if (!html || !now || now.querySelector('.asig')) return;
