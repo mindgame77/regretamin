@@ -35,7 +35,7 @@ export async function onRequestPost(ctx) {
   if (!String(row.deck_path || '').startsWith(`${user.id}/`)) return json({ error: 'not_found' }, 404);
 
   const save = (patch) => fetch(`${SB}/rest/v1/ready_reports?id=eq.${id}`, { method: 'PATCH', headers: { ...mine, prefer: 'return=minimal' }, body: JSON.stringify(patch) }).catch(() => {});
-  const fail = async (error, status = 502) => { await save({ status: 'failed', error: String(error).slice(0, 300), finished_at: new Date().toISOString() }); return json({ error }, status); };
+  const fail = async (error, status = 502) => { await save({ status: 'failed', error: String(error).slice(0, 1200), finished_at: new Date().toISOString() }); return json({ error: String(error).split(':')[0] }, status); };
   await save({ status: 'working', error: null });
 
   const path = String(row.deck_path).split('/').map(encodeURIComponent).join('/');
@@ -55,7 +55,8 @@ export async function onRequestPost(ctx) {
     got = await askClaude(env, deckUrl, ask);
     if (got.error) got.error = `${first}; then ${got.error}`;
   }
-  if (got.error) return fail(got.error);
+  // Whether the last model asked refused for lack of credit: the page then says so instead of blaming the deck.
+  if (got.error) return fail(/credit balance|quota|billing/i.test(got.error.split('; then ').pop()) ? `model_no_credit: ${got.error}` : got.error);
   const { model, text, usage } = got;
   const answers = parseModelJson(text);
   if (!answers) return fail('model_answer_unreadable');
@@ -80,11 +81,11 @@ async function askClaude(env, deckUrl, ask) {
     r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model, max_tokens: 6000, temperature: 0, system: systemPrompt(),
+      body: JSON.stringify({ model, max_tokens: 16000, system: systemPrompt(),  // no temperature: Opus 5.5 refuses the setting (26 Nov)
         messages: [{ role: 'user', content: [{ type: 'document', source: { type: 'url', url: deckUrl } }, { type: 'text', text: ask }] }] }),
     });
   } catch (e) { return { error: 'model_unreachable' }; }
-  if (!r.ok) return { error: `model_${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}` };
+  if (!r.ok) return { error: `model_${r.status}: ${(await r.text().catch(() => '')).slice(0, 500)}` };
   const out = await r.json(), u = out.usage || {};
   return { model, text: (out.content || []).filter((c) => c.type === 'text').map((c) => c.text).join(''), usage: { in: u.input_tokens, out: u.output_tokens } };
 }
@@ -97,7 +98,7 @@ async function askGemini(env, deckUrl, ask) {
     headers: { 'x-goog-api-key': env.GEMINI_API_KEY, 'content-type': 'application/json' },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt() }] },
       contents: [{ role: 'user', parts: [filePart, { text: ask }] }],
-      generationConfig: { temperature: 0, maxOutputTokens: 16000, responseMimeType: 'application/json' } }),
+      generationConfig: { maxOutputTokens: 16000, responseMimeType: 'application/json' } }),
   });
   let r;
   try {
@@ -108,7 +109,7 @@ async function askGemini(env, deckUrl, ask) {
       r = await call({ inlineData: { mimeType: 'application/pdf', data: base64(new Uint8Array(await deck.arrayBuffer())) } });
     }
   } catch (e) { return { error: 'model_unreachable' }; }
-  if (!r.ok) return { error: `model_${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}` };
+  if (!r.ok) return { error: `model_${r.status}: ${(await r.text().catch(() => '')).slice(0, 500)}` };
   const out = await r.json(), u = out.usageMetadata || {};
   const parts = (((out.candidates || [])[0] || {}).content || {}).parts || [];
   return { model, text: parts.filter((x) => typeof x.text === 'string' && !x.thought).map((x) => x.text).join(''),
