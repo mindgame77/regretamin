@@ -18,3 +18,13 @@ def test_both_firm_heads_name_the_card():
     for text in (build, edge):
         assert 'name="twitter:card" content="summary_large_image"' in text
     assert (ROOT / "launch" / "functions" / "share" / "vc" / "[slug].js").exists()
+
+
+def test_firm_badges_draw_and_are_only_given_for_a_signal_the_firm_has():
+    """Founder, 25 Nov: badges a firm can post (the capsule approach: round on dark, round on white, the pill)."""
+    r = subprocess.run(["node", "--test", "launch/edge/card/badge.test.mjs"], cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-2000:]
+    fn = (ROOT / "launch/functions/badge/[slug]/[file].js").read_text()
+    assert "badgeResponse" in fn and "caches.default" in fn
+    co = (ROOT / "launch/js/company.js").read_text()
+    assert "btn.setAttribute('data-open', 'badges')" in co and "main.querySelector('.ph .ph1')" in co and ">Download all</button>" in co and "zipOf(files)" in co and "'/badge/' + encodeURIComponent(slug) + '/'" in co and 'loading="lazy"' in co

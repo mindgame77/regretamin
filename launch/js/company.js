@@ -381,6 +381,63 @@
     im.onload = () => { if (main.dataset.firm === slug && !(row.querySelector && row.querySelector('.plg'))) row.insertBefore(im, row.firstChild); };
     im.src = (window.REGRET_ROOT || '/') + 'assets/logos/f-' + encodeURIComponent(slug) + '.png';
   }
+  // Badges a firm can post (founder, 25 Nov): a round icon button beside the firm's name (next to Save), only for a firm that has at
+  // least one badge today (every good signal has one; "Slowing down" has none). It opens a pop-up with the three looks
+  // of each badge (round on dark, round on white, the pill). Pressing a picture saves it, "Download all" saves them
+  // all as one zip file, "Copy code" gives the lines to paste on a website. The pictures are drawn by
+  // /badge/<slug>/<signal>-<look>.png (edge/card/badge.mjs) and are only asked for once the pop-up is opened.
+  const BADGE_SIGNALS = [['top', 'The Magnificent 100'], ['lead', 'Shot Caller'], ['up', 'Fast & Curious'], ['chain', 'Pathfinder'], ['spec', 'Laser Focus'], ['fund', 'Hot & Fresh']];
+  const BADGE_LOOKS = ['round-dark', 'round-light', 'pill'];
+  const BADGE_V = '?v=2';  // raise it when the badge design changes, so nobody is shown a picture kept from before
+  // A zip file made in the browser. The pictures are stored as they are: a PNG is compressed already.
+  function zipOf(files) {
+    const T = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; T[n] = c >>> 0; }
+    const crc = b => { let c = -1; for (let i = 0; i < b.length; i++) c = T[(c ^ b[i]) & 255] ^ (c >>> 8); return ~c >>> 0; };
+    const enc = new TextEncoder(), parts = [], dir = []; let off = 0, dl = 0;
+    files.forEach(f => {
+      const nm = enc.encode(f.name), c = crc(f.bytes), len = f.bytes.length, h = new DataView(new ArrayBuffer(30)), d = new DataView(new ArrayBuffer(46));
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(12, 0x21, true);
+      h.setUint32(14, c, true); h.setUint32(18, len, true); h.setUint32(22, len, true); h.setUint16(26, nm.length, true);
+      d.setUint32(0, 0x02014b50, true); d.setUint16(4, 20, true); d.setUint16(6, 20, true); d.setUint16(8, 0x0800, true); d.setUint16(14, 0x21, true);
+      d.setUint32(16, c, true); d.setUint32(20, len, true); d.setUint32(24, len, true); d.setUint16(28, nm.length, true); d.setUint32(42, off, true);
+      parts.push(h.buffer, nm, f.bytes); dir.push(d.buffer, nm);
+      off += 30 + nm.length + len; dl += 46 + nm.length;
+    });
+    const e = new DataView(new ArrayBuffer(22));
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, dl, true); e.setUint32(16, off, true);
+    return new Blob(parts.concat(dir, [e.buffer]), { type: 'application/zip' });
+  }
+  function paintBadges(main, slug, signals) {
+    const have = BADGE_SIGNALS.filter(b => (Array.isArray(signals) ? signals : []).indexOf(b[0]) !== -1);
+    const row = main.querySelector && main.querySelector('.ph .ph1');
+    if (!have.length || !row || !row.appendChild || (row.querySelector && row.querySelector('.bdgb'))) return;
+    const origin = (typeof location !== 'undefined' && location.origin) || '';
+    const base = origin + '/badge/' + encodeURIComponent(slug) + '/', page = origin + '/vc/' + encodeURIComponent(slug) + '/';
+    const file = (b, l) => slug + '-' + b[1].toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + l + '.png';
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'bdgb'; btn.setAttribute('data-open', 'badges'); btn.setAttribute('aria-label', 'Badges'); btn.title = 'Badges';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"/><path d="M8.6 14.3 7 22l5-3 5 3-1.600-7.700"/></svg>';
+    row.appendChild(btn);
+    let ov = document.getElementById('badges');
+    if (!ov) { ov = document.createElement('div'); ov.className = 'ov tall'; ov.id = 'badges'; ov.hidden = true; document.body.appendChild(ov); }
+    ov.innerHTML = '<div class="md amd bdgm" role="dialog" aria-modal="true" aria-label="Badges"><div class="amh"><button class="x" data-close aria-label="Close">×</button><b>Badges</b><button type="button" class="bdga">Download all</button></div><div class="amb">' + have.map(b =>
+      '<div class="bdgr">' + BADGE_LOOKS.map(l =>
+        '<a href="' + base + b[0] + '-' + l + '.png' + BADGE_V + '" download="' + esc(file(b, l)) + '" title="Download"><img loading="lazy" alt="' + esc(b[1]) + ' badge" src="' + base + b[0] + '-' + l + '.png' + BADGE_V + '"></a>').join('')
+      + '<button type="button" class="bdgc" data-code="' + esc('<a href="' + page + '"><img src="' + base + b[0] + '-pill.png" alt="' + b[1] + ' on Regretamin" height="60"></a>') + '">Copy code</button></div>').join('') + '</div></div>';
+    ov.onclick = e => {
+      const t = e.target, copy = t.closest && t.closest('.bdgc'), all = t.closest && t.closest('.bdga');
+      if (copy && navigator.clipboard) navigator.clipboard.writeText(copy.dataset.code).then(() => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy code'; }, 1600); }).catch(() => {});
+      if (!all || all.disabled) return;
+      all.disabled = true;
+      const list = []; have.forEach(b => BADGE_LOOKS.forEach(l => list.push([base + b[0] + '-' + l + '.png' + BADGE_V, file(b, l)])));
+      Promise.all(list.map(f => fetch(f[0]).then(r => { if (!r.ok) throw new Error('badge'); return r.arrayBuffer(); }).then(a => ({ name: f[1], bytes: new Uint8Array(a) }))))
+        .then(files => {
+          const a = document.createElement('a'), u = URL.createObjectURL(zipOf(files));
+          a.href = u; a.download = slug + '-regretamin-badges.zip'; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(() => URL.revokeObjectURL(u), 4000);
+        }).catch(() => {}).then(() => { all.disabled = false; });
+    };
+  }
   function paintSignals(main) {
     paintLogo(main);
     const C = window.REGRET || {};
@@ -394,6 +451,7 @@
       body: JSON.stringify({ p_slug: slug })
     }).then(r => (r.ok ? r.json() : null)).then(d => {
       if (d && d.place) { PLACE = { slug: slug, place: d.place }; mapCard(main); }
+      if (d) paintBadges(main, slug, d.signals);
       const html = d ? signalsHtml(d) : '';
       const now = main.querySelector('.ats .att');
       if (!html || !now || now.querySelector('.asig')) return;
