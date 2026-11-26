@@ -68,7 +68,7 @@ def test_the_same_deck_sent_again_shows_the_saved_report():
 def test_firm_links_open_in_a_new_page_and_reports_are_listed_in_the_account():
     """Founder, 26 Nov: "those links should open in new pages", "save reports in your account", then "separate page ... my score ... or you can download the PDF"."""
     js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
-    assert js.count('target="_blank" rel="noopener" href="/vc/') == 3 and 'href="/vc/${' not in js.replace('rel="noopener" href="/vc/${', '')
+    assert js.count('target="_blank" rel="noopener" href="/vc/') == 2 and 'href="/vc/${' not in js.replace('rel="noopener" href="/vc/${', '')
     app = open(os.path.join(ROOT, "launch", "js", "app.js")).read()
     assert "paintMyScore" in app and "from('ready_reports')" in app and "ready/?report=" in app and "&pdf=1" in app
     reg = open(os.path.join(ROOT, "launch", "pages", "registry.py")).read()
@@ -90,7 +90,7 @@ def test_the_full_research():
     r = subprocess.run(['node', '--test', os.path.join(ROOT, 'launch', 'functions', 'api', '_ready', 'research.test.mjs')], capture_output=True, text=True)
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
     js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
-    assert "fetch('/api/research'" in js and 'id="rd-s3"' in js and "researchHtml(r.research)" in js   # saved research reopens with the report
+    assert "fetch('/api/research'" in js and 'id="rd-s3"' in js and "researchHtml(r.research, r)" in js   # saved research reopens with the report
     assert "Pitch these instead" not in js   # it repeated step 4 (founder, 26 Nov)
     for words in ("Your competitors", "Your investors", "Skip these firms", 'class="rd-pb"', "Who tried this before", "Your ask against similar rounds", "Our data", "Looked up",
                   "They have", "In the news", "Your move", "Do this next", "Read what happened", "'ABCD'"):   # lettered parts, each ending with one thing to do
@@ -105,3 +105,15 @@ def test_the_full_research():
     assert "v2_ready_firm_tips" in fn and os.path.exists(os.path.join(ROOT, "supabase", "migrations", "20261126225255_v2_ready_firm_tips.sql"))
     mig = open(os.path.join(ROOT, "supabase", "migrations", "20261126221958_v2_ready_research.sql")).read()
     assert "to_regclass('public.v2_deals') is null" in mig and "from public, anon" in mig   # skips on a database without the v2 tables; signed-in callers only
+
+
+def test_the_free_report_shows_two_firms_and_the_research_holds_the_reasoning():
+    """Founder, 26 Nov: "on the first step we should show 2 VCs, and here we should show reasoning"; "no one cares how many LinkedIn followers they have"."""
+    js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
+    assert "const FREE_FIRMS = 2;" in js and "firms.slice(0, FREE_FIRMS).map(firmRow)" in js
+    assert "more firm${rest === 1 ? '' : 's'}, and why each one fits you, in the full research." in js
+    row = js[js.index("function firmRow(f, i) {"):js.index("function moreFirms(r) {")]
+    assert "stage_pct" not in row and "f.say" not in row and "summary" not in row   # the reasoning is not in the free rows
+    assert "Why we suggest it" in js and "How to get in" in js and "What to say" in js and "Then these: big firms" in js
+    rules = open(os.path.join(ROOT, "launch", "functions", "api", "_ready", "research.js")).read()
+    assert "followers on" not in rules and "k: 'aud'" not in rules

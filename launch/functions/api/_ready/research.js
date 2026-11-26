@@ -156,15 +156,13 @@ const SIGNAL = { top: ['The Magnificent 100', 'Top 100 firms'], lead: ['Shot Cal
 // signals: { slug: ['top', 'spec', ...] } as v2_firm_signals_for answers.
 export function investorTips(firms, tips, sector, signals) {
   const by = new Map((Array.isArray(tips) ? tips : []).map((t) => [t && t.slug, t]));
-  const consumer = /consumer/i.test(String(sector || ''));
   return (Array.isArray(firms) ? firms : []).map((f) => {
-    const t = by.get(f.slug) || {}, badges = [], a = t.audience;
+    const t = by.get(f.slug) || {}, badges = [];   // follower counts are not shown (founder, 26 Nov: "no one cares how many LinkedIn followers they have")
     const sig = (signals && Array.isArray(signals[f.slug]) ? signals[f.slug] : []).filter((x) => SIGNAL[x]);
     const deals = Number(t.deals) || 0, led = Number(t.led) || 0, share = deals ? led / deals : 0;
     const ledLine = deals >= 5 && led >= 1 ? `Led ${led} of its ${deals} deals in the last year` : '';   // only what we know: no recorded lead, no line
     for (const x of sig) badges.push({ k: x, v: SIGNAL[x][0], n: x === 'lead' && ledLine ? ledLine + '. Ask it to lead.' : SIGNAL[x][1] });
     if (ledLine && !sig.includes('lead')) badges.push({ k: 'lead', v: share >= 0.4 ? 'Often leads' : 'Sometimes leads', n: ledLine + (share >= 0.4 ? '. Ask it to lead.' : '') });
-    if (a && Number(a.followers) >= 10000) badges.push({ k: 'aud', v: `${Number(a.followers).toLocaleString('en-US')} on ${clip(a.platform, 20)}`, n: consumer ? 'Big audience. Helps when you sell to consumers.' : 'Big audience', url: /^https?:\/\//i.test(a.url || '') ? a.url : '' });
     if (t.cheque) badges.push({ k: 'chq', v: clip(t.cheque, 40), n: 'Cheque size' });
     const apply = /^https?:\/\//i.test(t.apply || '') ? t.apply : '';
     return apply || badges.length ? { slug: f.slug, name: f.name, apply, badges: badges.slice(0, 5) } : null;
@@ -198,10 +196,11 @@ export function buildResearch(rows, ours, report, meta, tips, signals) {
   const r = o.rounds && Number(o.rounds.n) >= 5 ? { n: Number(o.rounds.n), p25: Number(o.rounds.p25), p50: Number(o.rounds.p50), p75: Number(o.rounds.p75), p90: Number(o.rounds.p90) } : null;
   const ask = Number(co.ask_usd) > 0 ? Number(co.ask_usd) : null;
   const investors = investorTips(report && report.firms, tips, co.sector, signals);
+  const nf = Array.isArray(report && report.firms) ? report.firms.length : 0;
   // One thing to do per part (founder, 26 Nov: "make it useful for someone who's reading and actionable"). Fixed wording, by rule.
   const todo = {
     competitors: competitors.length ? 'Put these on your competition slide. Have your answer ready for each one.' : '',
-    firms: investors.some((f) => f.apply) ? `Press Pitch on the first one today.${skip.length ? ' Leave out the firms that hold a competitor.' : ''}` : skip.length ? 'Take the firms that hold a competitor off your target list.' : '',
+    firms: investors.some((f) => f.apply) ? `Press Pitch on the first one today.${skip.length ? ' Leave out the firms that hold a competitor.' : ''}` : nf ? 'Write to the first one today, with the line under its name.' : skip.length ? 'Take the firms that hold a competitor off your target list.' : '',
     tried: rows.tried.length ? 'Message one of these founders this week. Ask the three questions.' : '',
     ask: r ? (ask ? 'Be ready to defend your number against these rounds.' : 'Add your ask to the deck: the amount and what it pays for.') : '',
   };
@@ -209,7 +208,7 @@ export function buildResearch(rows, ours, report, meta, tips, signals) {
   const n = competitors.length, k = skip.length, t = rows.tried.length;
   const now = {
     competitors: n ? `${n} compan${n === 1 ? 'y' : 'ies'} an investor will compare you with.` : '',
-    firms: investors.length ? 'What we know about the firms in step 4 that helps you get in.' : k ? `${k} firm${k === 1 ? '' : 's'} we list already hold${k === 1 ? 's' : ''} one of your competitors.` : '',
+    firms: nf ? `${nf} firm${nf === 1 ? '' : 's'} that fit you: why we suggest each one, what to say, and how to get in.` : k ? `${k} firm${k === 1 ? '' : 's'} we list already hold${k === 1 ? 's' : ''} one of your competitors.` : '',
     tried: t ? `${t} compan${t === 1 ? 'y' : 'ies'} tried this before you.` : '',
   };
   return { v: 2, at: (meta && meta.at) || null, competitors, investors, skip, tried: rows.tried, now, todo,

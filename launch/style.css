@@ -2120,3 +2120,11 @@ a.rd-bg:hover{border-color:#F0861E}.rd-ar{color:#B85F0A}
 .rd-fts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}.rd-fts.rd-col{grid-template-columns:1fr}.rd-grow{flex:1;align-content:start}
 .rd-ab .rd-cc.rd-skips{margin-top:0;padding:4px 18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 28px}.rd-skips .rd-fl{border-top:0;border-bottom:1px solid #EEF1EF}
 @media (max-width:1000px){.rd-fts,.rd-ab .rd-cc.rd-skips{grid-template-columns:1fr}}
+/* Step 4 shows two firms; the rest, with the reasoning, is part B of the research. */
+.rd-frow.rd-f2{grid-template-columns:26px 44px minmax(0,1fr) minmax(0,1fr);align-items:center}
+.rd-more{margin:12px 0 6px!important;font-weight:600}.rd-l4{margin-top:0}.rd-l4 .rd-blur{filter:blur(5px)}
+.rd-over4{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:14px;padding:10px 16px;box-shadow:0 8px 30px rgba(16,32,28,.14);margin:0!important;white-space:nowrap}
+@media print{.rd-l4{display:block!important}.rd-l4 .rd-blur{display:none}.rd-over4{position:static;transform:none;box-shadow:none;padding:0}}
+.rd-cch .rd-ord{flex:none;width:22px;font-weight:600;color:#6B7772;padding-top:9px}.rd-cch .rd-lg{flex:none}.rd-cch .rd-bg{align-self:center}.rd-cch .rd-pb{align-self:center;margin-left:6px}
+.rd-cch>div a{font-weight:600;font-size:17px}.rd-cc .rd-sum{margin:12px 0 0;background:#F2F4F3}
+@media (max-width:1000px){.rd-frow.rd-f2{grid-template-columns:26px 44px 1fr}.rd-frow.rd-f2 .rd-why{grid-column:3}.rd-over4{white-space:normal;width:86%;text-align:center}.rd-cch{flex-wrap:wrap}}

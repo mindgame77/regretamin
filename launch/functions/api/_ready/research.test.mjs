@@ -119,6 +119,7 @@ test('the function: only the owner of a finished report, made once, saved on the
     assert.equal(a.research.investors[0].apply, 'https://www.trueventures.com/pitch');
     assert.equal(a.research.investors[0].badges[0].v, 'The Magnificent 100');
     assert.equal(a.research.todo.firms, 'Press Pitch on the first one today.');
+    assert.equal(a.research.now.firms, '1 firm that fit you: why we suggest each one, what to say, and how to get in.');
     const before = calls.filter((c) => c.includes('anthropic')).length;
     const b = await (await ask('good')).json();                                  // asked again: the saved one, no second search
     assert.equal(calls.filter((c) => c.includes('anthropic')).length, before);
@@ -142,12 +143,11 @@ test('investor badges say only what we hold, and a firm with nothing to say is l
   assert.deepEqual(out.map((f) => f.slug), ['true-ventures', 'draper', 'sparrow']);
   assert.deepEqual(out[0], { slug: 'true-ventures', name: 'True Ventures', apply: 'https://www.trueventures.com/pitch', badges: [
     { k: 'top', v: 'The Magnificent 100', n: 'Top 100 firms' },                                     // the badge the site already awards; "slowing down" has none
-    { k: 'lead', v: 'Sometimes leads', n: 'Led 6 of its 24 deals in the last year' },
-    { k: 'aud', v: '112,795 on X', n: 'Big audience. Helps when you sell to consumers.', url: 'https://x.com/trueventures' }] });
+    { k: 'lead', v: 'Sometimes leads', n: 'Led 6 of its 24 deals in the last year' }] });                 // follower counts are not shown
   assert.equal(out[1].apply, '');                                                                  // not a web address: no button
-  assert.deepEqual(out[1].badges, [{ k: 'lead', v: 'Shot Caller', n: 'Led 18 of its 37 deals in the last year. Ask it to lead.' }]);   // 459 followers is not a big audience
+  assert.deepEqual(out[1].badges, [{ k: 'lead', v: 'Shot Caller', n: 'Led 18 of its 37 deals in the last year. Ask it to lead.' }]);   
   assert.deepEqual(out[2].badges, [{ k: 'chq', v: '$1M-$2M', n: 'Cheque size' }]);                  // no recorded lead: nothing is said about leading
-  assert.equal(investorTips(firms, tips, 'Fintech', {})[0].badges.find((b) => b.k === 'aud').n, 'Big audience');
+  assert.ok(!JSON.stringify(out).includes('followers') && !out.some((f) => f.badges.some((b) => b.k === 'aud')));
 });
 
 test('a round we hold without a name reads "round", not "Other"', () => {
