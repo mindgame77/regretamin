@@ -311,7 +311,7 @@
     1: [['1389581557980139527', 'MAY 2021 · DOGECOIN BREAKS ROBINHOOD', 'US West', 'Bay Area'], ['1389587820772302849', 'MAY 2021 · DOGECOIN BREAKS ROBINHOOD', 'US West', 'Bay Area'], ['1395157383366782978', 'MAY 2021 · THE CRYPTO CRASH', 'US West', 'Bay Area']],
     2: [['1417547103354621954', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle'], ['1417545632529756165', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle'], ['1417305957776990208', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle']],
     3: [['1453805031463993346', 'OCT 2021 · FACEBOOK RENAMES ITSELF META', 'US West', 'Bay Area'], ['1453842753591390210', 'OCT 2021 · FACEBOOK RENAMES ITSELF META', 'US West', 'Bay Area'], ['1445114779304177664', 'OCT 2021 · FACEBOOK GOES DOWN FOR SIX HOURS', 'US West', 'Bay Area']],
-    4: [['1488263944309731329', 'JAN 2022 · THE NEW YORK TIMES BUYS WORDLE', 'US East', 'New York'], ['1488268759798321152', 'JAN 2022 · THE NEW YORK TIMES BUYS WORDLE', 'US East', 'New York'], ['1493281114085113860', 'FEB 2022 · WORDLE AFTER THE NEW YORK TIMES', 'US East', 'New York']],  // the founder's own picks (26 Nov)
+    4: [['1488263944309731329', 'JAN 2022 · THE NEW YORK TIMES BUYS WORDLE', 'US East', 'New York'], ['1488272875874549761', 'JAN 2022 · THE NEW YORK TIMES BUYS WORDLE', 'US East', 'New York'], ['1493281114085113860', 'FEB 2022 · WORDLE AFTER THE NEW YORK TIMES', 'US East', 'New York']],  // the founder's own picks (26 Nov)
     5: [['1518622729154482178', 'APR 2022 · MUSK OFFERS TO BUY TWITTER', 'US West', 'Bay Area'], ['1518667246633058305', 'APR 2022 · MUSK OFFERS TO BUY TWITTER', 'US West', 'Bay Area'], ['1523736429729583104', 'MAY 2022 · TERRA LUNA CRASHES', '', '']],
     6: [['1545529347703971842', 'JUL 2022 · MUSK BACKS OUT OF TWITTER', 'US West', 'Bay Area'], ['1559191505369120768', 'AUG 2022 · ADAM NEUMANN IS BACK', 'US West', 'Bay Area'], ['1559236958567763970', 'AUG 2022 · ADAM NEUMANN IS BACK', 'US West', 'Bay Area']],
     7: [['1589695556909424640', 'NOV 2022 · FTX COLLAPSES', 'Caribbean', ''], ['1598038815599661056', 'NOV 2022 · CHATGPT LAUNCHES', 'US West', 'Bay Area'], ['1598020781065527296', 'NOV 2022 · CHATGPT LAUNCHES', 'US West', 'Bay Area'], ['1598129631609380864', 'DEC 2022 · CHATGPT LAUNCHES', 'US West', 'Bay Area']],  // the founder's own picks (26 Nov)
@@ -348,7 +348,7 @@
   }
   // A post is made ready off screen first, so the line, the map and the post can change in the same instant (founder,
   // 26 Nov). Long posts (a video plus a quoted post and the like) are not used: the next one of the quarter is tried.
-  const POST_MAX = 470;
+  const POST_MAX = 500;
   async function preparePost(q, run) {
     const set = S.view === 'founders' ? null : POSTS[q];
     if (!set || !(await xLoad()) || S.playing !== run) return null;
