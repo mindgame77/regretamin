@@ -782,8 +782,67 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
     const head = L
       ? `<div class="vm-lh vm-lhp"><h2>${esc(L.place.n)} · ${det ? num(det.firms) + ' firm' + (det.firms === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>`
       : '<div class="vm-lh"><h2>Most followed</h2><span class="vm-tag">startups followed</span></div>';
-    side.innerHTML = head + `<div class="vm-rows vm-pfs">${rows.map(([slug, name, n, tops], i) => `<a class="vm-pf" href="${ROOT}vc/${encodeURIComponent(slug)}/"><span class="vm-pfk">${i + 1}</span>${LOGOS && LOGOS.has(slug) ? `<img class="vm-pfl" alt="" loading="lazy" src="${ROOT}assets/logos/f-${encodeURIComponent(slug)}.png">` : `<span class="vm-pfl vm-pfi">${esc(ini2(name))}</span>`}<span class="vm-pft"><b>${esc(name)}</b><i>${esc((tops || []).map(([t, c]) => t + ' ' + c).join(' · '))}</i></span><span class="vm-pfn">${num(n)}</span></a>`).join('')}</div>`;
+    side.innerHTML = head + `<div class="vm-rows vm-pfs">${rows.map(([slug, name, n, tops], i) => `<a class="vm-pf" href="${ROOT}vc/${encodeURIComponent(slug)}/"><span class="vm-pfk">${i + 1}</span>${LOGOS && LOGOS.has(slug) ? `<img class="vm-pfl" alt="" loading="lazy" src="${ROOT}assets/logos/f-${encodeURIComponent(slug)}.png">` : `<span class="vm-pfl vm-pfi">${esc(ini2(name))}</span>`}<span class="vm-pft"><b>${esc(name)}</b><i>${esc((tops || []).map(([t, c]) => t + ' ' + c).join(' · '))}</i></span><span class="vm-pfn">${num(n)}</span></a>`).join('')}${lockedRows(L ? det : S.data, rows.length, L ? (det || {}).firms : ((S.data.totals || {})[S.level] || {}).firms)}</div>`;
     const x = $('#vm-close'); if (x) x.onclick = closeList;
+    side.querySelectorAll('[data-unlock]').forEach((b) => { b.onclick = openGate; });
+  }
+
+  // ---------- share to unlock (founder, 25 Nov)
+  // Until an account has unlocked, the database sends only the first three firms of a list. The rest is drawn as blurred
+  // stand-ins (no real names are in the page). Pressing one opens a card: the visitor's personal link, a line to post,
+  // "Post on X". The card then waits until X has opened that link (X reads a link when it is posted; /p/<code> notes it),
+  // and offers "Sign in". Signed in, the account takes the code and everything locked opens.
+  const LINES = ["Side effects may include knowing who you're taking money from. Regretamin.", 'Take one before every investor meeting. Regretamin.',
+    'For the relief of investor regret, before it starts. Regretamin.', "'We love founders' is not due diligence. Regretamin."];
+  let SH = null, shLine = 0, shWait = false, shPoll = null;
+  const anon = () => { try { let a = localStorage.getItem('regretamin.anon'); if (!a) { a = crypto.randomUUID(); localStorage.setItem('regretamin.anon', a); } return a; } catch (e) { return null; } };
+  function lockedRows(d, shown, total) {
+    if (!d || !d.locked || !(total > shown)) return '';
+    return Array.from({ length: Math.min(6, total - shown) }, (_, i) => `<button type="button" class="vm-pf vm-pfb" data-unlock aria-label="Unlock the full list"><span class="vm-pfk">${shown + i + 1}</span><span class="vm-pfl vm-pfi"></span><span class="vm-pft"><b>${'Firm name here'.slice(0, 9 + (i * 3) % 6)}</b><i>Top firm 4 · Another firm 3 · One more 2</i></span><span class="vm-pfn">${9 - i}</span></button>`).join('');
+  }
+  async function shareState(start) {
+    if (!sb || !anon()) return null;
+    try { await sb.auth.getSession(); const { data } = await sb.rpc(start ? 'v2_share_start' : 'v2_share_state', { p_anon: anon() }); if (data) SH = data; return data; } catch (e) { return null; }
+  }
+  function opened() {  // unlocked: forget the short lists and ask again
+    clearInterval(shPoll); shPoll = null; shWait = false;
+    const ov = document.getElementById('unlock'); if (ov) ov.hidden = true;
+    cache.clear(); secCache.clear();
+    const back = S.list && S.list.place;
+    refresh().then(() => { if (back && S.view === 'path') openList(back); else drawSide(); });
+  }
+  function gate() {
+    let ov = document.getElementById('unlock');
+    if (!ov) { ov = document.createElement('div'); ov.className = 'ov'; ov.id = 'unlock'; document.body.appendChild(ov); }
+    const link = SH && SH.code ? location.origin + '/p/' + SH.code : '', line = LINES[shLine % LINES.length];
+    const act = !link ? '<button type="button" class="ulk-go" disabled>Loading</button>'
+      : SH.seen ? '<button type="button" class="ulk-go" data-open="signup">Sign in</button>'
+      : `<a class="ulk-go${shWait ? ' ulk-wait' : ''}" id="ulk-post" target="_blank" rel="noopener" href="https://x.com/intent/post?text=${encodeURIComponent(line)}&url=${encodeURIComponent(link)}">${shWait ? 'Waiting for your post' : 'Post on X'}</a>`;
+    ov.innerHTML = `<div class="md ulk" role="dialog" aria-modal="true" aria-label="Post anything on X with your link"><button class="x" data-close aria-label="Close">×</button>
+<h3>Post anything on X with your link</h3>
+<div class="ulk-l"><span>${esc(link.replace(/^https?:\/\//, ''))}</span><button type="button" id="ulk-copy">Copy</button></div>
+<div class="ulk-t"><span>Need a line? Here's one</span><button type="button" id="ulk-next">Another</button></div>
+<p class="ulk-p">${esc(line)}</p>${act}</div>`;
+    ov.hidden = false;
+    const copy = ov.querySelector('#ulk-copy'), next = ov.querySelector('#ulk-next'), post = ov.querySelector('#ulk-post');
+    if (copy) copy.onclick = () => { if (link && navigator.clipboard) navigator.clipboard.writeText(link).then(() => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy'; }, 1500); }, () => {}); };
+    if (next) next.onclick = () => { shLine++; gate(); };
+    if (post) post.addEventListener('click', () => {  // the link opens X in a new tab; this page starts waiting for X to read the link
+      shWait = true; setTimeout(gate, 50);
+      if (shPoll) return;
+      let n = 0;
+      shPoll = setInterval(async () => {
+        const s = await shareState(false);
+        if (s && s.unlocked) return opened();
+        if ((s && s.seen) || ++n > 90) { clearInterval(shPoll); shPoll = null; if (s && s.seen) gate(); }
+      }, 4000);
+    });
+  }
+  async function openGate() {
+    gate();
+    const s = await shareState(true);
+    if (s && s.unlocked) return opened();
+    gate();
   }
   // The firms behind a place (or one of its sectors) open in a panel of their own, so the sectors stay in view.
   function drawFirms() {
@@ -833,6 +892,7 @@ ${S.view === 'hot' ? `<div class="vm-chips">${tags.map((x) => `<span class="vm-c
     el.classList.remove('vm-busy');
     if (!d) { msg.hidden = false; msg.textContent = 'The map is not available right now.'; return; }
     msg.hidden = true; S.data = d; draw();
+    if (S.view === 'path' && d.locked && !S.shAsked) { S.shAsked = true; shareState(false).then((s) => { if (s && s.unlocked) opened(); }); }
   }
   drawPicks(); drawTime(); drawSide(); marks();
   if (S.view === 'founders') founders();

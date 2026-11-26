@@ -307,3 +307,20 @@ def test_pathfinders_view_shows_the_small_firms_the_top_100_follow():
     # founder, 25 Nov, after seeing it: "just the firms that are not in top 100", so the page asks for no size limit
     assert js.count('p_max_deals: null') == 2
     assert 'create or replace function public.v2_map_pathfinders(' in mig and 'to anon, authenticated' in mig
+
+
+def test_pathfinders_lists_are_locked_until_the_visitor_posts_on_x_and_signs_in():
+    """Founder, 25 Nov: the first three firms are free, the rest blurred; "Post on X" with a personal link, we see X open
+    it, then "Sign in", and everything locked opens for the account. The map itself stays open."""
+    js = (ROOT / 'launch/js/map.js').read_text(); fn = (ROOT / 'launch/functions/p/[code].js').read_text()
+    assert "sb.rpc(start ? 'v2_share_start' : 'v2_share_state', { p_anon: anon() })" in js
+    assert 'data-unlock' in js and '<h3>Post anything on X with your link</h3>' in js and 'https://x.com/intent/post?text=' in js
+    assert "'Waiting for your post' : 'Post on X'" in js and 'data-open="signup">Sign in</button>' in js
+    # his four lines, word for word
+    for line in ("Side effects may include knowing who you're taking money from. Regretamin.", 'Take one before every investor meeting. Regretamin.',
+                 'For the relief of investor regret, before it starts. Regretamin.', "'We love founders' is not due diligence. Regretamin."):
+        assert line in js, line
+    # the stand-in rows carry no real firm: the names never reach the page before the unlock
+    assert "'Firm name here'" in js
+    assert 'v2_share_hit' in fn and '/Twitterbot/i' in fn and "'/?view=pathfinders'" in fn
+
