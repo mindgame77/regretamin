@@ -1,7 +1,7 @@
 # Privacy Policy
 
 What we collect, why, and what you can do about it.
-Effective November 25, 2026 · See also [Terms of Service](../terms/)
+Effective November 26, 2026 · See also [Terms of Service](../terms/)
 
 ## 1. Who we are
 Regretamin (regretamin.com) shows founders information about venture capital, private equity and hedge fund firms from public sources. It is operated by **Know Your Group INC.**, a Delaware corporation ("we", "us"), which is responsible for the personal data described here. Questions or requests: **malytskyyo@gmail.com**.
@@ -15,6 +15,7 @@ This policy covers two groups of people: **users** of the site (sections 2–7) 
 - **Firm requests.** If you search for a firm we don't have yet, the name you typed and, if you give it, your email so we can tell you when it's ready.
 - **Submissions.** If you send us information about a firm, we collect what you send, any evidence (such as documents or emails, including proof of your relationship with the firm), your contact details, and the date. See section 7.
 - **Correction requests.** Your message, contact details and any documents you send.
+- **Pitch decks and reports.** If you use "Am I ready to pitch?", we collect the deck you upload, your LinkedIn link, the note you write, and the report we make from them. Decks are kept in private storage: only you and we can open them.
 - **Payment records.** Stripe handles payments; we never see or store card numbers. We keep your Stripe customer and subscription IDs, your plan and its renewal date.
 - **Abuse prevention.** When a free credit is used, or information is submitted, we store a one-way hash of your IP address (not the address itself).
 
@@ -27,15 +28,18 @@ We don't use advertising cookies or ad trackers. We use **Google Analytics** to 
 - To run the service: sign-in, credits, unlocking firms, saved firms and purchases.
 - To send sign-in links and, if you asked, an email when a firm you requested is ready.
 - To review, verify and publish submissions, and to handle correction requests and replies.
+- To read your pitch deck and write your report.
+- To use the decks and reports we hold for our own purposes: to analyze them, to improve and test our checklist, reports and tools, and for research and statistics that do not name you or your company.
 - To keep the service secure and prevent abuse.
 - To keep records we need to comply with the law and to defend legal claims.
 
-We don't sell your personal data, don't share it for advertising, and don't show ads.
+We don't sell your personal data, don't share it for advertising, and don't show ads. We don't sell your deck, and we don't show it to an investor or anyone else outside Regretamin and the providers in section 5 unless you say yes.
 
 ## 5. Services we use
 - **Supabase:** our database and sign-in (accounts, credits, saved firms). Sign-in link emails are sent through Supabase.
 - **Stripe:** payments, subscriptions and promo codes.
 - **Google:** Google Analytics (visit counts, see section 3), Google sign-in if you choose it, and Google Fonts, which receives your IP address when our pages load fonts.
+- **Anthropic and Google (Gemini):** AI models that read your pitch deck, your note and your LinkedIn link to help write your report.
 - **Resend:** sends the email telling you a firm you requested is ready.
 - **Cloudflare:** hosts the website. Page code also loads from the jsDelivr content network.
 
@@ -63,6 +67,7 @@ If you are a partner, executive, limited partner or other person connected with 
 
 ## 9. How long we keep it
 - Account data, saved firms and credit records: while your account exists.
+- Pitch decks and reports: until you ask us to delete them (section 10).
 - Payment records: longer where tax or accounting law requires.
 - Submissions, correction requests, and the source copies and edit history behind each firm page: up to 6 years, to show where information came from and to defend legal claims.
 - Hosting providers keep their own logs for their own periods.
