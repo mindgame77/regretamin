@@ -356,11 +356,11 @@
     for (const pick of order) {
       const next = document.createElement('div'); next.className = 'vm-post-in';
       const hold = document.createElement('div'); hold.style.cssText = 'position:absolute;left:-9999px;top:0;width:300px'; document.body.appendChild(hold); hold.appendChild(next);
-      // X sometimes never answers for a post (deleted, protected): four seconds, then the next one
-      try { await Promise.race([window.twttr.widgets.createTweet(pick[0], next, { width: 300, dnt: true, conversation: 'none' }), new Promise((r) => setTimeout(r, 4000))]); } catch (e) { hold.remove(); continue; }
+      // X sometimes never answers for a post (deleted, protected): six seconds, then the next one
+      try { await Promise.race([window.twttr.widgets.createTweet(pick[0], next, { width: 300, dnt: true, conversation: 'none' }), new Promise((r) => setTimeout(r, 6000))]); } catch (e) { hold.remove(); continue; }
       if (S.playing !== run) { hold.remove(); return null; }
       const fr = next.querySelector('iframe'), hh = fr ? fr.getBoundingClientRect().height : 0;
-      if (!fr || hh < 60 || hh > POST_MAX) { hold.remove(); continue; }  // deleted, or too long
+      if (!fr || hh < 120 || hh > POST_MAX) { hold.remove(); continue; }  // deleted or not drawn (an empty frame is about 60 px), or too long
       const tw = next.querySelector('.twitter-tweet'); if (tw) { tw.style.marginTop = '0'; tw.style.marginBottom = '0'; }
       return { pick, next, hold, hh };
     }
