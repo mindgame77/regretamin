@@ -369,14 +369,17 @@
     document.addEventListener('click', hide);
     window.addEventListener('scroll', hide, { passive: true });
   }
-  // The firm's logo, left of its name, for the firms that have a logo file (the list comes from the build). Others: nothing.
+  // The firm's logo, left of its name, when the firm has a logo file (assets/logos/f-<slug>.png). The page simply asks
+  // for the picture and shows it if it is there, so it needs no list of firms. Others: nothing.
   function paintLogo(main) {
-    const C = window.REGRET || {}, slug = main && main.dataset && main.dataset.firm;
+    const slug = main && main.dataset && main.dataset.firm;
     const row = main && main.querySelector && main.querySelector('.ph .ph1');
-    if (!slug || !row || !row.insertBefore || (row.querySelector && row.querySelector('.plg')) || !(C.flogos || []).includes(slug)) return;
+    if (!slug || !row || !row.insertBefore || main.dataset.logo === slug || typeof document.createElement !== 'function') return;
+    main.dataset.logo = slug;
     const im = document.createElement('img');
-    im.className = 'plg'; im.alt = ''; im.width = 52; im.height = 52; im.src = (window.REGRET_ROOT || '/') + 'assets/logos/f-' + encodeURIComponent(slug) + '.png';
-    row.insertBefore(im, row.firstChild);
+    im.className = 'plg'; im.alt = ''; im.width = 52; im.height = 52;
+    im.onload = () => { if (main.dataset.firm === slug && !(row.querySelector && row.querySelector('.plg'))) row.insertBefore(im, row.firstChild); };
+    im.src = (window.REGRET_ROOT || '/') + 'assets/logos/f-' + encodeURIComponent(slug) + '.png';
   }
   function paintSignals(main) {
     paintLogo(main);

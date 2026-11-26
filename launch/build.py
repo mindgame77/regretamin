@@ -24,8 +24,11 @@ LAND_RECIPE = 'exact-all-1'
 MAPV = hashlib.sha1(b''.join(open(os.path.join(HERE, 'assets', 'map', f), 'rb').read() for f in ('world.svg', 'us.svg', 'eu.svg', 'places.json', 'lines.json', 'land.json', '../founders/geo.json', '../founders/orgs.json')) + LAND_RECIPE.encode()).hexdigest()[:10]
 # Firms that have a logo file (assets/logos/f-<slug>.png): the firm page shows it left of the name, the Investors list
 # in front of the name; every other firm shows its initials in the list and nothing on its page (founder, 25 Nov).
+# The list of those firms is its own small file (assets/logos/firms.json), loaded only by the Investors list; pages
+# carry just its short version tag, so a changed list is fetched again. The database copies the same file
+# (v2_firm_logos_sync), so the logo is on record with the firm's other data.
 FLOGOS = sorted(os.path.basename(p)[2:-4] for p in glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'logos', 'f-*.png')))
-CFG = {'url': os.environ.get('SUPABASE_URL', ''), 'key': os.environ.get('SUPABASE_ANON_KEY', ''), 'mapv': MAPV, 'flogos': FLOGOS, 'copy': {**COPY, 'site': {k: v for k, v in S.items() if k not in ('legal', 'pages')}}}
+CFG = {'url': os.environ.get('SUPABASE_URL', ''), 'key': os.environ.get('SUPABASE_ANON_KEY', ''), 'mapv': MAPV, 'flv': hashlib.sha1(','.join(FLOGOS).encode()).hexdigest()[:10], 'copy': {**COPY, 'site': {k: v for k, v in S.items() if k not in ('legal', 'pages')}}}
 GLOGO = '''<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>'''
 
 def billing():  # Monthly|Yearly toggle for both pricing popups; their plan cards are drawn by js/app.js (drawPlans) from copy.json plans
@@ -417,7 +420,8 @@ def main():
     shutil.copytree(os.path.join(HERE, 'fav'), os.path.join(OUT, 'fav'))
     shutil.copytree(os.path.join(HERE, 'assets', 'video'), os.path.join(OUT, 'assets', 'video'))
     shutil.copytree(os.path.join(HERE, 'assets', 'founders'), os.path.join(OUT, 'assets', 'founders'))  # the Founders view: shapes and where each university and company sits (tools/map/gen_founders.cjs)
-    shutil.copytree(os.path.join(HERE, 'assets', 'logos'), os.path.join(OUT, 'assets', 'logos'))  # university and company logos for the Founders view
+    shutil.copytree(os.path.join(HERE, 'assets', 'logos'), os.path.join(OUT, 'assets', 'logos'))  # university and company logos for the Founders view; firm logos (f-<slug>.png)
+    open(os.path.join(OUT, 'assets', 'logos', 'firms.json'), 'w').write(json.dumps(FLOGOS, separators=(',', ':')))  # which firms have a logo
     shutil.copytree(os.path.join(HERE, 'assets', 'map'), os.path.join(OUT, 'assets', 'map'))  # backgrounds and coordinates for /map/ (tools/map/gen_assets.cjs)
     # The "Where they invest" card on a firm page shows the same maps as smooth grey land, not dots (founder, 23 Nov:
     # the dots did not show at that size, and square blocks looked ugly). Made here from the dotted files: each dot
