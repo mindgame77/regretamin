@@ -277,7 +277,7 @@
     const a = qStart(S.q0), b = qEnd(S.q1), today = S.q1 === NQ - 1;
     // the chosen range is read from the handles; it is also spoken for screen readers
     $('#vm-q0').setAttribute('aria-valuetext', `${MONTHS[a.getMonth()]} ${a.getFullYear()}`); $('#vm-q1').setAttribute('aria-valuetext', today ? 'today' : `${MONTHS[b.getMonth()]} ${b.getFullYear()}`);
-    $('#vm-play').classList.toggle('vm-on', !!S.playing); $('#vm-play').setAttribute('aria-label', S.playing ? 'Pause' : 'Play');
+    $('#vm-play').classList.toggle('vm-on', !!S.playing); $('#vm-play').classList.toggle('vm-x2', !!S.playing && S.speed === 2); $('#vm-play').setAttribute('aria-label', !S.playing ? 'Play' : S.speed === 2 ? 'Stop' : 'Play faster');
     // The button offers the other view: "This year" while the line shows every year, "All years" once it is narrowed (founder, 23 Nov).
     $('#vm-all').textContent = S.q0 === 0 && S.q1 === NQ - 1 ? 'This year' : 'All years';
   }
@@ -300,19 +300,80 @@
     else { S.q0 = 0; S.q1 = NQ - 1; }
     closeList(); drawTime(); refresh();
   });
-  function stop() { if (S.playing) { S.playing = null; drawTime(); } }
+  function stop() { if (S.playing) { S.playing = null; S.speed = 1; hidePost(); drawTime(); } }
+  // Play (founder, 25 Nov): first press plays, second press doubles the speed, third press stops. While it plays, a real
+  // post from X about the big tech news of the quarter pops up on the map, pinned to the place the news came from, with
+  // the pill riding on it. One of the quarter's posts is picked at random each run. Pressing the post pauses Play and
+  // opens it big; closing that carries on. X draws the posts (its own embed); the page only keeps their numbers.
+  // A post: [X status id, the tag over it, the place on the world map, the place on the US map].
+  const POSTS = {
+    0: [['1354523898851823622', 'JAN 2021 · THE GAMESTOP SQUEEZE', 'US Central', 'Dallas'], ['1354474147016024069', 'JAN 2021 · THE GAMESTOP SQUEEZE', 'US Central', 'Dallas'], ['1354317599492993024', 'JAN 2021 · THE GAMESTOP SQUEEZE', 'US Central', 'Dallas']],
+    1: [['1389581557980139527', 'MAY 2021 · DOGECOIN BREAKS ROBINHOOD', 'US West', 'Bay Area'], ['1389587820772302849', 'MAY 2021 · DOGECOIN BREAKS ROBINHOOD', 'US West', 'Bay Area'], ['1395157383366782978', 'MAY 2021 · THE CRYPTO CRASH', 'US West', 'Bay Area']],
+    2: [['1417547103354621954', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle'], ['1417545632529756165', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle'], ['1417305957776990208', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle']],
+    3: [['1453805031463993346', 'OCT 2021 · FACEBOOK RENAMES ITSELF META', 'US West', 'Bay Area'], ['1453842753591390210', 'OCT 2021 · FACEBOOK RENAMES ITSELF META', 'US West', 'Bay Area'], ['1445114779304177664', 'OCT 2021 · FACEBOOK GOES DOWN FOR SIX HOURS', 'US West', 'Bay Area']],
+  };
+  let xReady = null, postNow = null, postHold = false;
+  const xLoad = () => xReady || (xReady = new Promise((res) => {
+    if (window.twttr && window.twttr.widgets) return res(true);
+    const s = document.createElement('script'); s.src = 'https://platform.twitter.com/widgets.js'; s.async = true;
+    s.onload = () => { const t = setInterval(() => { if (window.twttr && window.twttr.widgets) { clearInterval(t); res(true); } }, 60); setTimeout(() => { clearInterval(t); res(!!(window.twttr && window.twttr.widgets)); }, 5000); };
+    s.onerror = () => res(false); document.head.appendChild(s);
+  }));
+  function hidePost() { postNow = null; const b = document.getElementById('vm-post'); if (b) b.hidden = true; }
+  function placePost() {  // beside the circle of the place the news came from; in the middle when that place is not on this map
+    const b = document.getElementById('vm-post'); if (!b || b.hidden || !postNow) return;
+    const box = mapBox.getBoundingClientRect(), c = els.get(S.level + '|' + (S.level === 'us' ? postNow[3] : S.level === 'world' ? postNow[2] : ''));
+    const r = c && c.getBoundingClientRect(), w = b.offsetWidth || 240, h = b.offsetHeight || 170;
+    let x = r ? r.right - box.left + 26 : box.width / 2 - w / 2, y = r ? r.top + r.height / 2 - box.top - 30 : box.height / 2 - h / 2;
+    x = Math.max(34, Math.min(box.width - w - 70, x)); y = Math.max(96, Math.min(box.height - h - 120, y));
+    b.style.left = x + 'px'; b.style.top = y + 'px'; b.classList.toggle('vm-nopin', !r);
+  }
+  async function showPost(q) {
+    const set = S.view === 'founders' ? null : POSTS[q];
+    if (!set) return;
+    const pick = set[Math.floor(Math.random() * set.length)], run = S.playing;
+    if (!(await xLoad()) || S.playing !== run || !run) return;
+    let b = document.getElementById('vm-post');
+    if (!b) { b = document.createElement('div'); b.id = 'vm-post'; b.className = 'vm-post'; b.hidden = true; mapBox.appendChild(b); }
+    const next = document.createElement('div'); next.className = 'vm-post-in';
+    const hold = document.createElement('div'); hold.style.cssText = 'position:absolute;left:-9999px;top:0;width:300px'; document.body.appendChild(hold); hold.appendChild(next);
+    try { await window.twttr.widgets.createTweet(pick[0], next, { width: 300, dnt: true, conversation: 'none' }); } catch (e) { hold.remove(); return; }
+    const fr = next.querySelector('iframe');
+    if (!fr || S.playing !== run) { hold.remove(); return; }  // a post that was deleted draws nothing: skip it
+    const tw = next.querySelector('.twitter-tweet'); if (tw) { tw.style.marginTop = '0'; tw.style.marginBottom = '0'; }
+    const hh = fr.getBoundingClientRect().height;
+    b.innerHTML = `<i class="vm-post-arm"></i><span class="vm-post-pill"><i></i><i></i><u></u></span><span class="vm-post-tag">${esc(pick[1])}</span><div class="vm-post-mini" style="height:${Math.round(hh * 0.8)}px"></div><button type="button" class="vm-post-hit" aria-label="Open this post"></button>`;
+    b.querySelector('.vm-post-mini').appendChild(next); hold.remove();
+    postNow = pick; b.hidden = false; placePost();
+    b.querySelector('.vm-post-hit').onclick = () => openPost(pick);
+  }
+  function openPost(pick) {  // the post at full size; Play waits until it is closed
+    let ov = document.getElementById('postbig');
+    if (!ov) {
+      ov = document.createElement('div'); ov.className = 'ov'; ov.id = 'postbig'; ov.hidden = true; document.body.appendChild(ov);
+      new MutationObserver(() => { if (ov.hidden) postHold = false; }).observe(ov, { attributes: true, attributeFilter: ['hidden'] });
+      ov.addEventListener('click', (e) => { if (e.target === ov) ov.hidden = true; });
+    }
+    ov.innerHTML = '<div class="md vm-postbig" role="dialog" aria-modal="true" aria-label="Post"><button class="x" data-close aria-label="Close">×</button><div class="vm-postbig-in"></div></div>';
+    postHold = true; ov.hidden = false;
+    xLoad().then((ok) => { if (ok) window.twttr.widgets.createTweet(pick[0], ov.querySelector('.vm-postbig-in'), { width: 440, dnt: true }); });
+  }
   $('#vm-play').addEventListener('click', async () => {
-    if (S.playing) return stop();
+    if (S.playing) { if ((S.speed || 1) === 1) { S.speed = 2; drawTime(); return; } return stop(); }
     closeList(); if (S.q1 >= NQ - 1) S.q1 = S.q0;  // play grows the range one quarter at a time, from the left handle
-    const run = S.playing = {};
-    drawTime(); await refresh();
+    const run = S.playing = {}; S.speed = 1;
+    drawTime(); xLoad(); await refresh(); showPost(S.q1);
     // One step at a time: wait for the numbers, show them, pause, then move on. Never ahead of the data.
     while (S.playing === run && S.q1 < NQ - 1) {
-      await new Promise((r) => setTimeout(r, 450));
+      // a quarter that shows a post stays long enough to read it
+      const wait = (POSTS[S.q1] && S.view !== 'founders' ? 2600 : 450) / (S.speed || 1);
+      await new Promise((r) => setTimeout(r, wait));
+      while (postHold && S.playing === run) await new Promise((r) => setTimeout(r, 200));
       if (S.playing !== run) return;
-      S.q1 += 1; drawTime(); await refresh();
+      S.q1 += 1; drawTime(); await refresh(); placePost();
+      if (POSTS[S.q1]) showPost(S.q1); else if (!POSTS[S.q1 - 1] || S.q1 - 1 > 3) hidePost();
     }
-    if (S.playing === run) stop();
+    if (S.playing === run) { await new Promise((r) => setTimeout(r, 1200)); if (S.playing === run) stop(); }
   });
 
   // ---------- zoom
