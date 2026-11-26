@@ -6,7 +6,7 @@ Builders take the shared build context; they never write files or deploy.
 from dataclasses import dataclass
 from html import escape as E
 from . import home, pending, how_we_check, account, my_firms, privacy, terms, plans, login, firms
-from . import my_checks_redirect, pricing_redirect, not_found, map as map_page, ready
+from . import my_checks_redirect, pricing_redirect, not_found, map as map_page, ready, my_score
 
 @dataclass(frozen=True)
 class Page:
@@ -29,6 +29,7 @@ PAGES = (
     Page('ready', ready.render, nav='main', active='ready', attributes=' id="readynav"', noindex=True),
     Page('account', account.render, nav='account', noindex=True),
     Page('account/firms', my_firms.render, nav='account', noindex=True),
+    Page('account/score', my_score.render, nav='account', noindex=True),
     Page('my-checks', my_checks_redirect.render, noindex=True, redirect='../account/firms/'),
     Page('privacy', privacy.render, nav='footer', sitemap=True),
     Page('terms', terms.render, nav='footer', sitemap=True),

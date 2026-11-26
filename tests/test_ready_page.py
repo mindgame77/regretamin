@@ -66,10 +66,12 @@ def test_the_same_deck_sent_again_shows_the_saved_report():
 
 
 def test_firm_links_open_in_a_new_page_and_reports_are_listed_in_the_account():
-    """Founder, 26 Nov: "those links should open in new pages" and "we should save reports in your account"."""
+    """Founder, 26 Nov: "those links should open in new pages", "save reports in your account", then "separate page ... my score ... or you can download the PDF"."""
     js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
     assert js.count('target="_blank" rel="noopener" href="/vc/') == 2 and 'href="/vc/${' not in js.replace('rel="noopener" href="/vc/${', '')
     app = open(os.path.join(ROOT, "launch", "js", "app.js")).read()
-    assert "from('ready_reports')" in app and "ready/?report=" in app
-    page = open(os.path.join(ROOT, "site-launch", "account", "index.html")).read() if os.path.exists(os.path.join(ROOT, "site-launch", "account", "index.html")) else ""
-    assert not page or ('id="myrep" hidden' in page and "My reports" in page)   # hidden until the account has a report
+    assert "paintMyScore" in app and "from('ready_reports')" in app and "ready/?report=" in app and "&pdf=1" in app
+    reg = open(os.path.join(ROOT, "launch", "pages", "registry.py")).read()
+    assert "Page('account/score', my_score.render, nav='account', noindex=True)" in reg   # its own page, "My score", in the account menu
+    assert json.load(open(os.path.join(ROOT, "launch", "copy.json")))["site"]["pages"]["account/score"]["nav_label"] == "My score"
+    assert "get('pdf')" in js and "window.print()" in js   # Download PDF opens the report and the save-as-PDF box

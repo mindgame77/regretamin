@@ -151,6 +151,6 @@
     const { data } = await sb.auth.getSession();
     if (!data || !data.session) return;
     const got = await sb.from('ready_reports').select('result,status').eq('id', id).maybeSingle();
-    if (got.data && got.data.result) draw(got.data.result);
+    if (got.data && got.data.result) { draw(got.data.result); if (new URLSearchParams(location.search).get('pdf')) setTimeout(() => window.print(), 600); }   // "Download PDF" on My score
   })();
 })();
