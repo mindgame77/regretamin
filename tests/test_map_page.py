@@ -302,6 +302,8 @@ def test_pathfinders_view_shows_the_small_firms_the_top_100_follow():
     assert "<h2>Most followed</h2><span class=\"vm-tag\">startups followed</span>" in js
     assert "qs.get('view') === 'pathfinders'" in js and "S.view === 'path' ? 'pathfinders' : S.view" in js  # a link can open it and the share link names it
     assert '.vm-pl.vm-path{background:#F0861E;' in css
-    # the rule lives in the database: small = not on the list and at most 50 deals; followed = the top firm came in later
+    # the rule lives in the database: followed = the top firm came in later; it can also leave out big firms (not used)
     assert 'p_max_deals integer default 50' in mig and 'b.d > a.d' in mig and 'v2_map_counted_places' in mig
+    # founder, 25 Nov, after seeing it: "just the firms that are not in top 100", so the page asks for no size limit
+    assert js.count('p_max_deals: null') == 2
     assert 'create or replace function public.v2_map_pathfinders(' in mig and 'to anon, authenticated' in mig

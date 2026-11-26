@@ -122,7 +122,7 @@
   const cache = new Map();
   async function summary() {
     if (S.view === 'path') {  // Pathfinders: one answer holds the places, totals and lists of all three zooms
-      const a = args(), key = 'path' + JSON.stringify(a);
+      const a = Object.assign({ p_max_deals: null }, args()), key = 'path' + JSON.stringify(a);  // every firm that is not on the Top 100 list (founder, 25 Nov: no size limit)
       if (cache.has(key)) return cache.get(key);
       let out = null;
       if (sb && !FIXTURE) { const { data, error } = await sb.rpc('v2_map_pathfinders', a); if (!error) out = data; }
@@ -165,10 +165,10 @@
     if (error) return null;
     secCache.set(key, data); return data;
   }
-  // Pathfinders, one pressed place: its most followed small firms.
+  // Pathfinders, one pressed place: its most followed firms.
   async function pathPlace(place) {
     if (FIXTURE || !sb) return null;
-    const a = Object.assign({ p_level: S.level, p_place: place.p }, args()), key = 'path' + JSON.stringify(a);
+    const a = Object.assign({ p_level: S.level, p_place: place.p, p_max_deals: null }, args()), key = 'path' + JSON.stringify(a);
     if (secCache.has(key)) return secCache.get(key);
     const { data, error } = await sb.rpc('v2_map_pathfinders', a);
     if (error) return null;
@@ -443,7 +443,7 @@
     const rows = (S.data.places || []).filter((p) => p.l === S.level && g[p.p] && !FOLD[p.p]).map((p) => Object.assign({}, p, g[p.p], { n: g[p.p].n || p.p }));
     const max = Math.max(1, ...rows.map((p) => p.d)), hot = S.view === 'hot';
     rows.forEach((p) => {
-      if (S.view === 'path') {  // one plain circle per place: the startups of its small firms that a Top 100 firm later backed
+      if (S.view === 'path') {  // one plain circle per place: the startups of its firms (those not on the Top 100 list) that a Top 100 firm later backed
         p.kind = p.d > 0 ? 'path' : null;
         p.r = S.level === 'world' ? Math.round(13 + 27 * Math.sqrt(p.d / max)) : Math.round(7 + 29 * Math.sqrt(p.d / max));
         p.ax = p.x; p.ay = p.y; return;
@@ -765,7 +765,7 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
       return `<a class="${i ? '' : 'vm-first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="vm-tag">${i ? '' : '<i class="vm-new" title="Newest update: its place is lit up on the map"></i>'}${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span class="vm-line" title="${esc(updateLine(u, who))}">${esc(updateLine(u, who))}</span></a>`;
     }).join('') : '<p class="vm-mu">No updates to show yet.</p>'}`;
   }
-  // Pathfinders: the most followed small firms of the zoom, or of the pressed place. A row is the rank, the firm's logo
+  // Pathfinders: the most followed firms of the zoom, or of the pressed place (every firm not on the Top 100 list). A row is the rank, the firm's logo
   // (or its initials), its name, the top firms that came after it most, and how many of its startups a Top 100 firm
   // later backed. Which firms have a logo comes from the same list the Investors list uses, asked for once.
   let LOGOS = null;
