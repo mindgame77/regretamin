@@ -43,7 +43,7 @@
     timer = setInterval(() => { if (i < items.length - 1) { i++; paint(); } }, 14000);
   }
 
-  const WHY = { no_key: 'The model key is not set on this address yet.', sign_in: 'Please sign in again.', not_configured: 'This address is not set up yet.' };
+  const WHY = { no_key: 'The model key is not set on this address yet.', model_no_credit: 'The model account has no credit. Nothing is wrong with your deck.', sign_in: 'Please sign in again.', not_configured: 'This address is not set up yet.' };
   async function run(id, token) {
     show(wait); tick();
     let r = null, j = null;
