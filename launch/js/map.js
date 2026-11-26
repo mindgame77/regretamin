@@ -892,8 +892,16 @@ ${S.view === 'hot' ? `<div class="vm-chips">${tags.map((x) => `<span class="vm-c
     el.classList.remove('vm-busy');
     if (!d) { msg.hidden = false; msg.textContent = 'The map is not available right now.'; return; }
     msg.hidden = true; S.data = d; draw();
-    if (S.view === 'path' && d.locked && !S.shAsked) { S.shAsked = true; shareState(false).then((s) => { if (s && s.unlocked) opened(); }); }
+    // Back from signing in, the page can ask before it knows the visitor is signed in: it asks again shortly after, and
+    // whenever the sign-in arrives (see below), so the lists open by themselves (he had to press a blurred row, 25 Nov).
+    if (S.view === 'path' && d.locked && !S.shAsked) { S.shAsked = true; claim(); setTimeout(claim, 2500); setTimeout(claim, 7000); }
   }
+  function claim() {
+    if (S.view !== 'path' || !S.data || !S.data.locked || S.claiming) return;
+    S.claiming = true;
+    shareState(false).then((s) => { S.claiming = false; if (s && s.unlocked) opened(); }, () => { S.claiming = false; });
+  }
+  if (sb && sb.auth && sb.auth.onAuthStateChange) sb.auth.onAuthStateChange((ev, session) => { if (session) setTimeout(claim, 0); });
   drawPicks(); drawTime(); drawSide(); marks();
   if (S.view === 'founders') founders();
   // The map's places, its numbers and the latest updates are asked for at the same time, not one after another.

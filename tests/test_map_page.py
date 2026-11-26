@@ -323,4 +323,9 @@ def test_pathfinders_lists_are_locked_until_the_visitor_posts_on_x_and_signs_in(
     # the stand-in rows carry no real firm: the names never reach the page before the unlock
     assert "'Firm name here'" in js
     assert 'v2_share_hit' in fn and '/Twitterbot/i' in fn and "'/?view=pathfinders'" in fn
+    # back from signing in, the lists open by themselves (he had to press a blurred row before this)
+    assert 'sb.auth.onAuthStateChange((ev, session) => { if (session) setTimeout(claim, 0); });' in js and 'setTimeout(claim, 2500)' in js
+    mig = next((ROOT / 'supabase/migrations').glob('*_v2_share_to_unlock.sql')).read_text()
+    assert 'create table if not exists public.v2_share_codes' in mig and 'enable row level security' in mig
+    assert 'r.k <= case when me.ok then 30 else 3 end' in mig  # the lock is in the database, not only a blur
 
