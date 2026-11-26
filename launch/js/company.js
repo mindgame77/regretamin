@@ -272,8 +272,8 @@
     fitOneLine(box.querySelector('.hsec .secp'), 'hp hmore');
     closeButton(main);
     paintSignals(main);
-    readyButton(main);
   }
+  // NOT USED since 26 Nov 2026: the header now carries the orange "Am I ready to pitch?" link on every page (pages/ready.py).
   // "Am I ready for this firm?" in the site header, on firm pages only. The check itself is not built yet, so the
   // button opens a "coming soon" box that takes an email (stored by v2_ready_interest_add).
   function readyButton(main) {

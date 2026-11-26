@@ -416,7 +416,7 @@ def launch_firms():
 
 def main():
     shutil.rmtree(OUT, ignore_errors=True); os.makedirs(OUT)
-    for f in ('style.css', 'logo.svg', 'js/app.js', 'js/company.js', 'js/search.js', 'js/dates.js', 'js/firms.js', 'js/map.js', 'js/founders.js', 'js/ga.js'): shutil.copy(os.path.join(HERE, f), OUT)
+    for f in ('style.css', 'logo.svg', 'js/app.js', 'js/company.js', 'js/search.js', 'js/dates.js', 'js/firms.js', 'js/map.js', 'js/founders.js', 'js/ga.js', 'js/ready.js'): shutil.copy(os.path.join(HERE, f), OUT)
     shutil.copytree(os.path.join(HERE, 'fav'), os.path.join(OUT, 'fav'))
     shutil.copytree(os.path.join(HERE, 'assets', 'video'), os.path.join(OUT, 'assets', 'video'))
     shutil.copytree(os.path.join(HERE, 'assets', 'founders'), os.path.join(OUT, 'assets', 'founders'))  # the Founders view: shapes and where each university and company sits (tools/map/gen_founders.cjs)
