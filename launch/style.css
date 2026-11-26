@@ -1225,6 +1225,7 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-pfn{flex:none;font:600 15px 'Geist',sans-serif}
 .vm-side .vm-pfs button.vm-pfb{display:flex;align-items:center;gap:10px;width:100%;padding:9px 0;margin:0;border:0;border-top:1px solid #E9EDEB;border-radius:0;background:none;color:inherit;text-align:left;cursor:pointer}
 .vm-pfb>*{filter:blur(5px);opacity:.75;user-select:none}
+.vm-rows a.vm-fb>*{filter:blur(5px);opacity:.75;user-select:none}
 .md.ulk{width:440px;max-width:calc(100vw - 24px);padding:26px;border-radius:20px;position:relative}
 .ulk .x{position:absolute;top:14px;right:16px;float:none}
 .ulk h3{font:600 22px/1.2 'Geist',sans-serif;letter-spacing:-.01em;margin:0 28px 14px 0}

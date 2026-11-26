@@ -151,7 +151,9 @@
     if (FIXTURE || !sb) return null;
     // in the 'Hot right now' view the list covers the same recent period the map is showing
     const win = S.view === 'hot' ? { p_from: iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - S.days + 1)), p_to: iso(now), p_stages: S.stages.length ? S.stages : null, p_sectors: sector ? [sector] : S.sectors.length ? S.sectors : null } : Object.assign(args(), sector ? { p_sectors: [sector] } : {});
-    const { data, error } = await sb.rpc('v2_map_firms', Object.assign({ p_level: S.level, p_place: place.p }, win, who() !== 'all' ? { p_firms: who() } : {}));
+    // The gated answer: the same firms, but only the first 5 (3 for Fresh funds) until the account has unlocked (founder, 25 Nov).
+    await sb.auth.getSession();
+    const { data, error } = await sb.rpc('v2_map_firms_gated', Object.assign({ p_level: S.level, p_place: place.p }, win, who() !== 'all' ? { p_firms: who() } : {}));
     return error ? null : data;
   }
   // Money flow: every sector of one clicked place for the stretch of time the timeline shows: deals and firms.
@@ -796,6 +798,10 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
     'For the relief of investor regret, before it starts. Regretamin.', "'We love founders' is not due diligence. Regretamin."];
   let SH = null, shLine = 0, shWait = false, shPoll = null;
   const anon = () => { try { let a = localStorage.getItem('regretamin.anon'); if (!a) { a = crypto.randomUUID(); localStorage.setItem('regretamin.anon', a); } return a; } catch (e) { return null; } };
+  function lockedFirms(d) {  // the firms list behind a place: stand-ins for what the database held back
+    if (!d || !d.locked || !Array.isArray(d.firms) || !(d.count > d.firms.length)) return '';
+    return Array.from({ length: Math.min(6, d.count - d.firms.length) }, (_, i) => `<a href="#" class="vm-fb" data-unlock aria-label="Unlock the full list"><span><b>${'Firm name here'.slice(0, 9 + (i * 3) % 6)}</b><span class="vm-mu">${12 - i} deals</span><span class="vm-st vm-a"><i></i>Active<span class="vm-mu"> · last deal Nov 1</span></span></span><span class="vm-ck">Check</span></a>`).join('');
+  }
   function lockedRows(d, shown, total) {
     if (!d || !d.locked || !(total > shown)) return '';
     return Array.from({ length: Math.min(6, total - shown) }, (_, i) => `<button type="button" class="vm-pf vm-pfb" data-unlock aria-label="Unlock the full list"><span class="vm-pfk">${shown + i + 1}</span><span class="vm-pfl vm-pfi"></span><span class="vm-pft"><b>${'Firm name here'.slice(0, 9 + (i * 3) % 6)}</b><i>Top firm 4 · Another firm 3 · One more 2</i></span><span class="vm-pfn">${9 - i}</span></button>`).join('');
@@ -808,6 +814,7 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
     clearInterval(shPoll); shPoll = null; shWait = false;
     const ov = document.getElementById('unlock'); if (ov) ov.hidden = true;
     cache.clear(); secCache.clear();
+    if (S.view !== 'path') { const L = S.list; if (L && L.step === 'firms') showFirms(L.sector); return; }  // the firms list is asked for again, in full
     const back = S.list && S.list.place;
     refresh().then(() => { if (back && S.view === 'path') openList(back); else drawSide(); });
   }
@@ -852,15 +859,17 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
     if (fp.hidden) { fp.hidden = false; fit(); }
     fp.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + (S.view !== 'hot' && L.sector ? ' ' + esc(L.sector) : '') + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-fpx" aria-label="Close the firms list"></button></div>
 ${S.view === 'hot' ? `<div class="vm-chips">${tags.map((x) => `<span class="vm-chip vm-chipst">${esc(x)}</span>`).join('')}</div>` : ''}
-<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
-<a class="vm-more" href="${listUrl()}">Open the full investors list</a>`;
+<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}${lockedFirms(L.data)}</div>
+<a class="vm-more" href="${listUrl()}"${L.data && L.data.locked ? ' data-unlock' : ''}>Open the full investors list</a>`;
     $('#vm-fpx').onclick = () => { L.step = 'sectors'; L.sector = null; L.data = null; drawSide(); };
+    // locked: the blurred rows and the link to the full list both open the card instead
+    fp.querySelectorAll('[data-unlock]').forEach((b) => { b.onclick = (e) => { e.preventDefault(); openGate(); }; });
   }
   async function showFirms(sector) {
     const L = S.list; if (!L) return;
     L.step = 'firms'; L.sector = sector || null; L.data = null; drawSide();
     const d = await firms(L.place, L.sector);
-    if (S.list === L && L.step === 'firms' && L.sector === (sector || null)) { L.data = d || { count: 0, firms: [] }; drawFirms(); }
+    if (S.list === L && L.step === 'firms' && L.sector === (sector || null)) { L.data = d || { count: 0, firms: [] }; drawFirms(); if (L.data.locked && !S.shAsked2) { S.shAsked2 = true; claim(); setTimeout(claim, 2500); setTimeout(claim, 7000); } }
   }
   async function openList(place) {
     // sectors first, in both views; the firms are one click away (a sector row, or the button in the top card)
@@ -897,7 +906,8 @@ ${S.view === 'hot' ? `<div class="vm-chips">${tags.map((x) => `<span class="vm-c
     if (S.view === 'path' && d.locked && !S.shAsked) { S.shAsked = true; claim(); setTimeout(claim, 2500); setTimeout(claim, 7000); }
   }
   function claim() {
-    if (S.view !== 'path' || !S.data || !S.data.locked || S.claiming) return;
+    const short = S.view === 'path' ? S.data && S.data.locked : S.list && S.list.data && S.list.data.locked;
+    if (!short || S.claiming) return;
     S.claiming = true;
     shareState(false).then((s) => { S.claiming = false; if (s && s.unlocked) opened(); }, () => { S.claiming = false; });
   }
