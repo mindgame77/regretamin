@@ -9,7 +9,7 @@
   const up = $('rd-up'), wait = $('rd-wait'), res = $('rd-res');
   if (!up || !wait || !res) return;
   const MAX = 20 * 1024 * 1024, WORDS = 1000;
-  let file = null, timer = 0;
+  let file = null, timer = 0, REPORT = null;   // REPORT: the id of the report on screen (the full research is asked for by it)
 
   const show = (el) => { for (const s of [up, wait, res]) s.hidden = s !== el; window.scrollTo(0, 0); };
   const say = (t) => { $('rd-msg').textContent = t || ''; };
@@ -54,7 +54,7 @@
     clearInterval(timer);
     if (!r || !r.ok || !j || !j.report) { show(up); return say(WHY[j && j.error] || 'Something went wrong reading the deck. Nothing was charged. Try again.'); }
     try { history.replaceState(null, '', '?report=' + encodeURIComponent(id)); } catch (e) {}
-    draw(j.report);
+    REPORT = id; draw(j.report);
   }
 
   // The deck's fingerprint: the same file always gives the same letters. It goes into the stored file's name, so the
@@ -84,7 +84,7 @@
       if (hit && hit.result) {
         go.disabled = false; say('');
         try { history.replaceState(null, '', '?report=' + encodeURIComponent(hit.id)); } catch (e) {}
-        return draw(hit.result, true);
+        REPORT = hit.id; return draw(hit.result, true);
       }
     }
     const path = session.user.id + '/' + (mark ? mark + '-' : '') + Date.now() + '-' + safe;
@@ -119,6 +119,59 @@
       + `<div><a class="rd-nm" target="_blank" rel="noopener" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a><div class="rd-pl">${esc(place)}</div>${(f.marks || []).map((m) => `<span class="rd-mark">${CUP}${esc(m)}</span>`).join('')}</div><div class="rd-why">${esc(why)}</div><div class="rd-say">${sum}${esc(f.say || '')}</div></div>`;
   }
 
+  // The full research (step 3). Every figure is marked: from our own data, or looked up on the web with its source.
+  const usd = (n) => (n >= 1e9 ? '$' + (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'B' : n >= 1e6 ? '$' + (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : '$' + Math.round(n / 1e3) + 'K');
+  const OURS = '<span class="rd-from rd-o">Our data</span>', WEB = '<span class="rd-from">Looked up</span>';
+  const firmA = (f) => `<a target="_blank" rel="noopener" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a>`;
+  const srcA = (u) => `<a class="rd-src" target="_blank" rel="noopener nofollow" href="${esc(u)}">Source</a>`;
+  function researchHtml(x) {
+    const comp = x.competitors || [], skip = x.skip || [], inst = x.instead || [], tried = x.tried || [], rr = x.rounds;
+    const stage = String(x.stage || '').toLowerCase(), field = x.sector && x.sector !== 'Other' ? x.sector.toLowerCase() + ' ' : '';
+    const cRows = comp.map((c) => `<div class="rd-crow"><div><b>${esc(c.name)}</b><p>${esc(c.what)}</p>${srcA(c.src)}</div>`
+      + `<div>${c.raised ? `<i class="rd-d${c.raised.ours ? ' rd-o' : ''}"></i>${esc(c.raised.text)}${c.raised.date ? `<span class="rd-pl">${esc(day(c.raised.date))}</span>` : ''}` : '–'}</div>`
+      + `<div>${c.backers && c.backers.list.length ? `<i class="rd-d${c.backers.ours ? ' rd-o' : ''}"></i>` + c.backers.list.map((b) => (b.slug ? firmA(b) : esc(b.name))).join(', ') : '–'}</div>`
+      + `<div>${esc(c.you || '')}</div></div>`).join('');
+    const block1 = `<div class="rd-rb"><h3>Your competitors ${OURS}${WEB}</h3>${comp.length
+      ? `<div class="rd-crow rd-hd"><span>Company</span><span>Raised</span><span>Backed by</span><span>You have</span></div>${cRows}`
+      : '<p class="rd-none">None found with a source we could check.</p>'}</div>`;
+    const block2 = skip.length ? `<div class="rd-two"><div class="rd-rb"><h3>Skip these firms ${OURS}</h3><p class="rd-rs">They already hold one of your competitors.</p>${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}</div>`
+      + `<div class="rd-rb"><h3>Pitch these instead ${OURS}</h3><p class="rd-rs">They invest in your field and hold none of your competitors.</p>${inst.map((f) => `<div class="rd-fl">${firmA(f)}<span>${f.fit} ${esc(field)}${esc(stage)} deal${f.fit === 1 ? '' : 's'} in 12 months</span></div>`).join('')}</div></div>` : '';
+    const block3 = `<div class="rd-rb"><h3>Who tried this before ${WEB}</h3>${tried.length
+      ? `<p class="rd-rs">Talk to them before you raise. One call can save a year.</p>${tried.map((t) => `<div class="rd-trow"><span class="rd-wh">${esc(t.years)}</span><div><b>${esc(t.name)}</b><p>${esc(t.happened)}</p><p class="rd-pl">${t.founders && t.founders.length ? 'Founders: ' + esc(t.founders.join(', ')) + ' · ' : ''}${srcA(t.src)}</p></div></div>`).join('')}`
+        + '<div class="rd-q3"><b>Three questions to ask them</b><ol><li>What ended it, in one sentence?</li><li>If you started again, what would you do in the first six months?</li><li>Which investors understood it, and which wasted your time?</li></ol></div>'
+      : '<p class="rd-none">None found with a source we could check.</p>'}</div>`;
+    let block4 = '';
+    if (rr) {
+      const top = Math.max(rr.p90 * 1.12, (rr.ask || 0) * 1.12), at = (v) => Math.max(0, Math.min(100, (100 * v) / top)).toFixed(1) + '%';
+      block4 = `<div class="rd-rb"><h3>Your ask against similar rounds ${OURS}</h3><p class="rd-rs">${rr.n.toLocaleString('en-US')} ${esc(rr.sector ? rr.sector.toLowerCase() + ' ' : '')}${esc(String(rr.stage).toLowerCase())} rounds in the last 24 months with a known amount.</p>`
+        + `<div class="rd-track"><i class="rd-band" style="left:${at(rr.p25)};width:calc(${at(rr.p75)} - ${at(rr.p25)})"></i><i class="rd-mid" style="left:${at(rr.p50)}"></i><i class="rd-p90" style="left:${at(rr.p90)}"></i>${rr.ask ? `<span class="rd-you" style="left:${at(rr.ask)}">You: ${usd(rr.ask)}</span>` : ''}</div>`
+        + `<div class="rd-qs"><div><b>${usd(rr.p25)}</b><span>a quarter raised less</span></div><div><b>${usd(rr.p50)}</b><span>the middle</span></div><div><b>${usd(rr.p75)}</b><span>a quarter raised more</span></div><div><b>${usd(rr.p90)}</b><span>top tenth</span></div></div>`
+        + (rr.line ? `<p class="rd-rl">${esc(rr.line)}</p>` : '') + '</div>';
+    }
+    return block1 + block2 + block3 + block4;
+  }
+  const LOCK = (on) => `<div class="rd-lock"><div class="rd-blur">${'<div class="rd-row"><i class="rd-dot"></i><b>Company name, city</b><span class="rd-wh">Series A</span><span></span><span>$00M · backed by Firm name, Firm name</span><span>2026</span></div>'.repeat(3)}</div><div class="rd-offer"><div><b>Full research</b><p id="rd-rmsg">Your competitors and who funded them. Who tried this before, and the founders to ask. The firms to skip.</p></div><span class="rd-pr">10 credits</span><button type="button" class="rd-buy" id="rd-buy"${on ? '' : ' disabled'}>Get the full research</button></div></div>`;
+  const WHYR = { no_key: 'The model key is not set on this address yet.', model_no_credit: 'The model account has no credit. Try again later.', sign_in: 'Please sign in again.' };
+  async function research(r) {
+    const b = $('rd-buy'), msg = $('rd-rmsg');
+    if (!sb || !REPORT || !b) return;
+    const { data } = await sb.auth.getSession();
+    if (!data || !data.session) return $('rd-signin').click();
+    b.disabled = true; b.textContent = 'Researching…'; msg.textContent = 'Searching the web and our data. Ready in a few minutes. Keep this page open.';
+    let res2 = null, j = null;
+    try {
+      res2 = await fetch('/api/research', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + data.session.access_token }, body: JSON.stringify({ id: REPORT }) });
+      j = await res2.json();
+    } catch (e) { j = null; }
+    if (!res2 || !res2.ok || !j || !j.research) {
+      b.disabled = false; b.textContent = 'Get the full research';
+      msg.textContent = WHYR[j && j.error] || 'The research did not go through. Try again.';
+      return;
+    }
+    r.research = j.research;
+    $('rd-s3').innerHTML = researchHtml(j.research);
+  }
+
   function draw(r, same) {
     const co = r.company || {};
     const line = [co.name, co.stage ? co.stage.toLowerCase() : '', co.sector && co.sector !== 'Other' ? co.sector : '', co.ask_usd ? 'raising ' + money(co.ask_usd) : '', co.based_in].filter(Boolean).join(' · ');
@@ -128,18 +181,18 @@
     const special = r.special || [];
     const fire = special.map((x) => `<div class="rd-sp">${FIRE}<div><span class="rd-kind">${esc(x.kind)}</span><b>${esc(x.what)}</b>${x.where ? ' <span class="rd-wh">' + esc(x.where) + '</span>' : ''}<p>${esc(x.why)}</p></div><span class="rd-imp rd-hot">12<i>/10</i></span></div>`).join('');
     const goodBox = good.length || lead || fire ? `<div class="rd-good"><h2>What's good</h2>${fire ? `<p class="rd-cap rd-spcap">Special in your field</p>${fire}` : ''}${good.length ? `<div class="rd-row rd-g rd-hd"><span></span><span>What</span><span>Where</span><span>Score</span><span>Why investors like it</span></div>` + good.map((g) => `<div class="rd-row rd-g">${g.score >= 9 ? CUP : '<i class="rd-dot rd-grn"></i>'}<b>${esc(g.what)}</b><span class="rd-wh">${esc(g.where)}</span><span class="rd-imp rd-grn">${g.score}<i>/10</i></span><span>${esc(g.why)}</span></div>`).join('') : ''}${lead}</div>` : '';
-    const blur = '<div class="rd-row"><i class="rd-dot"></i><b>Company name, city</b><span class="rd-wh">Series A</span><span></span><span>$00M · backed by Firm name, Firm name</span><span>2026</span></div>'.repeat(3);
     res.innerHTML = '<p class="rd-made"><img src="/logo.svg" alt="">Made with Regretamin · regretamin.com</p>'   // shown only in the PDF (founder, 26 Nov)
       + (same ? '<p class="rd-same">You already sent us this deck. Here is the result.</p>' : '') + `<div class="rd-bar"><h1>Your raise report</h1><span class="rd-who">${esc(line)}</span><button type="button" class="rd-btn rd-k" id="rd-pdf">Download PDF</button><button type="button" class="rd-btn" id="rd-again">Upload a new version</button></div>`
       + `<div class="rd-verdict"><div><p class="rd-cap">Verdict</p><h2>${esc(r.verdict)}</h2></div>${scores ? tile('Deck', scores.deck) : ''}</div>`   // founder, 26 Nov: the founders score is kept on the report (scores.founders) but not shown; the four-step strip is gone
       + goodBox
       + step(1, `<h2>Get rid of the red flags <small>${reds.length ? reds.length + ' · most important first' : 'none found'}</small></h2>${reds.length ? head('How to fix it') + rows(reds, 'rd-red') : ''}`)
       + step(2, `<h2>Improve these <small>${yel.length ? yel.length + ' · not deal-breakers, but investors will notice' : 'nothing stood out'}</small></h2>${yel.length ? head('How to improve it') + rows(yel, 'rd-yel') : ''}`)
-      + step(3, `<h2>Know your competitors</h2><div class="rd-lock"><div class="rd-blur">${blur}</div><div class="rd-offer"><div><b>Full research</b><p>Your competitors and who funded them. Who tried this before, and the founders to ask. The firms to skip.</p></div><span class="rd-pr">10 credits</span><button type="button" class="rd-buy" disabled>Get the full research</button></div></div>`)
+      + step(3, `<h2>Know your competitors</h2><div id="rd-s3">${r.research ? researchHtml(r.research) : LOCK(!!REPORT)}</div>`)
       + step(4, `<h2>Pitch these firms, in this order</h2>${firms.length ? `<div class="rd-sub"><span class="rd-tag">Start here</span><span>They fit your stage and field and are writing cheques now.</span></div><div class="rd-frow rd-hd"><span></span><span></span><span>Firm</span><span>Why it fits</span><span>What to say to this firm</span></div>${firms.map(firmRow).join('')}` : '<p class="rd-none">We found no firm with a recent deal at your stage in your field.</p>'}`
         + (then.length ? `<div class="rd-sub rd-sub2"><span class="rd-tag rd-tag2">Then these</span><span>After the first cheque is in: big firms that later invested where the firms above went first.</span></div><div class="rd-then">${then.map((t) => `<a target="_blank" rel="noopener" href="/vc/${encodeURIComponent(t.slug)}/"><b>${esc(t.name)}</b><span>after ${esc(t.after)}${t.n > 1 ? ', ' + t.n + ' startups' : ''}</span></a>`).join('')}</div>` : ''), true);
     show(res);
     $('rd-pdf').addEventListener('click', () => window.print());
+    if ($('rd-buy')) $('rd-buy').addEventListener('click', () => research(r));
     $('rd-again').addEventListener('click', () => { try { history.replaceState(null, '', location.pathname); } catch (e) {} show(up); });
   }
 
@@ -152,6 +205,6 @@
     const { data } = await sb.auth.getSession();
     if (!data || !data.session) return;
     const got = await sb.from('ready_reports').select('result,status').eq('id', id).maybeSingle();
-    if (got.data && got.data.result) { draw(got.data.result); if (new URLSearchParams(location.search).get('pdf')) setTimeout(() => window.print(), 600); }   // "Download PDF" on My score
+    if (got.data && got.data.result) { REPORT = id; draw(got.data.result); if (new URLSearchParams(location.search).get('pdf')) setTimeout(() => window.print(), 600); }   // "Download PDF" on My score
   })();
 })();

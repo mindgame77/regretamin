@@ -68,7 +68,7 @@ def test_the_same_deck_sent_again_shows_the_saved_report():
 def test_firm_links_open_in_a_new_page_and_reports_are_listed_in_the_account():
     """Founder, 26 Nov: "those links should open in new pages", "save reports in your account", then "separate page ... my score ... or you can download the PDF"."""
     js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
-    assert js.count('target="_blank" rel="noopener" href="/vc/') == 2 and 'href="/vc/${' not in js.replace('rel="noopener" href="/vc/${', '')
+    assert js.count('target="_blank" rel="noopener" href="/vc/') == 3 and 'href="/vc/${' not in js.replace('rel="noopener" href="/vc/${', '')
     app = open(os.path.join(ROOT, "launch", "js", "app.js")).read()
     assert "paintMyScore" in app and "from('ready_reports')" in app and "ready/?report=" in app and "&pdf=1" in app
     reg = open(os.path.join(ROOT, "launch", "pages", "registry.py")).read()
@@ -83,3 +83,17 @@ def test_the_pdf_says_it_was_made_with_regretamin():
     css = open(os.path.join(ROOT, "launch", "style.css")).read()
     assert "Made with Regretamin · regretamin.com" in js
     assert ".rd-made{display:none}" in css and "@media print{.rd-made{display:flex!important" in css   # in the PDF only, not on the page
+
+
+def test_the_full_research():
+    """Founder, 26 Nov: "What's next? Full research." Step 3 opens in place; looked-up rows need a real source."""
+    r = subprocess.run(['node', '--test', os.path.join(ROOT, 'launch', 'functions', 'api', '_ready', 'research.test.mjs')], capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
+    assert "fetch('/api/research'" in js and 'id="rd-s3"' in js and "researchHtml(r.research)" in js   # saved research reopens with the report
+    for words in ("Your competitors", "Skip these firms", "Pitch these instead", "Who tried this before", "Your ask against similar rounds", "Our data", "Looked up"):
+        assert words in js, words
+    fn = open(os.path.join(ROOT, "launch", "functions", "api", "research.js")).read()
+    assert "web_search_20250305" in fn and "v2_ready_research" in fn and "temperature" not in fn.replace("no temperature", "") and "pause_turn" in fn
+    mig = open(os.path.join(ROOT, "supabase", "migrations", "20261126221958_v2_ready_research.sql")).read()
+    assert "to_regclass('public.v2_deals') is null" in mig and "from public, anon" in mig   # skips on a database without the v2 tables; signed-in callers only
