@@ -311,6 +311,16 @@
     1: [['1389581557980139527', 'MAY 2021 · DOGECOIN BREAKS ROBINHOOD', 'US West', 'Bay Area'], ['1389587820772302849', 'MAY 2021 · DOGECOIN BREAKS ROBINHOOD', 'US West', 'Bay Area'], ['1395157383366782978', 'MAY 2021 · THE CRYPTO CRASH', 'US West', 'Bay Area']],
     2: [['1417547103354621954', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle'], ['1417545632529756165', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle'], ['1417305957776990208', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle']],
     3: [['1453805031463993346', 'OCT 2021 · FACEBOOK RENAMES ITSELF META', 'US West', 'Bay Area'], ['1453842753591390210', 'OCT 2021 · FACEBOOK RENAMES ITSELF META', 'US West', 'Bay Area'], ['1445114779304177664', 'OCT 2021 · FACEBOOK GOES DOWN FOR SIX HOURS', 'US West', 'Bay Area']],
+    // 2024 to 2026: found the same way (news roundups that embed the posts), 25 Nov. Quarters with no entry show no post.
+    12: [['1754322459460063613', 'FEB 2024 · APPLE VISION PRO IN THE WILD', 'US West', 'Bay Area'], ['1753839916948009316', 'FEB 2024 · APPLE VISION PRO IN THE WILD', 'US West', 'Bay Area'], ['1754226906356994217', 'FEB 2024 · APPLE VISION PRO IN THE WILD', 'US West', 'Bay Area']],
+    13: [['1779862794449354846', 'APR 2024 · THE HUMANE AI PIN REVIEW', 'US West', 'Bay Area'], ['1790075827666796666', 'MAY 2024 · GPT-4O FINDS ITS VOICE', 'US West', 'Bay Area'], ['1800110722925646099', 'JUN 2024 · APPLE INTELLIGENCE ARRIVES', 'US West', 'Bay Area']],
+    14: [['1814226663858749942', 'JUL 2024 · CROWDSTRIKE GROUNDS THE WORLD', 'US Central', 'Austin'], ['1814217315564618043', 'JUL 2024 · CROWDSTRIKE GROUNDS THE WORLD', 'US Central', 'Austin'], ['1831038357641851380', 'SEP 2024 · FOUNDER MODE', 'US West', 'Bay Area']],
+    15: [['1866509455896260813', 'DEC 2024 · SORA MEETS GYMNASTICS', 'US West', 'Bay Area'], ['1866254016944255384', 'DEC 2024 · SORA MEETS GYMNASTICS', 'US West', 'Bay Area'], ['1866540422325014700', 'DEC 2024 · SORA MEETS GYMNASTICS', 'US West', 'Bay Area']],
+    16: [['1883733264294396277', 'JAN 2025 · THE DEEPSEEK SHOCK', 'China, HK, Taiwan', ''], ['1886198988199600391', 'FEB 2025 · VIBE CODING IS BORN', 'US West', 'Bay Area'], ['1904965683957706846', 'MAR 2025 · THE GHIBLI IMAGE CRAZE', 'US West', 'Bay Area']],
+    17: [['1938299990922674352', "JUN 2025 · META'S $100M AI OFFERS", 'US West', 'Bay Area']],
+    18: [['1953513280594751495', 'AUG 2025 · GPT-5 AND THE CHART CRIME', 'US West', 'Bay Area']],
+    19: [['1980350617894941179', 'OCT 2025 · AWS TAKES DOWN THE INTERNET', 'US West', 'Seattle'], ['1990945928619131082', 'NOV 2025 · CLOUDFLARE GOES DOWN TOO', 'US West', 'Bay Area'], ['1990800703007367677', 'NOV 2025 · CLOUDFLARE GOES DOWN TOO', 'US West', 'Bay Area']],
+    20: [['2017407995567616058', 'JAN 2026 · MOLTBOOK, A SOCIAL NETWORK FOR BOTS', 'US West', 'Bay Area'], ['2017344281837457414', 'JAN 2026 · MOLTBOOK, A SOCIAL NETWORK FOR BOTS', 'US West', 'Bay Area'], ['2033964654603735185', 'MAR 2026 · ALTMAN THANKS THE CODERS', 'US West', 'Bay Area']],
   };
   let xReady = null, postNow = null, postHold = false;
   const xLoad = () => xReady || (xReady = new Promise((res) => {
@@ -371,7 +381,7 @@
       while (postHold && S.playing === run) await new Promise((r) => setTimeout(r, 200));
       if (S.playing !== run) return;
       S.q1 += 1; drawTime(); await refresh(); placePost();
-      if (POSTS[S.q1]) showPost(S.q1); else if (!POSTS[S.q1 - 1] || S.q1 - 1 > 3) hidePost();
+      if (POSTS[S.q1]) showPost(S.q1); else hidePost();
     }
     if (S.playing === run) { await new Promise((r) => setTimeout(r, 1200)); if (S.playing === run) stop(); }
   });
