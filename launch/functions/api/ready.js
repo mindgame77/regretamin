@@ -55,7 +55,8 @@ export async function onRequestPost(ctx) {
     got = await askClaude(env, deckUrl, ask);
     if (got.error) got.error = `${first}; then ${got.error}`;
   }
-  if (got.error) return fail(/quota|credit balance|billing/i.test(got.error) && !/then model_(?!4(00|29))/.test(got.error) && /credit balance|quota/i.test(got.error.split('; then ').pop()) ? `model_no_credit: ${got.error}` : got.error);
+  // Whether the last model asked refused for lack of credit: the page then says so instead of blaming the deck.
+  if (got.error) return fail(/credit balance|quota|billing/i.test(got.error.split('; then ').pop()) ? `model_no_credit: ${got.error}` : got.error);
   const { model, text, usage } = got;
   const answers = parseModelJson(text);
   if (!answers) return fail('model_answer_unreadable');
