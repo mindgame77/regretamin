@@ -100,9 +100,19 @@ export function assemble(model, firms) {
     scores: { deck: overall(judged, stage, false), founders: overall(judged, stage, true) },
     facts: (Array.isArray(m.facts) ? m.facts : []).slice(0, 20).map((x) => ({ claim: clip(x && x.claim, 140), proof: ['proven', 'shown', 'claimed', 'assumed'].includes(x && x.proof) ? x.proof : 'claimed', where: clip(x && x.where, 24) })),
     competitors_named: (Array.isArray(m.competitors_named) ? m.competitors_named : []).slice(0, 10).map((x) => clip(x, 60)),
-    firms: (Array.isArray(f.firms) ? f.firms : []).map((x) => ({ ...x, say: sayTo(x, stage, co.sector) })),
+    firms: (Array.isArray(f.firms) ? f.firms : []).map((x) => ({ ...x, say: sayTo(x, stage, co.sector), marks: marksOf(x) })),
     then: Array.isArray(f.then) ? f.then : [],
   };
+}
+
+// What is great about a firm for this founder, as short marks beside its name (founder, 26 Nov: "mark super great
+// points ... and put those marks in pitch those firms"). From the firm's own numbers only; at most three.
+export function marksOf(x) {
+  const out = [];
+  if (Number(x.sector_pct) >= 40) out.push('Your field is its main field');
+  if (Number(x.stage_pct) >= 70) out.push('Almost only first cheques');
+  if (Number(x.n90) >= 5) out.push('Investing fast right now');
+  return out;
 }
 
 // One line of advice per firm, from its own numbers only.

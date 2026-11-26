@@ -2032,3 +2032,9 @@ nav a#readynav:hover{background:#E07810}
 .rd-imp.rd-red{background:#FBE3E1;color:#A3231C}.rd-imp.rd-yel{background:#FBF0CC;color:#7A5A00}.rd-imp.rd-grn{background:#fff;color:#1E7A41}.rd-imp.rd-ten{background:#fff;color:#5A35B0;margin-left:auto;align-self:center}
 .rd-good .rd-lead{align-items:flex-start}
 @media (max-width:1000px){.rd-good{margin-left:0}.rd-row.rd-g{grid-template-columns:18px 1fr}}
+.rd-cup{flex:none;color:#F0861E;margin-top:3px}
+.rd-row .rd-cup{margin-left:-3px}
+.rd-lead .rd-cup{color:#7A4FD0;margin-top:2px}
+.rd-mark{display:flex;align-items:flex-start;gap:5px;margin-top:5px;font-size:13px;font-weight:600;line-height:1.3}
+.rd-mark .rd-cup{margin-top:0}
+.rd-frow{grid-template-columns:26px 44px 220px 1fr 1fr}

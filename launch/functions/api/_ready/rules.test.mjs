@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CHECKLIST } from './checklist.js';
-import { importance, score, assemble, parseModelJson, systemPrompt, FROM_OUR_DATA, sayTo } from './rules.js';
+import { importance, score, marksOf, assemble, parseModelJson, systemPrompt, FROM_OUR_DATA, sayTo } from './rules.js';
 
 test('the checklist holds the 216 questions of the sheet', () => {
   assert.equal(CHECKLIST.length, 216);
@@ -62,4 +62,11 @@ test('scores run the other way: 10 is as good as it gets, a red flag is at the b
   assert.equal(assemble({ company: { stage: 'Seed' }, flags: [{ n: 4, level: 'red' }] }, null).scores.founders, null);  // nothing said about the founders
   assert.deepEqual(a.scores, assemble(JSON.parse(JSON.stringify(model)), null).scores);
   assert.match(systemPrompt(), /"strengths":\[\{"n":0/);
+});
+
+test('a firm gets a mark only for what is great about it', () => {
+  assert.deepEqual(marksOf({ sector_pct: 48, stage_pct: 52, n90: 3 }), ['Your field is its main field']);
+  assert.deepEqual(marksOf({ sector_pct: 16, stage_pct: 84, n90: 5 }), ['Almost only first cheques', 'Investing fast right now']);
+  assert.deepEqual(marksOf({ sector_pct: 10, stage_pct: 30, n90: 0 }), []);
+  assert.deepEqual(assemble({ company: { stage: 'Seed' } }, { firms: [{ name: 'F', fit: 1, sector_pct: 60, stage_pct: 10, n90: 0 }] }).firms[0].marks, ['Your field is its main field']);
 });
