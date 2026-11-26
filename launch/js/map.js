@@ -409,7 +409,7 @@
       while (postHold && S.playing === run) await new Promise((r) => setTimeout(r, 200));
       if (S.playing !== run) { if (pp) pp.hold.remove(); return; }
       S.q1 = next; drawTime();
-      if (founders) refresh(); else if (d) { remember(); S.data = d; draw(); }
+      if (founders) refresh(); else if (d) { remember(); S.data = d; draw(); if (S.view === 'path' && !S.list) drawSide(); }
       commitPost(pp);
     }
     if (S.playing === run) { await new Promise((r) => setTimeout(r, postNow ? 2600 : 1200)); if (S.playing === run) stop(); }
@@ -883,7 +883,7 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
     side.className = 'vm-card vm-side' + (L ? ' vm-list' : '');
     const head = L
       ? `<div class="vm-lh vm-lhp"><h2>${esc(L.place.n)} · ${det ? num(det.firms) + ' firm' + (det.firms === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>`
-      : '<div class="vm-lh"><h2>Most followed</h2><span class="vm-tag">startups followed</span></div>';
+      : '<div class="vm-lh"><h2>Most followed</h2></div>';
     side.innerHTML = head + `<div class="vm-rows vm-pfs">${rows.map(([slug, name, n, tops], i) => `<a class="vm-pf" href="${ROOT}vc/${encodeURIComponent(slug)}/"><span class="vm-pfk">${i + 1}</span>${LOGOS && LOGOS.has(slug) ? `<img class="vm-pfl" alt="" loading="lazy" src="${ROOT}assets/logos/f-${encodeURIComponent(slug)}.png">` : `<span class="vm-pfl vm-pfi">${esc(ini2(name))}</span>`}<span class="vm-pft"><b>${esc(name)}</b><i>${esc((tops || []).map(([t, c]) => t + ' ' + c).join(' · '))}</i></span><span class="vm-pfn">${num(n)}</span></a>`).join('')}${lockedRows(L ? det : S.data, rows.length, L ? (det || {}).firms : (((S.data || {}).totals || {})[S.level] || {}).firms)}</div>`;
     const x = $('#vm-close'); if (x) x.onclick = closeList;
     side.querySelectorAll('[data-unlock]').forEach((b) => { b.onclick = openGate; });
@@ -1001,6 +1001,7 @@ ${S.view === 'hot' ? `<div class="vm-chips">${tags.map((x) => `<span class="vm-c
     el.classList.remove('vm-busy');
     if (!d) { msg.hidden = false; msg.textContent = 'The map is not available right now.'; return; }
     msg.hidden = true; S.data = d; draw();
+    if (S.view === 'path' && !S.list) drawSide();  // the "Most followed" list comes with the numbers: it follows the timeline and the filters
     // Back from signing in, the page can ask before it knows the visitor is signed in: it asks again shortly after, and
     // whenever the sign-in arrives (see below), so the lists open by themselves (he had to press a blurred row, 25 Nov).
     if (S.view === 'path' && d.locked && !S.shAsked) { S.shAsked = true; claim(); setTimeout(claim, 2500); setTimeout(claim, 7000); }
