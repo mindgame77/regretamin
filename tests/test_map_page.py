@@ -336,5 +336,5 @@ def test_the_firms_list_behind_a_place_is_short_until_unlocked():
     mig = next((ROOT / 'supabase/migrations').glob('*_v2_map_firms_gated.sql')).read_text()
     assert "sb.rpc('v2_map_firms_gated'," in js and "sb.rpc('v2_map_firms'," not in js
     assert "case when p_firms = 'fresh' then 3 else 5 end" in mig and 'create or replace function public.v2_map_firms(' not in mig  # the old function is untouched
-    assert "${lockedFirms(L.data)}<a class=\"vm-more\"" in js and "L.data && L.data.locked ? ' data-unlock' : ''" in js
+    assert "${lockedFirms(L.data)}</div>" in js and "L.data && L.data.locked ? ' data-unlock' : ''" in js
 

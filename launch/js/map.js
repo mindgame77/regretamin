@@ -800,7 +800,7 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
   const anon = () => { try { let a = localStorage.getItem('regretamin.anon'); if (!a) { a = crypto.randomUUID(); localStorage.setItem('regretamin.anon', a); } return a; } catch (e) { return null; } };
   function lockedFirms(d) {  // the firms list behind a place: stand-ins for what the database held back
     if (!d || !d.locked || !Array.isArray(d.firms) || !(d.count > d.firms.length)) return '';
-    return Array.from({ length: Math.min(6, d.count - d.firms.length) }, (_, i) => `<a href="#" class="vm-fb" data-unlock aria-label="Unlock the full list"><span><b>${'Firm name here'.slice(0, 9 + (i * 3) % 6)}</b><span class="vm-mu">${12 - i} deals</span><span class="vm-st vm-a"><i></i>Active</span></span></a>`).join('');
+    return Array.from({ length: Math.min(6, d.count - d.firms.length) }, (_, i) => `<a href="#" class="vm-fb" data-unlock aria-label="Unlock the full list"><span><b>${'Firm name here'.slice(0, 9 + (i * 3) % 6)}</b><span class="vm-mu">${12 - i} deals</span><span class="vm-st vm-a"><i></i>Active<span class="vm-mu"> · last deal Nov 1</span></span></span><span class="vm-ck">Check</span></a>`).join('');
   }
   function lockedRows(d, shown, total) {
     if (!d || !d.locked || !(total > shown)) return '';
@@ -859,8 +859,8 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
     if (fp.hidden) { fp.hidden = false; fit(); }
     fp.innerHTML = `<div class="vm-lh"><h2>${L.data ? num(L.data.count) + (S.view !== 'hot' && L.sector ? ' ' + esc(L.sector) : '') + ' firm' + (L.data.count === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-fpx" aria-label="Close the firms list"></button></div>
 ${S.view === 'hot' ? `<div class="vm-chips">${tags.map((x) => `<span class="vm-chip vm-chipst">${esc(x)}</span>`).join('')}</div>` : ''}
-<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}</div>
-${lockedFirms(L.data)}<a class="vm-more" href="${listUrl()}"${L.data && L.data.locked ? ' data-unlock' : ''}>Open the full investors list</a>`;
+<div class="vm-rows">${!L.data ? '' : L.data.firms.map((f) => `<a href="${ROOT}vc/${encodeURIComponent(f.slug)}/"><span><b>${esc(f.name)}</b><span class="vm-mu">${num(f.deals)} deal${f.deals === 1 ? '' : 's'}${f.led ? ' · led ' + num(f.led) : ''}</span><span class="vm-st ${f.status === 'Active' ? 'vm-a' : f.status === 'Low activity' ? 'vm-l' : ''}"><i></i>${esc(f.status)}${f.last ? `<span class="vm-mu"> · last deal ${day(f.last)}</span>` : ''}</span></span><span class="vm-ck">Check</span></a>`).join('')}${lockedFirms(L.data)}</div>
+<a class="vm-more" href="${listUrl()}"${L.data && L.data.locked ? ' data-unlock' : ''}>Open the full investors list</a>`;
     $('#vm-fpx').onclick = () => { L.step = 'sectors'; L.sector = null; L.data = null; drawSide(); };
     // locked: the blurred rows and the link to the full list both open the card instead
     fp.querySelectorAll('[data-unlock]').forEach((b) => { b.onclick = (e) => { e.preventDefault(); openGate(); }; });
