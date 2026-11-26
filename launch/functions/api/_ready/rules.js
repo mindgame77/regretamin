@@ -95,10 +95,10 @@ export function assemble(model, firms) {
     const row = SPECIAL_BY.get(String(x && x.kind || '').toLowerCase());
     if (!row || kinds.has(row[0]) || !x.what) return null;
     kinds.add(row[0]);
-    return { kind: row[0], founders: row[4], what: clip(x.what, 120), where: clip(x.where || '', 24), why: clip(x.why || '', 150), score: 10 };
+    return { kind: row[0], founders: row[4], what: clip(x.what, 120), where: clip(x.where || '', 24), why: clip(x.why || '', 150), score: 12 };   // founder, 26 Nov: the fire is 12 out of 10
   }).filter(Boolean).slice(0, 3);
   const judged = [...reds, ...yellows, ...good, ...(lead ? [{ area: 'Founders and team', score: 10 }] : []),
-    ...special.map((x) => ({ area: x.founders ? 'Founders and team' : 'Solution and product', score: 10 }))];
+    ...special.map((x) => ({ area: x.founders ? 'Founders and team' : 'Solution and product', score: x.score }))];   // the two overall scores still stop at 10
   const f = firms && typeof firms === 'object' ? firms : {};
   return {
     v: 2,

@@ -76,6 +76,7 @@ test('what is special is rare, comes from the written list, and only ever adds',
   const a = assemble({ ...base, special: [{ kind: 'university', what: 'PhD in dairy science at Wageningen', where: 'Slide 9', why: 'x' }, { kind: 'Age', what: 'young' }, { kind: 'University', what: 'again' },
     { kind: 'Exclusive data', what: 'Sensor data from 40 farms', where: 'Slide 5' }, { kind: 'Speed', what: 'Ships weekly' }, { kind: 'Backers', what: 'a fourth' }] }, null);
   assert.deepEqual(a.special.map((x) => x.kind), ['University', 'Exclusive data', 'Speed']);   // unknown kinds and repeats dropped; three at most
+  assert.ok(a.special.every((x) => x.score === 12) && a.scores.deck <= 10 && a.scores.founders <= 10);   // the fire is 12 out of 10; the overall scores stop at 10
   const none = assemble(base, null);
   assert.deepEqual(none.special, []);
   assert.ok(a.scores.deck >= none.scores.deck && a.scores.founders >= none.scores.founders);    // having none costs nothing
