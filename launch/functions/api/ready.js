@@ -45,7 +45,7 @@ export async function onRequestPost(ctx) {
 
   const note = [row.note ? `The founder's note:\n${String(row.note).slice(0, 8000)}` : '', row.linkedin ? `The founder's LinkedIn (cannot be opened): ${String(row.linkedin).slice(0, 200)}` : '']
     .filter(Boolean).join('\n\n') || 'The founder sent the deck only.';
-  const model = env.READY_MODEL || 'claude-haiku-5-5';
+  const model = env.READY_MODEL || 'claude-opus-5-5'  /* founder, 26 Nov: "let's try Opus 5.5"; about 26 cents a report by estimate */;
   let ai;
   try {
     ai = await fetch('https://api.anthropic.com/v1/messages', {
