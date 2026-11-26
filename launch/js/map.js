@@ -301,7 +301,7 @@
     closeList(); drawTime(); refresh();
   });
   function stop() { if (S.playing) { S.playing = null; S.speed = 1; hidePost(); drawTime(); } }
-  // Play (founder, 25 Nov): first press plays, second press doubles the speed, third press stops. While it plays, a real
+  // Play (founder, 25 Nov): one press plays, the next stops. While it plays, a real
   // post from X about the big tech news of the quarter pops up on the map, pinned to the place the news came from, with
   // the pill riding on it. One of the quarter's posts is picked at random each run. Pressing the post pauses Play and
   // opens it big; closing that carries on. X draws the posts (its own embed); the page only keeps their numbers.
@@ -311,6 +311,24 @@
     1: [['1389581557980139527', 'MAY 2021 · DOGECOIN BREAKS ROBINHOOD', 'US West', 'Bay Area'], ['1389587820772302849', 'MAY 2021 · DOGECOIN BREAKS ROBINHOOD', 'US West', 'Bay Area'], ['1395157383366782978', 'MAY 2021 · THE CRYPTO CRASH', 'US West', 'Bay Area']],
     2: [['1417547103354621954', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle'], ['1417545632529756165', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle'], ['1417305957776990208', 'JUL 2021 · BEZOS FLIES TO SPACE', 'US West', 'Seattle']],
     3: [['1453805031463993346', 'OCT 2021 · FACEBOOK RENAMES ITSELF META', 'US West', 'Bay Area'], ['1453842753591390210', 'OCT 2021 · FACEBOOK RENAMES ITSELF META', 'US West', 'Bay Area'], ['1445114779304177664', 'OCT 2021 · FACEBOOK GOES DOWN FOR SIX HOURS', 'US West', 'Bay Area']],
+    4: [['1488263944309731329', 'JAN 2022 · THE NEW YORK TIMES BUYS WORDLE', 'US East', 'New York'], ['1488272875874549761', 'JAN 2022 · THE NEW YORK TIMES BUYS WORDLE', 'US East', 'New York'], ['1493281114085113860', 'FEB 2022 · WORDLE AFTER THE NEW YORK TIMES', 'US East', 'New York']],  // the founder's own picks (26 Nov)
+    5: [['1518622729154482178', 'APR 2022 · MUSK OFFERS TO BUY TWITTER', 'US West', 'Bay Area'], ['1518667246633058305', 'APR 2022 · MUSK OFFERS TO BUY TWITTER', 'US West', 'Bay Area'], ['1523736429729583104', 'MAY 2022 · TERRA LUNA CRASHES', '', '']],
+    6: [['1545529347703971842', 'JUL 2022 · MUSK BACKS OUT OF TWITTER', 'US West', 'Bay Area'], ['1559191505369120768', 'AUG 2022 · ADAM NEUMANN IS BACK', 'US West', 'Bay Area'], ['1559236958567763970', 'AUG 2022 · ADAM NEUMANN IS BACK', 'US West', 'Bay Area']],
+    7: [['1589695556909424640', 'NOV 2022 · FTX COLLAPSES', 'Caribbean', ''], ['1598038815599661056', 'NOV 2022 · CHATGPT LAUNCHES', 'US West', 'Bay Area'], ['1598020781065527296', 'NOV 2022 · CHATGPT LAUNCHES', 'US West', 'Bay Area'], ['1598129631609380864', 'DEC 2022 · CHATGPT LAUNCHES', 'US West', 'Bay Area']],  // the founder's own picks (26 Nov)
+    8: [['1635045526042472449', 'MAR 2023 · SILICON VALLEY BANK COLLAPSES', 'US West', 'Bay Area'], ['1635053298813378561', 'MAR 2023 · SILICON VALLEY BANK COLLAPSES', 'US West', 'Bay Area'], ['1635181422679052288', 'MAR 2023 · SILICON VALLEY BANK COLLAPSES', 'US West', 'Bay Area']],
+    9: [['1665799710148530176', 'JUN 2023 · APPLE VISION PRO, $3,500', 'US West', 'Bay Area'], ['1665898080095600640', 'JUN 2023 · APPLE VISION PRO, $3,500', 'US West', 'Bay Area'], ['1665982819342884866', 'JUN 2023 · APPLE VISION PRO, $3,500', 'US West', 'Bay Area']],
+    10: [['1676791677598547969', 'JUL 2023 · THREADS LAUNCHES', 'US West', 'Bay Area'], ['1683289667746267137', 'JUL 2023 · TWITTER BECOMES X', 'US West', 'Bay Area'], ['1683508159942467584', 'JUL 2023 · TWITTER BECOMES X', 'US West', 'Bay Area']],
+    11: [['1725794188607017221', 'NOV 2023 · OPENAI FIRES SAM ALTMAN', 'US West', 'Bay Area'], ['1727218062829781032', 'NOV 2023 · ALTMAN IS BACK', 'US West', 'Bay Area'], ['1720228976738673095', 'NOV 2023 · SAM BANKMAN-FRIED CONVICTED', 'US East', 'New York']],
+    // 2024 to 2026: found the same way (news roundups that embed the posts), 25 Nov. Quarters with no entry show no post.
+    12: [['1754322459460063613', 'FEB 2024 · APPLE VISION PRO IN THE WILD', 'US West', 'Bay Area'], ['1753839916948009316', 'FEB 2024 · APPLE VISION PRO IN THE WILD', 'US West', 'Bay Area'], ['1754226906356994217', 'FEB 2024 · APPLE VISION PRO IN THE WILD', 'US West', 'Bay Area']],
+    13: [['1779862794449354846', 'APR 2024 · THE HUMANE AI PIN REVIEW', 'US West', 'Bay Area'], ['1790075827666796666', 'MAY 2024 · GPT-4O FINDS ITS VOICE', 'US West', 'Bay Area'], ['1800110722925646099', 'JUN 2024 · APPLE INTELLIGENCE ARRIVES', 'US West', 'Bay Area']],
+    14: [['1814226663858749942', 'JUL 2024 · CROWDSTRIKE GROUNDS THE WORLD', 'US Central', 'Austin'], ['1814217315564618043', 'JUL 2024 · CROWDSTRIKE GROUNDS THE WORLD', 'US Central', 'Austin'], ['1831038357641851380', 'SEP 2024 · FOUNDER MODE', 'US West', 'Bay Area']],
+    15: [['1866509455896260813', 'DEC 2024 · SORA MEETS GYMNASTICS', 'US West', 'Bay Area'], ['1866254016944255384', 'DEC 2024 · SORA MEETS GYMNASTICS', 'US West', 'Bay Area'], ['1866540422325014700', 'DEC 2024 · SORA MEETS GYMNASTICS', 'US West', 'Bay Area']],
+    16: [['1883733264294396277', 'JAN 2025 · THE DEEPSEEK SHOCK', 'China, HK, Taiwan', ''], ['1886198988199600391', 'FEB 2025 · VIBE CODING IS BORN', 'US West', 'Bay Area'], ['1904965683957706846', 'MAR 2025 · THE GHIBLI IMAGE CRAZE', 'US West', 'Bay Area']],
+    17: [['1938299990922674352', "JUN 2025 · META'S $100M AI OFFERS", 'US West', 'Bay Area']],
+    18: [['1953513280594751495', 'AUG 2025 · GPT-5 AND THE CHART CRIME', 'US West', 'Bay Area']],
+    19: [['1980350617894941179', 'OCT 2025 · AWS TAKES DOWN THE INTERNET', 'US West', 'Seattle'], ['1990945928619131082', 'NOV 2025 · CLOUDFLARE GOES DOWN TOO', 'US West', 'Bay Area'], ['1990800703007367677', 'NOV 2025 · CLOUDFLARE GOES DOWN TOO', 'US West', 'Bay Area']],
+    20: [['2017407995567616058', 'JAN 2026 · MOLTBOOK, A SOCIAL NETWORK FOR BOTS', 'US West', 'Bay Area'], ['2017344281837457414', 'JAN 2026 · MOLTBOOK, A SOCIAL NETWORK FOR BOTS', 'US West', 'Bay Area'], ['2033964654603735185', 'MAR 2026 · ALTMAN THANKS THE CODERS', 'US West', 'Bay Area']],
   };
   let xReady = null, postNow = null, postHold = false;
   const xLoad = () => xReady || (xReady = new Promise((res) => {
@@ -328,24 +346,34 @@
     x = Math.max(34, Math.min(box.width - w - 70, x)); y = Math.max(96, Math.min(box.height - h - 120, y));
     b.style.left = x + 'px'; b.style.top = y + 'px'; b.classList.toggle('vm-nopin', !r);
   }
-  async function showPost(q) {
+  // A post is made ready off screen first, so the line, the map and the post can change in the same instant (founder,
+  // 26 Nov). Long posts (a video plus a quoted post and the like) are not used: the next one of the quarter is tried.
+  const POST_MAX = 500;
+  async function preparePost(q, run) {
     const set = S.view === 'founders' ? null : POSTS[q];
-    if (!set) return;
-    const pick = set[Math.floor(Math.random() * set.length)], run = S.playing;
-    if (!(await xLoad()) || S.playing !== run || !run) return;
+    if (!set || !(await xLoad()) || S.playing !== run) return null;
+    const order = set.slice().sort(() => Math.random() - 0.5);
+    for (const pick of order) {
+      const next = document.createElement('div'); next.className = 'vm-post-in';
+      const hold = document.createElement('div'); hold.style.cssText = 'position:absolute;left:-9999px;top:0;width:300px'; document.body.appendChild(hold); hold.appendChild(next);
+      // X sometimes never answers for a post (deleted, protected): six seconds, then the next one
+      try { await Promise.race([window.twttr.widgets.createTweet(pick[0], next, { width: 300, dnt: true, conversation: 'none' }), new Promise((r) => setTimeout(r, 6000))]); } catch (e) { hold.remove(); continue; }
+      if (S.playing !== run) { hold.remove(); return null; }
+      const fr = next.querySelector('iframe'), hh = fr ? fr.getBoundingClientRect().height : 0;
+      if (!fr || hh < 120 || hh > POST_MAX) { hold.remove(); continue; }  // deleted or not drawn (an empty frame is about 60 px), or too long
+      const tw = next.querySelector('.twitter-tweet'); if (tw) { tw.style.marginTop = '0'; tw.style.marginBottom = '0'; }
+      return { pick, next, hold, hh };
+    }
+    return null;
+  }
+  function commitPost(pp) {
+    if (!pp) return hidePost();
     let b = document.getElementById('vm-post');
     if (!b) { b = document.createElement('div'); b.id = 'vm-post'; b.className = 'vm-post'; b.hidden = true; mapBox.appendChild(b); }
-    const next = document.createElement('div'); next.className = 'vm-post-in';
-    const hold = document.createElement('div'); hold.style.cssText = 'position:absolute;left:-9999px;top:0;width:300px'; document.body.appendChild(hold); hold.appendChild(next);
-    try { await window.twttr.widgets.createTweet(pick[0], next, { width: 300, dnt: true, conversation: 'none' }); } catch (e) { hold.remove(); return; }
-    const fr = next.querySelector('iframe');
-    if (!fr || S.playing !== run) { hold.remove(); return; }  // a post that was deleted draws nothing: skip it
-    const tw = next.querySelector('.twitter-tweet'); if (tw) { tw.style.marginTop = '0'; tw.style.marginBottom = '0'; }
-    const hh = fr.getBoundingClientRect().height;
-    b.innerHTML = `<i class="vm-post-arm"></i><span class="vm-post-pill"><i></i><i></i><u></u></span><span class="vm-post-tag">${esc(pick[1])}</span><div class="vm-post-mini" style="height:${Math.round(hh * 0.8)}px"></div><button type="button" class="vm-post-hit" aria-label="Open this post"></button>`;
-    b.querySelector('.vm-post-mini').appendChild(next); hold.remove();
-    postNow = pick; b.hidden = false; placePost();
-    b.querySelector('.vm-post-hit').onclick = () => openPost(pick);
+    b.innerHTML = `<i class="vm-post-arm"></i><span class="vm-post-pill"><i></i><i></i><u></u></span><span class="vm-post-tag">${esc(pp.pick[1])}</span><div class="vm-post-mini" style="height:${Math.round(pp.hh * 0.8)}px"></div><button type="button" class="vm-post-hit" aria-label="Open this post"></button>`;
+    b.querySelector('.vm-post-mini').appendChild(pp.next); pp.hold.remove();
+    postNow = pp.pick; b.hidden = false; placePost();
+    b.querySelector('.vm-post-hit').onclick = () => openPost(pp.pick);
   }
   function openPost(pick) {  // the post at full size; Play waits until it is closed
     let ov = document.getElementById('postbig');
@@ -359,21 +387,28 @@
     xLoad().then((ok) => { if (ok) window.twttr.widgets.createTweet(pick[0], ov.querySelector('.vm-postbig-in'), { width: 440, dnt: true }); });
   }
   $('#vm-play').addEventListener('click', async () => {
-    if (S.playing) { if ((S.speed || 1) === 1) { S.speed = 2; drawTime(); return; } return stop(); }
+    if (S.playing) return stop();  // one press plays, the next stops and the post goes away; no speeding up (founder, 25 Nov, after trying it)
     closeList(); if (S.q1 >= NQ - 1) S.q1 = S.q0;  // play grows the range one quarter at a time, from the left handle
     const run = S.playing = {}; S.speed = 1;
-    drawTime(); xLoad(); await refresh(); showPost(S.q1);
-    // One step at a time: wait for the numbers, show them, pause, then move on. Never ahead of the data.
+    drawTime(); xLoad();
+    const first = await preparePost(S.q1, run);
+    if (S.playing !== run) return;
+    await refresh(); commitPost(first);
+    // One beat per quarter: the next quarter's numbers and its post are fetched quietly, and only when both are ready do
+    // the line, the map and the post change together. Never ahead of the data.
     while (S.playing === run && S.q1 < NQ - 1) {
-      // a quarter that shows a post stays long enough to read it
-      const wait = (POSTS[S.q1] && S.view !== 'founders' ? 2600 : 450) / (S.speed || 1);
-      await new Promise((r) => setTimeout(r, wait));
+      const t0 = Date.now(), next = S.q1 + 1, founders = S.view === 'founders';
+      S.q1 = next; const ask = founders ? null : summary(); S.q1 = next - 1;  // asks for the next quarter; nothing on screen moves yet
+      const [d, pp] = await Promise.all([ask, preparePost(next, run)]);
+      const left = (postNow ? 2600 : 450) - (Date.now() - t0);  // a quarter that shows a post stays long enough to read it
+      if (left > 0) await new Promise((r) => setTimeout(r, left));
       while (postHold && S.playing === run) await new Promise((r) => setTimeout(r, 200));
-      if (S.playing !== run) return;
-      S.q1 += 1; drawTime(); await refresh(); placePost();
-      if (POSTS[S.q1]) showPost(S.q1); else if (!POSTS[S.q1 - 1] || S.q1 - 1 > 3) hidePost();
+      if (S.playing !== run) { if (pp) pp.hold.remove(); return; }
+      S.q1 = next; drawTime();
+      if (founders) refresh(); else if (d) { remember(); S.data = d; draw(); }
+      commitPost(pp);
     }
-    if (S.playing === run) { await new Promise((r) => setTimeout(r, 1200)); if (S.playing === run) stop(); }
+    if (S.playing === run) { await new Promise((r) => setTimeout(r, postNow ? 2600 : 1200)); if (S.playing === run) stop(); }
   });
 
   // ---------- zoom

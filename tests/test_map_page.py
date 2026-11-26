@@ -343,9 +343,11 @@ def test_play_shows_a_post_from_x_and_a_second_press_doubles_the_speed():
     """Founder, 25 Nov: posts from that time pop up on the map while Play runs (one of three per quarter, at random),
     pinned to the place of the news; first press plays, second is 2x, third stops; no close button on the small post."""
     js = (ROOT / 'launch/js/map.js').read_text()
-    assert "if (S.playing) { if ((S.speed || 1) === 1) { S.speed = 2; drawTime(); return; } return stop(); }" in js
+    assert "if (S.playing) return stop();" in js and "S.speed = 2" not in js  # he tried 2x and dropped it: press plays, press stops
     assert "https://platform.twitter.com/widgets.js" in js and "widgets.createTweet(pick[0]" in js  # X draws the post; no copy is kept
-    assert "set[Math.floor(Math.random() * set.length)]" in js
+    assert "set.slice().sort(() => Math.random() - 0.5)" in js and "hh > POST_MAX" in js  # random order; long posts are passed over
+    # the line, the map and the post change together: the next quarter is fetched before anything moves
+    assert "const [d, pp] = await Promise.all([ask, preparePost(next, run)]);" in js
     import re
     posts = re.findall(r"\['(\d{19})', '([A-Z]{3} 2021 · [^']+)', '([^']+)', '([^']+)'\]", js)
     assert len(posts) == 12 and len({p[0] for p in posts}) == 12  # three per quarter of 2021, no repeats
