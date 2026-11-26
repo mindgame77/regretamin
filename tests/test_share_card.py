@@ -27,4 +27,4 @@ def test_firm_badges_draw_and_are_only_given_for_a_signal_the_firm_has():
     fn = (ROOT / "launch/functions/badge/[slug]/[file].js").read_text()
     assert "badgeResponse" in fn and "caches.default" in fn
     co = (ROOT / "launch/js/company.js").read_text()
-    assert 'data-open="badges">Badges</button>' in co and ">Download all</button>" in co and "zipOf(files)" in co and "'/badge/' + encodeURIComponent(slug) + '/'" in co and 'loading="lazy"' in co
+    assert "btn.setAttribute('data-open', 'badges')" in co and "main.querySelector('.ph .ph1')" in co and ">Download all</button>" in co and "zipOf(files)" in co and "'/badge/' + encodeURIComponent(slug) + '/'" in co and 'loading="lazy"' in co

@@ -381,7 +381,7 @@
     im.onload = () => { if (main.dataset.firm === slug && !(row.querySelector && row.querySelector('.plg'))) row.insertBefore(im, row.firstChild); };
     im.src = (window.REGRET_ROOT || '/') + 'assets/logos/f-' + encodeURIComponent(slug) + '.png';
   }
-  // Badges a firm can post (founder, 25 Nov): a "Badges" button under the status tiles, only for a firm that has at
+  // Badges a firm can post (founder, 25 Nov): a round icon button beside the firm's name (next to Save), only for a firm that has at
   // least one badge today (every good signal has one; "Slowing down" has none). It opens a pop-up with the three looks
   // of each badge (round on dark, round on white, the pill). Pressing a picture saves it, "Download all" saves them
   // all as one zip file, "Copy code" gives the lines to paste on a website. The pictures are drawn by
@@ -409,15 +409,15 @@
   }
   function paintBadges(main, slug, signals) {
     const have = BADGE_SIGNALS.filter(b => (Array.isArray(signals) ? signals : []).indexOf(b[0]) !== -1);
-    const col = main.querySelector && main.querySelector('.ats');
-    if (!have.length || !col || !col.appendChild || (col.querySelector && col.querySelector('.bdg'))) return;
+    const row = main.querySelector && main.querySelector('.ph .ph1');
+    if (!have.length || !row || !row.appendChild || (row.querySelector && row.querySelector('.bdgb'))) return;
     const origin = (typeof location !== 'undefined' && location.origin) || '';
     const base = origin + '/badge/' + encodeURIComponent(slug) + '/', page = origin + '/vc/' + encodeURIComponent(slug) + '/';
     const file = (b, l) => slug + '-' + b[1].toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + l + '.png';
-    const box = document.createElement('div');
-    box.className = 'bdg';
-    box.innerHTML = '<button type="button" class="bdgb" data-open="badges">Badges</button>';
-    col.appendChild(box);
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'bdgb'; btn.setAttribute('data-open', 'badges'); btn.setAttribute('aria-label', 'Badges'); btn.title = 'Badges';
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"/><path d="M8.6 14.3 7 22l5-3 5 3-1.600-7.700"/></svg>';
+    row.appendChild(btn);
     let ov = document.getElementById('badges');
     if (!ov) { ov = document.createElement('div'); ov.className = 'ov tall'; ov.id = 'badges'; ov.hidden = true; document.body.appendChild(ov); }
     ov.innerHTML = '<div class="md amd bdgm" role="dialog" aria-modal="true" aria-label="Badges"><div class="amh"><button class="x" data-close aria-label="Close">×</button><b>Badges</b><button type="button" class="bdga">Download all</button></div><div class="amb">' + have.map(b =>
