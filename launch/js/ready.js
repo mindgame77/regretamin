@@ -57,6 +57,15 @@
     draw(j.report);
   }
 
+  // The deck's fingerprint: the same file always gives the same letters. It goes into the stored file's name, so the
+  // same deck sent again is found among the founder's own reports (founder, 26 Nov: "you already sent us this deck. Here is the result").
+  async function fingerprint(f) {
+    try {
+      const d = await crypto.subtle.digest('SHA-256', await f.arrayBuffer());
+      return Array.from(new Uint8Array(d)).slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) { return ''; }
+  }
+
   $('rd-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!sb) return say('This page is not connected.');
@@ -68,7 +77,17 @@
     if (!session) { say('Sign in first. It takes a few seconds.'); return $('rd-signin').click(); }
     const go = $('rd-go'); go.disabled = true; say('Uploading…');
     const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, '-').slice(-80) || 'deck.pdf';
-    const path = session.user.id + '/' + Date.now() + '-' + safe;
+    const mark = await fingerprint(file);
+    if (mark) {   // the same deck again: no second reading, the saved report is shown
+      const old = await sb.from('ready_reports').select('id,result').eq('status', 'done').like('deck_path', session.user.id + '/' + mark + '-%').order('created_at', { ascending: false }).limit(1);
+      const hit = old.data && old.data[0];
+      if (hit && hit.result) {
+        go.disabled = false; say('');
+        try { history.replaceState(null, '', '?report=' + encodeURIComponent(hit.id)); } catch (e) {}
+        return draw(hit.result, true);
+      }
+    }
+    const path = session.user.id + '/' + (mark ? mark + '-' : '') + Date.now() + '-' + safe;
     const upl = await sb.storage.from('decks').upload(path, file, { contentType: 'application/pdf', upsert: false });
     if (upl.error) { go.disabled = false; return say('The upload did not go through. Try again.'); }
     const ins = await sb.from('ready_reports').insert({ deck_path: path, deck_name: file.name.slice(0, 200), linkedin: $('rd-li').value.trim().slice(0, 200) || null, note: note || null }).select('id').single();
@@ -100,7 +119,7 @@
       + `<div><a class="rd-nm" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a><div class="rd-pl">${esc(place)}</div>${(f.marks || []).map((m) => `<span class="rd-mark">${CUP}${esc(m)}</span>`).join('')}</div><div class="rd-why">${esc(why)}</div><div class="rd-say">${sum}${esc(f.say || '')}</div></div>`;
   }
 
-  function draw(r) {
+  function draw(r, same) {
     const co = r.company || {};
     const line = [co.name, co.stage ? co.stage.toLowerCase() : '', co.sector && co.sector !== 'Other' ? co.sector : '', co.ask_usd ? 'raising ' + money(co.ask_usd) : '', co.based_in].filter(Boolean).join(' · ');
     const reds = r.reds || [], yel = r.yellows || [], firms = r.firms || [], then = r.then || [];
@@ -110,7 +129,7 @@
     const fire = special.map((x) => `<div class="rd-sp">${FIRE}<div><span class="rd-kind">${esc(x.kind)}</span><b>${esc(x.what)}</b>${x.where ? ' <span class="rd-wh">' + esc(x.where) + '</span>' : ''}<p>${esc(x.why)}</p></div><span class="rd-imp rd-hot">12<i>/10</i></span></div>`).join('');
     const goodBox = good.length || lead || fire ? `<div class="rd-good"><h2>What's good</h2>${fire ? `<p class="rd-cap rd-spcap">Special in your field</p>${fire}` : ''}${good.length ? `<div class="rd-row rd-g rd-hd"><span></span><span>What</span><span>Where</span><span>Score</span><span>Why investors like it</span></div>` + good.map((g) => `<div class="rd-row rd-g">${g.score >= 9 ? CUP : '<i class="rd-dot rd-grn"></i>'}<b>${esc(g.what)}</b><span class="rd-wh">${esc(g.where)}</span><span class="rd-imp rd-grn">${g.score}<i>/10</i></span><span>${esc(g.why)}</span></div>`).join('') : ''}${lead}</div>` : '';
     const blur = '<div class="rd-row"><i class="rd-dot"></i><b>Company name, city</b><span class="rd-wh">Series A</span><span></span><span>$00M · backed by Firm name, Firm name</span><span>2026</span></div>'.repeat(3);
-    res.innerHTML = `<div class="rd-bar"><h1>Your raise report</h1><span class="rd-who">${esc(line)}</span><button type="button" class="rd-btn rd-k" id="rd-pdf">Download PDF</button><button type="button" class="rd-btn" id="rd-again">Upload a new version</button></div>`
+    res.innerHTML = (same ? '<p class="rd-same">You already sent us this deck. Here is the result.</p>' : '') + `<div class="rd-bar"><h1>Your raise report</h1><span class="rd-who">${esc(line)}</span><button type="button" class="rd-btn rd-k" id="rd-pdf">Download PDF</button><button type="button" class="rd-btn" id="rd-again">Upload a new version</button></div>`
       + `<div class="rd-verdict"><div><p class="rd-cap">Verdict</p><h2>${esc(r.verdict)}</h2></div>${scores ? tile('Deck', scores.deck) : ''}</div>`   // founder, 26 Nov: the founders score is kept on the report (scores.founders) but not shown; the four-step strip is gone
       + goodBox
       + step(1, `<h2>Get rid of the red flags <small>${reds.length ? reds.length + ' · most important first' : 'none found'}</small></h2>${reds.length ? head('How to fix it') + rows(reds, 'rd-red') : ''}`)

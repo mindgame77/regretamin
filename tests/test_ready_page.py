@@ -54,3 +54,12 @@ def test_the_function_keeps_the_key_on_the_server_and_only_serves_the_owner():
 def test_the_fixed_rules():
     r = subprocess.run(['node', '--test', os.path.join(ROOT, 'launch', 'functions', 'api', '_ready', 'rules.test.mjs')], capture_output=True, text=True)
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+
+
+def test_the_same_deck_sent_again_shows_the_saved_report():
+    """Founder, 26 Nov: "if the deck is the same, we just say ... you already sent us this deck. Here is the result"."""
+    js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
+    assert "You already sent us this deck. Here is the result." in js
+    assert "crypto.subtle.digest('SHA-256'" in js                      # the file's fingerprint
+    assert ".like('deck_path', session.user.id + '/' + mark + '-%')" in js   # looked up among the founder's own reports only
+    assert js.index("const mark = await fingerprint(file)") < js.index("sb.storage.from('decks').upload")   # before any upload or model call
