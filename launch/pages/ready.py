@@ -7,7 +7,7 @@ def _v(name):
     return hashlib.sha256(open(os.path.join(HERE, 'js', name), 'rb').read()).hexdigest()[:10]
 
 
-STEPS = ('Reading your deck, slide by slide', 'Listing every claim and how well it is proven', 'Checking the 216 points investors look at',
+STEPS = ('Reading your deck, slide by slide', 'Listing every claim and how well it is proven', 'Checking the 217 points investors look at',
          'Comparing with 80,000 deals in our database', 'Matching you with 5,732 investors', 'Reading what those investors say they look for',
          'Writing your report')
 

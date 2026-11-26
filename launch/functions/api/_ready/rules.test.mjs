@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { CHECKLIST } from './checklist.js';
 import { importance, score, marksOf, assemble, parseModelJson, systemPrompt, FROM_OUR_DATA, sayTo, READY_SCORE } from './rules.js';
 
-test('the checklist holds the 216 questions of the sheet', () => {
-  assert.equal(CHECKLIST.length, 216);
-  assert.deepEqual(CHECKLIST.map((r) => r[0]), Array.from({ length: 216 }, (_, i) => i + 1));
+test('the checklist holds the 216 questions of the sheet and one added since (217: proof has a shelf life)', () => {
+  assert.equal(CHECKLIST.length, 217);
+  assert.deepEqual(CHECKLIST.map((r) => r[0]), Array.from({ length: 217 }, (_, i) => i + 1));
   assert.equal(CHECKLIST[3][2], 'Is there one clear ask?');
 });
 
@@ -112,4 +112,12 @@ test('each flag says whether words can fix it or the founder has to earn it', ()
   const by = Object.fromEntries([...a.reds, ...a.yellows].map((f) => [f.n, f.by]));
   assert.deepEqual(by, { 4: 'proof', 51: 'words', 14: null });
   assert.ok(/"fix_by":"words\|proof"/.test(systemPrompt()) && /needs something real/.test(systemPrompt()));
+});
+
+test('old proof is a rule, and the country is a two-letter code or nothing', () => {
+  assert.ok(/more than four years old does not prove the point/.test(systemPrompt()) && /217 \| Traction \| Is your proof recent\?/.test(systemPrompt()));
+  assert.equal(assemble({ company: { stage: 'Seed', country: 'ua' } }, null).company.country, 'UA');
+  assert.equal(assemble({ company: { stage: 'Seed', country: 'Ukraine' } }, null).company.country, null);
+  assert.equal(assemble({ company: { stage: 'Seed' } }, null).company.country, null);
+  assert.ok(/never guess it from a founder's name/.test(systemPrompt()));
 });

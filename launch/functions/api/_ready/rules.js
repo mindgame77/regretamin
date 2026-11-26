@@ -108,7 +108,7 @@ export function assemble(model, firms) {
     v: 2,
     company: { name: clip(co.name, 60), one_line: clip(co.one_line, 140), stage, stage_stated: !!co.stage && !/unknown/i.test(String(co.stage)),
       sector: SECTORS.includes(co.sector) ? co.sector : 'Other', ask_usd: Number(co.ask_usd) > 0 ? Math.round(Number(co.ask_usd)) : null,
-      based_in: clip(co.based_in, 60), slides: Number(co.slides) > 0 ? Math.round(Number(co.slides)) : null },
+      based_in: clip(co.based_in, 60), country: /^[A-Za-z]{2}$/.test(String(co.country || '').trim()) ? String(co.country).trim().toUpperCase() : null, slides: Number(co.slides) > 0 ? Math.round(Number(co.slides)) : null },
     verdict: reds.length ? `Fix ${reds.length} thing${reds.length === 1 ? '' : 's'} first.` : 'Ready to send.',
     reds, yellows, lead, good, special,
     scores,
@@ -171,17 +171,19 @@ For every flag write, about THIS deck, in plain words:
 For every special thing write "kind" (the exact name from the list), "what" (what it is, 14 words or fewer), "where" and "why" (one sentence on why it is rare in this field).
 For every strength write "what" (what is good, 12 words or fewer), "where" and "why" (one sentence on why an investor likes it).
 
+Proof has a shelf life: a customer, a number, an award or a press mention that is more than four years old does not prove the point today (row 217). Technology is the exception: a patent, published research or a working system keeps its weight.
+
 Never say the company will or will not raise money. Never tell the founder to drop the idea. Do not flatter.
 
 Answer with ONE JSON object and nothing else, in exactly this shape:
-{"company":{"name":"","one_line":"","stage":"Pre-seed|Seed|unknown","sector":"one of: ${SECTORS.join(', ')}","ask_usd":0,"based_in":"","slides":0},
+{"company":{"name":"","one_line":"","stage":"Pre-seed|Seed|unknown","sector":"one of: ${SECTORS.join(', ')}","ask_usd":0,"based_in":"","country":"","slides":0},
 "facts":[{"claim":"","proof":"proven|shown|claimed|assumed","where":"Slide N"}],
 "flags":[{"n":0,"level":"red|yellow","what":"","where":"","why":"","fix":"","fix_by":"words|proof"}],
 "strengths":[{"n":0,"what":"","where":"Slide N","why":""}],
 "special":[{"kind":"","what":"","where":"Slide N","why":""}],
 "lead_with":{"text":"","where":"Slide N"},
 "competitors_named":[""]}
-"n" is the checklist number. Use null for "ask_usd", "based_in" or "lead_with" when not known.
+"n" is the checklist number. Use null for "ask_usd", "based_in", "country" or "lead_with" when not known. "country" is the two-letter code of the country the company is based in (US, GB, UA), taken from "based_in" or from anything in the deck or the note that shows it (an address, the team's city, a phone code); never guess it from a founder's name.
 
 CHECKLIST (number | area | question | stage | red | yellow):
 ${rows}
