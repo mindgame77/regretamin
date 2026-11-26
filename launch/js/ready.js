@@ -109,15 +109,22 @@
   const tile = (label, n) => `<div class="rd-score"><span>${label}</span><b>${n == null ? '–' : n}<i>/10</i></b></div>`;
   const step = (n, body, last) => `<div class="rd-step"><div class="rd-rail"><span>${n}</span>${last ? '' : '<i></i>'}</div><div class="rd-box">${body}</div></div>`;
 
+  // Step 4 of the free report shows the first two firms: who they are. Why each one fits, what to say and how to get in are
+  // in the full research (founder, 26 Nov: "on the first step we should show 2 VCs, and here we should show reasoning").
+  const FREE_FIRMS = 2;
   function firmRow(f, i) {
     const place = [f.city, f.country].filter(Boolean).join(', ');
-    const why = [`${f.n12} deal${f.n12 === 1 ? '' : 's'} in the last 12 months${f.n90 ? ', ' + f.n90 + ' in the last 90 days' : ''}.`, f.last_deal ? `Last deal ${day(f.last_deal)}.` : '',
-      `${f.stage_pct}% of its deals are at your stage.`, Number(f.sector_pct) ? `${f.sector_pct}% are in your field.` : ''].filter(Boolean).join(' ');
-    const sum = f.summary && f.summary.text ? `<div class="rd-sum"><span>Summary:</span> ${esc(f.summary.text)} <em>${esc([f.summary.who, f.summary.title, f.summary.year].filter(Boolean).join(' · '))}</em></div>` : '';
     const ini = esc(String(f.name || '').slice(0, 2));
-    return `<div class="rd-frow"><span class="rd-ord">${i + 1}</span><span class="rd-lg"><img src="/assets/logos/f-${encodeURIComponent(f.slug)}.png" alt="" onerror="this.parentNode.textContent='${ini}'"></span>`
-      + `<div><a class="rd-nm" target="_blank" rel="noopener" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a><div class="rd-pl">${esc(place)}</div>${(f.marks || []).map((m) => `<span class="rd-mark">${CUP}${esc(m)}</span>`).join('')}</div><div class="rd-why">${esc(why)}</div><div class="rd-say">${sum}${esc(f.say || '')}</div></div>`;
+    return `<div class="rd-frow rd-f2"><span class="rd-ord">${i + 1}</span><span class="rd-lg"><img src="/assets/logos/f-${encodeURIComponent(f.slug)}.png" alt="" onerror="this.parentNode.textContent='${ini}'"></span>`
+      + `<div><a class="rd-nm" target="_blank" rel="noopener" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a><div class="rd-pl">${esc(place)}</div></div><div class="rd-why">${f.n12} deal${f.n12 === 1 ? '' : 's'} in the last 12 months</div></div>`;
   }
+  function moreFirms(r) {
+    const n = (r.firms || []).length, rest = n - FREE_FIRMS;
+    if (rest <= 0) return '';
+    if (r.research) return `<p class="rd-more">All ${n} firms, with why each one fits you, are in step 3.</p>`;
+    return `<div class="rd-lock rd-l4"><div class="rd-blur">${'<div class="rd-frow rd-f2"><span class="rd-ord">0</span><span class="rd-lg">Fi</span><div><b class="rd-nm">Firm name</b><div class="rd-pl">City, country</div></div><div class="rd-why">00 deals in the last 12 months</div></div>'.repeat(Math.min(rest, 3))}</div><p class="rd-more rd-over4">${rest} more firm${rest === 1 ? '' : 's'}, and why each one fits you, in the full research.</p></div>`;
+  }
+
 
   // The full research (step 3). Every figure is marked: from our own data, or looked up on the web with its source.
   const usd = (n) => (n >= 1e9 ? '$' + (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'B' : n >= 1e6 ? '$' + (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : '$' + Math.round(n / 1e3) + 'K');
@@ -141,6 +148,7 @@
     web: 'M12 2a10 10 0 110 20 10 10 0 010-20zM9.800 11h4.400c-.2-2.900-1-5.200-2.200-6.800-1.200 1.600-2 3.900-2.200 6.800zm-5.500 0h3.500c.1-2.300.6-4.300 1.400-5.900A7.800 7.800 0 004.300 11zm0 2a7.800 7.800 0 004.900 5.900c-.8-1.600-1.300-3.600-1.400-5.900zm5.500 0c.2 2.900 1 5.200 2.200 6.800 1.200-1.600 2-3.900 2.200-6.800zm6.400 0c-.1 2.300-.6 4.300-1.400 5.900a7.800 7.800 0 004.900-5.900zm3.500-2a7.800 7.800 0 00-4.900-5.900c.8 1.600 1.300 3.600 1.400 5.900z',
     news: 'M3 4h14v14a2 2 0 002 2H5a2 2 0 01-2-2zm16 4h2v10a1 1 0 01-2 0zM6 7h8v3H6zm0 5h8v1.500H6zm0 3h8v1.500H6z',
     move: 'M4 11h11.200l-4.600-4.600L12 5l7 7-7 7-1.400-1.400 4.600-4.600H4z',
+    cal: 'M6 2h2v2h8V2h2v2h3v18H3V4h3zm13 8H5v10h14zM5 8h14V6H5z',
     shut: 'M12 2a10 10 0 110 20 10 10 0 010-20zM8.500 7.100L7.100 8.500l3.500 3.500-3.500 3.500 1.400 1.400 3.500-3.500 3.500 3.500 1.400-1.400-3.500-3.500 3.500-3.500-1.400-1.400-3.500 3.500z',
     acq: 'M3 5h5.500l4 6H18l-2.600-2.600L16.800 7l5.200 5-5.200 5-1.400-1.400L18 13h-5.500l-4 6H3v-2h4.400l3.400-5-3.400-5H3z',
     turn: 'M5 20v-8a5 5 0 015-5h5.200l-2.600-2.600L14 3l5 5-5 5-1.400-1.400L15.200 9H10a3 3 0 00-3 3v8z',
@@ -158,7 +166,7 @@
   // One lettered part: what is going on, the facts, and one thing to do next (founder, 26 Nov: "the actionable map").
   const part = (letter, title, tags, now, body, next) => `<div class="rd-ab"><div class="rd-abh"><span class="rd-let">${letter}</span><h3>${title}</h3>${tags}</div>${now ? `<p class="rd-rs">${esc(now)}</p>` : ''}${body}${next ? `<div class="rd-next"><span class="rd-tag">Do this next</span><span>${esc(next)}</span></div>` : ''}</div>`;
   const OUT = { 'Shut down': 'shut', Acquired: 'acq', 'Changed direction': 'turn' };
-  function researchHtml(x) {
+  function researchHtml(x, r) {
     const comp = x.competitors || [], skip = x.skip || [], tried = x.tried || [], rr = x.rounds, now = x.now || {}, todo = x.todo || {};
     const letters = 'ABCD'.split(''); const parts = [];
     const has = (c) => [
@@ -171,9 +179,27 @@
       + `<div><p class="rd-cap">In the news</p><div class="rd-fts rd-col">${(c.news || []).map((g) => fact('news', g.what, '', false, g.src)).join('') || '<span class="rd-pl">Nothing found.</span>'}</div></div></div>`
       + (c.move || c.you ? `<div class="rd-move"><i>${ico('move', 16)}</i><span class="rd-cap">Your move</span><b>${esc(c.move || c.you)}</b></div>` : '') + '</div>').join('');
     parts.push(['Your competitors', OURS + WEB, now.competitors, comp.length ? cards : '<p class="rd-none">None found with a source we could check.</p>', todo.competitors]);
-    const inv = x.investors || [];
-    if (inv.length || skip.length) parts.push(['Your investors', OURS, now.firms,
-      (inv.length ? `<div class="rd-ig">${inv.map((f) => `<div class="rd-ic"><div class="rd-ich">${logo(f)}${firmA(f)}</div>${(f.badges || []).some((b) => AWARDED.includes(b.v)) ? `<div class="rd-bgs">${f.badges.filter((b) => AWARDED.includes(b.v)).map((b) => bdg(b.k, b.v, b.n, true)).join('')}</div>` : ''}<div class="rd-fts rd-col rd-grow">${(f.badges || []).filter((b) => !AWARDED.includes(b.v)).map((b) => fact(b.k, b.v, b.n, true, b.url)).join('')}</div>${f.apply ? `<a class="rd-pb" target="_blank" rel="noopener nofollow" href="${esc(f.apply)}">Pitch<span aria-hidden="true"> ↗</span></a>` : ''}</div>`).join('')}</div>` : '')
+    // Part B: every firm the report picked, with the reasoning (founder, 26 Nov: the free report shows two firms; "here we can
+    // show why we suggest those VCs").
+    const picks = (r && r.firms) || [], tipOf = new Map((x.investors || []).map((f) => [f.slug, f])), then = (r && r.then) || [];
+    const stageW = String(x.stage || (r && r.company && r.company.stage) || '').toLowerCase();
+    const firmBlock = (f, i) => {
+      const t = tipOf.get(f.slug) || {}, bs = t.badges || [], place = [f.city, f.country].filter(Boolean).join(', ');
+      const why = [
+        Number(f.fit) ? fact('spec', `${f.fit} ${stageW} deal${Number(f.fit) === 1 ? '' : 's'} in your field`, 'In the last 12 months', true) : '',
+        f.n12 != null ? fact('up', `${f.n12} deal${Number(f.n12) === 1 ? '' : 's'} in the last 12 months`, [Number(f.n90) ? f.n90 + ' in the last 90 days' : '', f.last_deal ? 'last deal ' + day(f.last_deal) : ''].filter(Boolean).join(' · '), true) : '',
+        f.stage_pct != null ? fact('built', `${f.stage_pct}% of its deals are at your stage`, Number(f.sector_pct) ? f.sector_pct + '% are in your field' : '', true) : '',
+      ].join('');
+      const sum = f.summary && f.summary.text ? `<div class="rd-sum"><span>Summary:</span> ${esc(f.summary.text)} <em>${esc([f.summary.who, f.summary.title, f.summary.year].filter(Boolean).join(' · '))}</em></div>` : '';
+      const pill = bs.filter((b) => AWARDED.includes(b.v)).map((b) => bdg(b.k, b.v, b.n, true)).join('');
+      const way = bs.filter((b) => !AWARDED.includes(b.v)).map((b) => fact(b.k, b.v, b.n, true)).join('');
+      return `<div class="rd-cc"><div class="rd-cch"><span class="rd-ord">${i + 1}</span>${logo(f)}<div>${firmA(f)}<p>${esc(place)}</p>${(f.marks || []).map((m) => `<span class="rd-mark">${CUP}${esc(m)}</span>`).join('')}</div>${pill}${t.apply ? `<a class="rd-pb" target="_blank" rel="noopener nofollow" href="${esc(t.apply)}">Pitch<span aria-hidden="true"> ↗</span></a>` : ''}</div>`
+        + `<div class="rd-ccb"><div><p class="rd-cap">Why we suggest it</p><div class="rd-fts">${why}</div>${sum}</div><div><p class="rd-cap">How to get in</p><div class="rd-fts rd-col">${way || '<span class="rd-pl">Nothing on record yet.</span>'}</div></div></div>`
+        + (f.say ? `<div class="rd-move"><i>${ico('move', 16)}</i><span class="rd-cap">What to say</span><b>${esc(f.say)}</b></div>` : '') + '</div>';
+    };
+    if (picks.length || skip.length) parts.push(['Your investors', OURS, now.firms,
+      picks.map(firmBlock).join('')
+      + (then.length ? `<p class="rd-cap rd-skipc">Then these: big firms that later invested where the firms above went first</p><div class="rd-cc rd-skips">${then.map((t) => `<div class="rd-fl">${firmA(t)}<span>after ${esc(t.after)}${t.n > 1 ? ', ' + t.n + ' startups' : ''}</span></div>`).join('')}</div>` : '')
       + (skip.length ? `<p class="rd-cap rd-skipc">Skip these firms: they hold one of your competitors</p><div class="rd-cc rd-skips">${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}</div>` : ''), todo.firms]);
     const who = (t) => (t.founders || []).map((f) => ext('https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(f + ' ' + t.name), f + ' on LinkedIn', 'rd-lb')).join('');
     parts.push(['Who tried this before', WEB, now.tried, tried.length
@@ -208,7 +234,8 @@
       return;
     }
     r.research = j.research;
-    $('rd-s3').innerHTML = researchHtml(j.research);
+    $('rd-s3').innerHTML = researchHtml(j.research, r);
+    if ($('rd-f4')) $('rd-f4').innerHTML = moreFirms(r);
   }
 
   function draw(r, same) {
@@ -226,9 +253,8 @@
       + goodBox
       + step(1, `<h2>Get rid of the red flags <small>${reds.length ? reds.length + ' · most important first' : 'none found'}</small></h2>${reds.length ? head('How to fix it') + rows(reds, 'rd-red') : ''}`)
       + step(2, `<h2>Improve these <small>${yel.length ? yel.length + ' · not deal-breakers, but investors will notice' : 'nothing stood out'}</small></h2>${yel.length ? head('How to improve it') + rows(yel, 'rd-yel') : ''}`)
-      + step(3, `<h2>Know your competitors</h2><div id="rd-s3">${r.research ? researchHtml(r.research) : LOCK(!!REPORT)}</div>`)
-      + step(4, `<h2>Pitch these firms, in this order</h2>${firms.length ? `<div class="rd-sub"><span class="rd-tag">Start here</span><span>They fit your stage and field and are writing cheques now.</span></div><div class="rd-frow rd-hd"><span></span><span></span><span>Firm</span><span>Why it fits</span><span>What to say to this firm</span></div>${firms.map(firmRow).join('')}` : '<p class="rd-none">We found no firm with a recent deal at your stage in your field.</p>'}`
-        + (then.length ? `<div class="rd-sub rd-sub2"><span class="rd-tag rd-tag2">Then these</span><span>After the first cheque is in: big firms that later invested where the firms above went first.</span></div><div class="rd-then">${then.map((t) => `<a target="_blank" rel="noopener" href="/vc/${encodeURIComponent(t.slug)}/"><b>${esc(t.name)}</b><span>after ${esc(t.after)}${t.n > 1 ? ', ' + t.n + ' startups' : ''}</span></a>`).join('')}</div>` : ''), true);
+      + step(3, `<h2>Know your competitors</h2><div id="rd-s3">${r.research ? researchHtml(r.research, r) : LOCK(!!REPORT)}</div>`)
+      + step(4, `<h2>Pitch these firms, in this order</h2>${firms.length ? `<div class="rd-sub"><span class="rd-tag">Start here</span><span>They fit your stage and field and are writing cheques now.</span></div>${firms.slice(0, FREE_FIRMS).map(firmRow).join('')}<div id="rd-f4">${moreFirms(r)}</div>` : '<p class="rd-none">We found no firm with a recent deal at your stage in your field.</p>'}`, true);
     show(res);
     $('rd-pdf').addEventListener('click', () => window.print());
     if ($('rd-buy')) $('rd-buy').addEventListener('click', () => research(r));
