@@ -338,3 +338,15 @@ def test_the_firms_list_behind_a_place_is_short_until_unlocked():
     assert "case when p_firms = 'fresh' then 3 else 5 end" in mig and 'create or replace function public.v2_map_firms(' not in mig  # the old function is untouched
     assert "${lockedFirms(L.data)}</div>" in js and "L.data && L.data.locked ? ' data-unlock' : ''" in js
 
+
+def test_play_shows_a_post_from_x_and_a_second_press_doubles_the_speed():
+    """Founder, 25 Nov: posts from that time pop up on the map while Play runs (one of three per quarter, at random),
+    pinned to the place of the news; first press plays, second is 2x, third stops; no close button on the small post."""
+    js = (ROOT / 'launch/js/map.js').read_text()
+    assert "if (S.playing) { if ((S.speed || 1) === 1) { S.speed = 2; drawTime(); return; } return stop(); }" in js
+    assert "https://platform.twitter.com/widgets.js" in js and "widgets.createTweet(pick[0]" in js  # X draws the post; no copy is kept
+    assert "set[Math.floor(Math.random() * set.length)]" in js
+    import re
+    posts = re.findall(r"\['(\d{19})', '([A-Z]{3} 2021 · [^']+)', '([^']+)', '([^']+)'\]", js)
+    assert len(posts) == 12 and len({p[0] for p in posts}) == 12  # three per quarter of 2021, no repeats
+
