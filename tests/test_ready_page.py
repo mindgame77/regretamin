@@ -35,6 +35,7 @@ def test_the_page_asks_only_for_the_deck_linkedin_and_a_note():
     assert "20 * 1024 * 1024" in js and "from('decks').upload(" in js and "fetch('/api/ready'" in js
     assert "'js/ready.js'" in read('launch', 'build.py')
     assert 'class="rd-cup"' in js and 'g.score >= 9 ? CUP' in js and 'class="rd-mark">${CUP}' in js   # great points and great fits carry the cup
+    assert 'class="rd-fire"' in js and 'Special in your field' in js   # the fire: rare, only what is special in the field
     assert "<span>Score</span>" in js and "What's good" in js and "tile('Deck', scores.deck) + tile('Founders', scores.founders)" in js   # 10 is best; good things first
 
 

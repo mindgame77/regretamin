@@ -70,3 +70,15 @@ test('a firm gets a mark only for what is great about it', () => {
   assert.deepEqual(marksOf({ sector_pct: 10, stage_pct: 30, n90: 0 }), []);
   assert.deepEqual(assemble({ company: { stage: 'Seed' } }, { firms: [{ name: 'F', fit: 1, sector_pct: 60, stage_pct: 10, n90: 0 }] }).firms[0].marks, ['Your field is its main field']);
 });
+
+test('what is special is rare, comes from the written list, and only ever adds', () => {
+  const base = { company: { stage: 'Pre-seed' }, flags: [{ n: 4, level: 'red' }, { n: 51, level: 'yellow' }] };
+  const a = assemble({ ...base, special: [{ kind: 'university', what: 'PhD in dairy science at Wageningen', where: 'Slide 9', why: 'x' }, { kind: 'Age', what: 'young' }, { kind: 'University', what: 'again' },
+    { kind: 'Exclusive data', what: 'Sensor data from 40 farms', where: 'Slide 5' }, { kind: 'Speed', what: 'Ships weekly' }, { kind: 'Backers', what: 'a fourth' }] }, null);
+  assert.deepEqual(a.special.map((x) => x.kind), ['University', 'Exclusive data', 'Speed']);   // unknown kinds and repeats dropped; three at most
+  const none = assemble(base, null);
+  assert.deepEqual(none.special, []);
+  assert.ok(a.scores.deck >= none.scores.deck && a.scores.founders >= none.scores.founders);    // having none costs nothing
+  const p = systemPrompt();
+  assert.ok(/University \| Did a founder study/.test(p) && /Never guess a founder's age/.test(p));
+});

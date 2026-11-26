@@ -1,6 +1,7 @@
 // "Am I ready to pitch?": the fixed rules. The model only answers the checklist; everything here is plain arithmetic,
 // so the same answers always give the same verdict and the same importance numbers (founder, 26 Nov 2026).
 import { CHECKLIST } from './checklist.js';
+import { SPECIAL, SPECIAL_BY } from './special.js';
 
 export const BY_N = new Map(CHECKLIST.map((r) => [r[0], { n: r[0], area: r[1], q: r[2], stage: r[3], red: r[4], yellow: r[5], fix: r[6] }]));
 
@@ -88,7 +89,16 @@ export function assemble(model, firms) {
     seen.add(n);
     return { n, level: 'good', area: it.area, what: clip(g.what, 110), where: clip(g.where || '', 24), why: clip(g.why || '', 150), score: score(n, 'good', stage) };
   }).filter(Boolean).sort((x, y) => y.score - x.score || x.n - y.n).slice(0, 5);
-  const judged = [...reds, ...yellows, ...good, ...(lead ? [{ area: 'Founders and team', score: 10 }] : [])];
+  // What is special in this field (the fire): rare, at most three, each of a kind from the Secret sauce list.
+  const kinds = new Set();
+  const special = (Array.isArray(m.special) ? m.special : []).map((x) => {
+    const row = SPECIAL_BY.get(String(x && x.kind || '').toLowerCase());
+    if (!row || kinds.has(row[0]) || !x.what) return null;
+    kinds.add(row[0]);
+    return { kind: row[0], founders: row[4], what: clip(x.what, 120), where: clip(x.where || '', 24), why: clip(x.why || '', 150), score: 10 };
+  }).filter(Boolean).slice(0, 3);
+  const judged = [...reds, ...yellows, ...good, ...(lead ? [{ area: 'Founders and team', score: 10 }] : []),
+    ...special.map((x) => ({ area: x.founders ? 'Founders and team' : 'Solution and product', score: 10 }))];
   const f = firms && typeof firms === 'object' ? firms : {};
   return {
     v: 2,
@@ -96,7 +106,7 @@ export function assemble(model, firms) {
       sector: SECTORS.includes(co.sector) ? co.sector : 'Other', ask_usd: Number(co.ask_usd) > 0 ? Math.round(Number(co.ask_usd)) : null,
       based_in: clip(co.based_in, 60), slides: Number(co.slides) > 0 ? Math.round(Number(co.slides)) : null },
     verdict: reds.length ? `Fix ${reds.length} thing${reds.length === 1 ? '' : 's'} first.` : 'Ready to send.',
-    reds, yellows, lead, good,
+    reds, yellows, lead, good, special,
     scores: { deck: overall(judged, stage, false), founders: overall(judged, stage, true) },
     facts: (Array.isArray(m.facts) ? m.facts : []).slice(0, 20).map((x) => ({ claim: clip(x && x.claim, 140), proof: ['proven', 'shown', 'claimed', 'assumed'].includes(x && x.proof) ? x.proof : 'claimed', where: clip(x && x.where, 24) })),
     competitors_named: (Array.isArray(m.competitors_named) ? m.competitors_named : []).slice(0, 10).map((x) => clip(x, 60)),
@@ -144,6 +154,9 @@ For every flag write, about THIS deck, in plain words:
 - "where": "Slide N", or "Not in the deck".
 - "why": one sentence on why an investor cares.
 - "fix": one concrete instruction the founder can act on today.
+6. Look for what is SPECIAL in this field: at most three things from the SPECIAL list below, and only where the deck or the note shows what the "counts" column asks for. This is rare; most decks have none or one, and an empty list is the normal answer. Never list what the "does not count" column describes. Never guess a founder's age, and never treat age, sex, origin or nationality as special or as a flag. The thing chosen for "lead_with" is not repeated here.
+
+For every special thing write "kind" (the exact name from the list), "what" (what it is, 14 words or fewer), "where" and "why" (one sentence on why it is rare in this field).
 For every strength write "what" (what is good, 12 words or fewer), "where" and "why" (one sentence on why an investor likes it).
 
 Never say the company will or will not raise money. Never tell the founder to drop the idea. Do not flatter.
@@ -153,10 +166,14 @@ Answer with ONE JSON object and nothing else, in exactly this shape:
 "facts":[{"claim":"","proof":"proven|shown|claimed|assumed","where":"Slide N"}],
 "flags":[{"n":0,"level":"red|yellow","what":"","where":"","why":"","fix":""}],
 "strengths":[{"n":0,"what":"","where":"Slide N","why":""}],
+"special":[{"kind":"","what":"","where":"Slide N","why":""}],
 "lead_with":{"text":"","where":"Slide N"},
 "competitors_named":[""]}
 "n" is the checklist number. Use null for "ask_usd", "based_in" or "lead_with" when not known.
 
 CHECKLIST (number | area | question | stage | red | yellow):
-${rows}`;
+${rows}
+
+SPECIAL (name | question | counts | does not count):
+${SPECIAL.map((r) => `${r[0]} | ${r[1]} | ${r[2]} | ${r[3]}`).join('\n')}`;
 }
