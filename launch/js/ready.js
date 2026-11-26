@@ -116,7 +116,7 @@
     const sum = f.summary && f.summary.text ? `<div class="rd-sum"><span>Summary:</span> ${esc(f.summary.text)} <em>${esc([f.summary.who, f.summary.title, f.summary.year].filter(Boolean).join(' · '))}</em></div>` : '';
     const ini = esc(String(f.name || '').slice(0, 2));
     return `<div class="rd-frow"><span class="rd-ord">${i + 1}</span><span class="rd-lg"><img src="/assets/logos/f-${encodeURIComponent(f.slug)}.png" alt="" onerror="this.parentNode.textContent='${ini}'"></span>`
-      + `<div><a class="rd-nm" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a><div class="rd-pl">${esc(place)}</div>${(f.marks || []).map((m) => `<span class="rd-mark">${CUP}${esc(m)}</span>`).join('')}</div><div class="rd-why">${esc(why)}</div><div class="rd-say">${sum}${esc(f.say || '')}</div></div>`;
+      + `<div><a class="rd-nm" target="_blank" rel="noopener" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a><div class="rd-pl">${esc(place)}</div>${(f.marks || []).map((m) => `<span class="rd-mark">${CUP}${esc(m)}</span>`).join('')}</div><div class="rd-why">${esc(why)}</div><div class="rd-say">${sum}${esc(f.say || '')}</div></div>`;
   }
 
   function draw(r, same) {
@@ -136,7 +136,7 @@
       + step(2, `<h2>Improve these <small>${yel.length ? yel.length + ' · not deal-breakers, but investors will notice' : 'nothing stood out'}</small></h2>${yel.length ? head('How to improve it') + rows(yel, 'rd-yel') : ''}`)
       + step(3, `<h2>Know your competitors</h2><div class="rd-lock"><div class="rd-blur">${blur}</div><div class="rd-offer"><div><b>Full research</b><p>Your competitors and who funded them. Who tried this before, and the founders to ask. The firms to skip.</p></div><span class="rd-pr">10 credits</span><button type="button" class="rd-buy" disabled>Get the full research</button></div></div>`)
       + step(4, `<h2>Pitch these firms, in this order</h2>${firms.length ? `<div class="rd-sub"><span class="rd-tag">Start here</span><span>They fit your stage and field and are writing cheques now.</span></div><div class="rd-frow rd-hd"><span></span><span></span><span>Firm</span><span>Why it fits</span><span>What to say to this firm</span></div>${firms.map(firmRow).join('')}` : '<p class="rd-none">We found no firm with a recent deal at your stage in your field.</p>'}`
-        + (then.length ? `<div class="rd-sub rd-sub2"><span class="rd-tag rd-tag2">Then these</span><span>After the first cheque is in: big firms that later invested where the firms above went first.</span></div><div class="rd-then">${then.map((t) => `<a href="/vc/${encodeURIComponent(t.slug)}/"><b>${esc(t.name)}</b><span>after ${esc(t.after)}${t.n > 1 ? ', ' + t.n + ' startups' : ''}</span></a>`).join('')}</div>` : ''), true);
+        + (then.length ? `<div class="rd-sub rd-sub2"><span class="rd-tag rd-tag2">Then these</span><span>After the first cheque is in: big firms that later invested where the firms above went first.</span></div><div class="rd-then">${then.map((t) => `<a target="_blank" rel="noopener" href="/vc/${encodeURIComponent(t.slug)}/"><b>${esc(t.name)}</b><span>after ${esc(t.after)}${t.n > 1 ? ', ' + t.n + ' startups' : ''}</span></a>`).join('')}</div>` : ''), true);
     show(res);
     $('rd-pdf').addEventListener('click', () => window.print());
     $('rd-again').addEventListener('click', () => { try { history.replaceState(null, '', location.pathname); } catch (e) {} show(up); });
@@ -151,6 +151,6 @@
     const { data } = await sb.auth.getSession();
     if (!data || !data.session) return;
     const got = await sb.from('ready_reports').select('result,status').eq('id', id).maybeSingle();
-    if (got.data && got.data.result) draw(got.data.result);
+    if (got.data && got.data.result) { draw(got.data.result); if (new URLSearchParams(location.search).get('pdf')) setTimeout(() => window.print(), 600); }   // "Download PDF" on My score
   })();
 })();

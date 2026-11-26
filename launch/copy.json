@@ -946,6 +946,11 @@
     "description": "Your saved venture capital firms and background checks.",
     "nav_label": "My firms"
    },
+   "account/score": {
+    "title": "My score · Regretamin",
+    "description": "Your pitch deck reports.",
+    "nav_label": "My score"
+   },
    "my-checks": {
     "title": "My firms · Regretamin",
     "description": "Your saved venture capital firms and background checks.",

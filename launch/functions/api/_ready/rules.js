@@ -81,14 +81,14 @@ export function assemble(model, firms) {
     return { n, level, area: it.area, what: clip(f.what || (level === 'red' ? it.red : it.yellow), 110), where: clip(f.where || '', 24),
       why: clip(f.why || '', 150), fix: clip(f.fix || it.fix, 170), matters: importance(n, level, stage), score: score(n, level, stage) };
   }).filter(Boolean).sort((x, y) => y.matters - x.matters || x.n - y.n);
-  const reds = flags.filter((f) => f.level === 'red').slice(0, 8), yellows = flags.filter((f) => f.level === 'yellow').slice(0, 6);
+  const reds = flags.filter((f) => f.level === 'red').slice(0, LIMIT), yellows = flags.filter((f) => f.level === 'yellow').slice(0, LIMIT);
   const lead = m.lead_with && m.lead_with.text ? { text: clip(m.lead_with.text, 220), where: clip(m.lead_with.where || '', 24) } : null;
   const good = (Array.isArray(m.strengths) ? m.strengths : []).map((g) => {
     const n = Number(g && g.n), it = BY_N.get(n);
     if (!it || FROM_OUR_DATA.has(n) || seen.has(n) || !g.what) return null;
     seen.add(n);
     return { n, level: 'good', area: it.area, what: clip(g.what, 110), where: clip(g.where || '', 24), why: clip(g.why || '', 150), score: score(n, 'good', stage) };
-  }).filter(Boolean).sort((x, y) => y.score - x.score || x.n - y.n).slice(0, 5);
+  }).filter(Boolean).sort((x, y) => y.score - x.score || x.n - y.n).slice(0, LIMIT);
   // What is special in this field (the fire): rare, at most three, each of a kind from the Secret sauce list.
   const kinds = new Set();
   const special = (Array.isArray(m.special) ? m.special : []).map((x) => {
@@ -125,13 +125,16 @@ export function marksOf(x) {
   return out;
 }
 
+// At most this many red flags, improvements and good things in one report (founder, 26 Nov: "a limit on red flags on 10, yellow also 10, green also 10").
+export const LIMIT = 10;
+
 // One line of advice per firm, from its own numbers only.
 export function sayTo(x, stage, sector) {
   const out = [];
   if (Number(x.stage_pct) >= 70) out.push(`Almost only first cheques. Keep the ask at ${stage.toLowerCase()} size.`);
   if (Number(x.sector_pct) >= 40 && sector) out.push(`${sector} is its main field. Skip the basics and go deep.`);
   if (Number(x.n90) >= 5) out.push('It is investing fast right now. Go now.');
-  if (!out.length) out.push(`It has done ${x.fit} ${stage.toLowerCase()} deal${Number(x.fit) === 1 ? '' : 's'} in your field in the last 12 months. Say why you are the next.`);
+  if (!out.length) out.push(`It backed ${x.fit} ${stage.toLowerCase()} startup${Number(x.fit) === 1 ? '' : 's'} in your field in the last 12 months. Tell them why yours should be the next one.`);
   return out.slice(0, 2).join(' ');
 }
 
@@ -145,8 +148,8 @@ You get the deck as a PDF, and sometimes a note from the founder and a LinkedIn 
 Work in this order:
 1. Read every slide. Work out the company, its stage (Pre-seed or Seed; if the deck does not say, judge from the ask and traction and say "unknown" only if you truly cannot tell), its sector, the ask in US dollars, and where it is based.
 2. List the main factual claims and how well each is proven: "proven" (a document, a named customer, a public source shown), "shown" (a screenshot, chart or link), "claimed" (the deck says so, nothing more), "assumed" (a forecast or a guess).
-3. Go through the checklist below. Raise a flag ONLY where the deck gives real evidence that the RED or YELLOW description applies. Skip rows that the deck gives you no basis to judge, rows for the other stage, and rows where the deck is fine. Most rows will be skipped. Never raise more than 8 red and 6 yellow flags: keep the ones an investor would notice first.
-4. List what is good: 3 to 5 checklist rows where the deck clearly does well, with the evidence on a slide. Be as strict as with the flags. If the deck has fewer real strengths, list fewer; never pad.
+3. Go through the checklist below. Raise a flag ONLY where the deck gives real evidence that the RED or YELLOW description applies. Skip rows that the deck gives you no basis to judge, rows for the other stage, and rows where the deck is fine. Most rows will be skipped. Never raise more than 10 red and 10 yellow flags: keep the ones an investor would notice first.
+4. List what is good: up to 10 checklist rows where the deck clearly does well, with the evidence on a slide. Be as strict as with the flags. If the deck has fewer real strengths, list fewer; never pad.
 5. Find at most one truly exceptional strength (the kind an investor repeats to a partner, for example a founder who built and sold a company in this field). If there is none, use null. Ordinary good things are not exceptional, and the exceptional one is not repeated among the strengths.
 
 For every flag write, about THIS deck, in plain words:
