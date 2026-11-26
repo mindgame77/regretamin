@@ -123,32 +123,44 @@
   const usd = (n) => (n >= 1e9 ? '$' + (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'B' : n >= 1e6 ? '$' + (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : '$' + Math.round(n / 1e3) + 'K');
   const OURS = '<span class="rd-from rd-o">Our data</span>', WEB = '<span class="rd-from">Looked up</span>';
   const firmA = (f) => `<a target="_blank" rel="noopener" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a>`;
-  const srcA = (u) => `<a class="rd-src" target="_blank" rel="noopener nofollow" href="${esc(u)}">Source</a>`;
+  // A link that leaves the site says so with an arrow and opens in a new page.
+  const ext = (u, label, cls) => `<a class="rd-x${cls ? ' ' + cls : ''}" target="_blank" rel="noopener nofollow" href="${esc(u)}">${esc(label)}<span aria-hidden="true"> ↗</span></a>`;
+  const li = (html, ours) => `<div class="rd-li"><i class="rd-d${ours ? ' rd-o' : ''}"></i><span>${html}</span></div>`;
+  // One lettered part: what is going on, the facts, and one thing to do next (founder, 26 Nov: "the actionable map").
+  const part = (letter, title, tags, now, body, next) => `<div class="rd-ab"><div class="rd-abh"><span class="rd-let">${letter}</span><h3>${title}</h3>${tags}</div>${now ? `<p class="rd-rs">${esc(now)}</p>` : ''}${body}${next ? `<div class="rd-next"><span class="rd-tag">Do this next</span><span>${esc(next)}</span></div>` : ''}</div>`;
   function researchHtml(x) {
-    const comp = x.competitors || [], skip = x.skip || [], inst = x.instead || [], tried = x.tried || [], rr = x.rounds;
+    const comp = x.competitors || [], skip = x.skip || [], inst = x.instead || [], tried = x.tried || [], rr = x.rounds, now = x.now || {}, todo = x.todo || {};
     const stage = String(x.stage || '').toLowerCase(), field = x.sector && x.sector !== 'Other' ? x.sector.toLowerCase() + ' ' : '';
-    const cRows = comp.map((c) => `<div class="rd-crow"><div><b>${esc(c.name)}</b><p>${esc(c.what)}</p>${srcA(c.src)}</div>`
-      + `<div>${c.raised ? `<i class="rd-d${c.raised.ours ? ' rd-o' : ''}"></i>${esc(c.raised.text)}${c.raised.date ? `<span class="rd-pl">${esc(day(c.raised.date))}</span>` : ''}` : '–'}</div>`
-      + `<div>${c.backers && c.backers.list.length ? `<i class="rd-d${c.backers.ours ? ' rd-o' : ''}"></i>` + c.backers.list.map((b) => (b.slug ? firmA(b) : esc(b.name))).join(', ') : '–'}</div>`
-      + `<div>${esc(c.you || '')}</div></div>`).join('');
-    const block1 = `<div class="rd-rb"><h3>Your competitors ${OURS}${WEB}</h3>${comp.length
-      ? `<div class="rd-crow rd-hd"><span>Company</span><span>Raised</span><span>Backed by</span><span>You have</span></div>${cRows}`
-      : '<p class="rd-none">None found with a source we could check.</p>'}</div>`;
-    const block2 = skip.length ? `<div class="rd-two"><div class="rd-rb"><h3>Skip these firms ${OURS}</h3><p class="rd-rs">They already hold one of your competitors.</p>${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}</div>`
-      + `<div class="rd-rb"><h3>Pitch these instead ${OURS}</h3><p class="rd-rs">They invest in your field and hold none of your competitors.</p>${inst.map((f) => `<div class="rd-fl">${firmA(f)}<span>${f.fit} ${esc(field)}${esc(stage)} deal${f.fit === 1 ? '' : 's'} in 12 months</span></div>`).join('')}</div></div>` : '';
-    const block3 = `<div class="rd-rb"><h3>Who tried this before ${WEB}</h3>${tried.length
-      ? `<p class="rd-rs">Talk to them before you raise. One call can save a year.</p>${tried.map((t) => `<div class="rd-trow"><span class="rd-wh">${esc(t.years)}</span><div><b>${esc(t.name)}</b><p>${esc(t.happened)}</p><p class="rd-pl">${t.founders && t.founders.length ? 'Founders: ' + esc(t.founders.join(', ')) + ' · ' : ''}${srcA(t.src)}</p></div></div>`).join('')}`
+    const letters = 'ABCD'.split(''); const parts = [];
+    const has = (c) => [
+      c.raised ? li(esc(c.raised.text) + (c.raised.date ? ` <span class="rd-pl">${esc(day(c.raised.date))}</span>` : ''), c.raised.ours) : '',
+      c.backers && c.backers.list.length ? li('Backed by ' + c.backers.list.map((b) => (b.slug ? firmA(b) : esc(b.name))).join(', '), c.backers.ours) : '',
+      ...(c.team || []).map((t) => li(esc(t), true)),
+      ...(c.strong || []).map((g) => li(ext(g.src, g.what), false)),
+    ].join('') || '–';
+    const cRows = comp.map((c) => `<div class="rd-crow"><div>${c.site ? ext('https://' + c.site, c.name, 'rd-cn') : `<b>${esc(c.name)}</b>`}<p>${esc(c.what)}</p>${ext(c.src, 'Source', 'rd-src')}</div>`
+      + `<div>${has(c)}</div>`
+      + `<div>${(c.news || []).map((g) => li(ext(g.src, g.what), false)).join('') || '–'}</div>`
+      + `<div class="rd-mv">${esc(c.move || c.you || '')}</div></div>`).join('');
+    parts.push(['Your competitors', OURS + WEB, now.competitors, comp.length
+      ? `<div class="rd-crow rd-hd"><span>Company</span><span>They have</span><span>In the news</span><span>Your move</span></div>${cRows}`
+      : '<p class="rd-none">None found with a source we could check.</p>', todo.competitors]);
+    if (skip.length) parts.push(['Your investor list', OURS, now.firms,
+      `<div class="rd-two"><div><p class="rd-cap">Skip these firms</p>${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}</div>`
+      + `<div><p class="rd-cap">Pitch these instead</p>${inst.map((f) => `<div class="rd-fl">${firmA(f)}<span>${f.fit} ${esc(field)}${esc(stage)} deal${f.fit === 1 ? '' : 's'} in 12 months</span></div>`).join('')}</div></div>`, todo.firms]);
+    const who = (t) => (t.founders || []).map((f) => ext('https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(f + ' ' + t.name), f)).join(', ');
+    parts.push(['Who tried this before', WEB, now.tried, tried.length
+      ? tried.map((t) => `<div class="rd-trow"><span class="rd-wh">${esc(t.years)}</span><div><b>${esc(t.name)}</b>${t.outcome ? `<span class="rd-out">${esc(t.outcome)}</span>` : ''}<p>${esc(t.happened)}</p><p class="rd-pl">${ext(t.src, 'Read what happened')}${t.founders && t.founders.length ? ' · Founders to ask, on LinkedIn: ' + who(t) : ''}</p></div></div>`).join('')
         + '<div class="rd-q3"><b>Three questions to ask them</b><ol><li>What ended it, in one sentence?</li><li>If you started again, what would you do in the first six months?</li><li>Which investors understood it, and which wasted your time?</li></ol></div>'
-      : '<p class="rd-none">None found with a source we could check.</p>'}</div>`;
-    let block4 = '';
+      : '<p class="rd-none">None found with a source we could check.</p>', todo.tried]);
     if (rr) {
       const top = Math.max(rr.p90 * 1.12, (rr.ask || 0) * 1.12), at = (v) => Math.max(0, Math.min(100, (100 * v) / top)).toFixed(1) + '%';
-      block4 = `<div class="rd-rb"><h3>Your ask against similar rounds ${OURS}</h3><p class="rd-rs">${rr.n.toLocaleString('en-US')} ${esc(rr.sector ? rr.sector.toLowerCase() + ' ' : '')}${esc(String(rr.stage).toLowerCase())} rounds in the last 24 months with a known amount.</p>`
-        + `<div class="rd-track"><i class="rd-band" style="left:${at(rr.p25)};width:calc(${at(rr.p75)} - ${at(rr.p25)})"></i><i class="rd-mid" style="left:${at(rr.p50)}"></i><i class="rd-p90" style="left:${at(rr.p90)}"></i>${rr.ask ? `<span class="rd-you" style="left:${at(rr.ask)}">You: ${usd(rr.ask)}</span>` : ''}</div>`
+      parts.push(['Your ask against similar rounds', OURS, `${rr.n.toLocaleString('en-US')} ${rr.sector ? rr.sector.toLowerCase() + ' ' : ''}${String(rr.stage).toLowerCase()} rounds in the last 24 months with a known amount.`,
+        `<div class="rd-track"><i class="rd-band" style="left:${at(rr.p25)};width:calc(${at(rr.p75)} - ${at(rr.p25)})"></i><i class="rd-mid" style="left:${at(rr.p50)}"></i><i class="rd-p90" style="left:${at(rr.p90)}"></i>${rr.ask ? `<span class="rd-you" style="left:${at(rr.ask)}">You: ${usd(rr.ask)}</span>` : ''}</div>`
         + `<div class="rd-qs"><div><b>${usd(rr.p25)}</b><span>a quarter raised less</span></div><div><b>${usd(rr.p50)}</b><span>the middle</span></div><div><b>${usd(rr.p75)}</b><span>a quarter raised more</span></div><div><b>${usd(rr.p90)}</b><span>top tenth</span></div></div>`
-        + (rr.line ? `<p class="rd-rl">${esc(rr.line)}</p>` : '') + '</div>';
+        + (rr.line ? `<p class="rd-rl">${esc(rr.line)}</p>` : ''), todo.ask]);
     }
-    return block1 + block2 + block3 + block4;
+    return parts.map((p, n) => part(letters[n] || '', p[0], p[1], p[2], p[3], p[4])).join('');
   }
   const LOCK = (on) => `<div class="rd-lock"><div class="rd-blur">${'<div class="rd-row"><i class="rd-dot"></i><b>Company name, city</b><span class="rd-wh">Series A</span><span></span><span>$00M · backed by Firm name, Firm name</span><span>2026</span></div>'.repeat(3)}</div><div class="rd-offer"><div><b>Full research</b><p id="rd-rmsg">Your competitors and who funded them. Who tried this before, and the founders to ask. The firms to skip.</p></div><span class="rd-pr">10 credits</span><button type="button" class="rd-buy" id="rd-buy"${on ? '' : ' disabled'}>Get the full research</button></div></div>`;
   const WHYR = { no_key: 'The model key is not set on this address yet.', model_no_credit: 'The model account has no credit. Try again later.', sign_in: 'Please sign in again.' };

@@ -91,9 +91,12 @@ def test_the_full_research():
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
     js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
     assert "fetch('/api/research'" in js and 'id="rd-s3"' in js and "researchHtml(r.research)" in js   # saved research reopens with the report
-    for words in ("Your competitors", "Skip these firms", "Pitch these instead", "Who tried this before", "Your ask against similar rounds", "Our data", "Looked up"):
+    for words in ("Your competitors", "Skip these firms", "Pitch these instead", "Who tried this before", "Your ask against similar rounds", "Our data", "Looked up",
+                  "They have", "In the news", "Your move", "Do this next", "Read what happened", "'ABCD'"):   # lettered parts, each ending with one thing to do
         assert words in js, words
     fn = open(os.path.join(ROOT, "launch", "functions", "api", "research.js")).read()
     assert "web_search_20250305" in fn and "v2_ready_research" in fn and "temperature" not in fn.replace("no temperature", "") and "pause_turn" in fn
+    assert 'rel="noopener nofollow"' in js and "↗" in js   # a link that leaves the site says so and opens in a new page
+    assert "worked_at" in open(os.path.join(ROOT, "supabase", "migrations", "20261126223349_v2_ready_research_founders.sql")).read()
     mig = open(os.path.join(ROOT, "supabase", "migrations", "20261126221958_v2_ready_research.sql")).read()
     assert "to_regclass('public.v2_deals') is null" in mig and "from public, anon" in mig   # skips on a database without the v2 tables; signed-in callers only

@@ -11,10 +11,10 @@ const CONTENT = [
     { type: 'web_search_result', url: 'https://nofence.no/about', title: 'About Nofence' },
     { type: 'web_search_result', url: 'https://blog.example/why-cowlar-closed', title: 'Why Cowlar closed' }] },
   { type: 'text', text: '{"competitors":[' +
-    '{"name":"Halter","website":"https://www.halterhq.com/","what":"Solar collars that fence and track dairy cows","raised":"$100M Series D, 2025","backers":["Bessemer"],"you_have":"Collars that cost a third as much","source":"https://news.example/halter-raises-100m"},' +
-    '{"name":"Nofence","website":"nofence.no","what":"Virtual fencing for grazing animals","raised":"","backers":[],"you_have":"","source":"https://nofence.no/press/funding-2024"},' +
-    '{"name":"Ghost Co","website":"ghost.example","what":"Invented","raised":"$9M","backers":["Nobody"],"you_have":"","source":"https://made-up.example/ghost"}],' +
-    '"tried_before":[{"name":"Cowlar","years":"2016 to 2020","what_happened":"Shut down after its funding ran out.","founders":["A. Founder"],"source":"https://blog.example/why-cowlar-closed"},' +
+    '{"name":"Halter","website":"https://www.halterhq.com/","what":"Solar collars that fence and track dairy cows","raised":"$100M Series D, 2025","backers":["Bessemer"],"your_move":"Say your collars cost a third as much and need no base station.","source":"https://news.example/halter-raises-100m","strengths":[{"what":"Collars on 300,000 cows in three countries","source":"https://news.example/halter-raises-100m"},{"what":"Invented strength","source":"https://made-up.example/x"}],"news":[{"what":"Raised a $100M Series D in 2025","source":"https://www.news.example/halter-raises-100m/"},{"what":"Bought a rival in 2024","source":"https://made-up.example/halter-buys"}]},' +
+    '{"name":"Nofence","website":"nofence.no","what":"Virtual fencing for grazing animals","raised":"","backers":[],"your_move":"","source":"https://nofence.no/press/funding-2024"},' +
+    '{"name":"Ghost Co","website":"ghost.example","what":"Invented","raised":"$9M","backers":["Nobody"],"your_move":"","source":"https://made-up.example/ghost"}],' +
+    '"tried_before":[{"name":"Cowlar","years":"2016 to 2020","outcome":"shut down","what_happened":"Shut down after its funding ran out.","founders":["A. Founder"],"source":"https://blog.example/why-cowlar-closed"},' +
     '{"name":"Nobody Inc","years":"2010","what_happened":"Unknown.","founders":[],"source":""}]}' }];
 
 test('addresses are compared by page, and a website becomes a bare domain', () => {
@@ -36,11 +36,15 @@ test('a looked-up row is kept only with a source the search really returned', ()
   assert.deepEqual(rows.competitors.map((c) => c.name), ['Halter', 'Nofence']);   // the invented one is gone
   assert.deepEqual(rows.tried.map((t) => t.name), ['Cowlar']);                      // the one with no source is gone
   assert.equal(rows.competitors[0].site, 'halterhq.com');
+  assert.deepEqual(rows.competitors[0].news, [{ what: 'Raised a $100M Series D in 2025', src: 'https://www.news.example/halter-raises-100m/' }]);   // the news item with an invented page is gone
+  assert.equal(rows.tried[0].outcome, 'Shut down');
+  assert.deepEqual(rows.competitors[0].strong, [{ what: 'Collars on 300,000 cows in three countries', src: 'https://www.news.example/halter-raises-100m/' }]);
+  assert.equal(rows.competitors[0].move, 'Say your collars cost a third as much and need no base station.');
 });
 
 test('our data replaces looked-up funding where we hold the company, and firms that hold a competitor are not offered', () => {
   const rows = vetted(JSON.parse(answerText(CONTENT)), pagesSeen(CONTENT));
-  const ours = { competitors: [{ asked: 'Halter', name: 'Halter', round: 'Series D', date: '2025-06-01', amount: 100000000, currency: 'USD', backers: [{ slug: 'bessemer-venture-partners', name: 'Bessemer Venture Partners' }] }],
+  const ours = { competitors: [{ asked: 'Halter', name: 'Halter', round: 'Series D', date: '2025-06-01', amount: 100000000, currency: 'USD', backers: [{ slug: 'bessemer-venture-partners', name: 'Bessemer Venture Partners' }], founders: 2, worked_at: ['Rocket Lab'], studied_at: ['Auckland'], built_before: [{ name: 'Farm Co', outcome: 'acquired', acquirer: 'Big Ag' }, { name: 'Other Co', outcome: 'shut_down', acquirer: null }] }],
     skip: [{ slug: 'bessemer-venture-partners', name: 'Bessemer Venture Partners', backed: ['Halter'] }], rounds: { n: 14, p25: 1325000, p50: 1500000, p75: 2012500, p90: 4265000 }, stage: 'Pre-seed', sector_known: true };
   const fit = { firms: [{ slug: 'bessemer-venture-partners', name: 'Bessemer Venture Partners', fit: 4 }, { slug: 'a-fund', name: 'A Fund', fit: 3, city: 'Austin', country: 'US' }] };
   const r = buildResearch(rows, ours, fit, { company: { stage: 'Pre-seed', sector: 'Hardware', ask_usd: 1200000 } }, { at: '2026-11-26T22:00:00Z', searches: 6, model: 'claude-opus-5-5', tokens_in: 1, tokens_out: 2 });
@@ -53,6 +57,13 @@ test('our data replaces looked-up funding where we hold the company, and firms t
   assert.equal(r.rounds.n, 14);
   assert.equal(r.rounds.line, 'Your ask is below most rounds like yours. Announced rounds lean large, so the true middle is lower than $1.5M.');
   assert.equal(r.tried[0].src, 'https://blog.example/why-cowlar-closed');
+  assert.equal(r.v, 2);
+  assert.deepEqual(r.competitors[0].team, ['Founders worked at Rocket Lab', 'Founders studied at Auckland', 'A founder built Farm Co before (acquired by Big Ag)', 'A founder built Other Co before (shut down)']);
+  assert.deepEqual(r.competitors[1].team, []);   // a competitor we do not hold: nothing is said about its founders from our side
+  assert.deepEqual(r.now, { competitors: '2 companies an investor will compare you with.', firms: '1 firm we list already holds one of them.', tried: '1 company tried this before you.' });
+  assert.deepEqual(r.todo, { competitors: 'Put these on your competition slide. Have your answer ready for each one.', firms: 'Take the first list off your target list. Start with the second.',
+    tried: 'Message one of these founders this week. Ask the three questions.', ask: 'Be ready to defend your number against these rounds.' });
+  assert.equal(buildResearch({ competitors: [], tried: [] }, { rounds: ours.rounds }, null, { company: {} }, {}).todo.ask, 'Add your ask to the deck: the amount and what it pays for.');
 });
 
 test('the ask is placed in plain words, never as a forecast, and not at all on thin data', () => {
