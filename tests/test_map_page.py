@@ -151,7 +151,7 @@ def test_money_flow_opens_a_place_on_its_sectors_like_hot_right_now():
     root = Path(__file__).resolve().parents[1]
     js = (root / 'launch/js/map.js').read_text()
     # one way to open a place, for both views; Money flow asks for the place's sectors over the timeline's stretch of time
-    assert "const det = await (S.view === 'hot' ? detail(place) : placeSectors(place));" in js
+    assert "const det = await (S.view === 'hot' ? detail(place) : S.view === 'path' ? pathPlace(place) : placeSectors(place));" in js
     assert "sb.rpc('v2_map_place_sectors', a)" in js
     # the firms panel, Escape, the Investors-list link and coming back to the map no longer depend on the Hot view
     assert "if (!(L && L.step === 'firms'))" in js and "const open = S.list && S.list.step === 'firms'" in js
@@ -290,3 +290,42 @@ def test_share_link_button_copies_a_link_to_the_map_as_it_is_set_up():
     assert "'unit', 'place', 'fk', 'fm'].some((k) => qs.has(k))" in js  # a shared link wins over the map remembered in this tab
     assert 'history.replaceState' not in js and 'history.pushState' not in js  # the page still never rewrites its own address
     assert "kind: ['unis', 'cos'].includes(O.kind) ? O.kind : 'places', mode: O.mode === 'blocks' ? 'blocks' : 'map'" in F
+
+
+def test_pathfinders_view_shows_the_small_firms_the_top_100_follow():
+    """Founder, 25 Nov: "who follows whom ... small companies that are being followed by the top 100", on the map. A fourth
+    view; same head card, timeline and buttons as the others; circles per place, and a ranked list of firms."""
+    js = (ROOT / 'launch/js/map.js').read_text(); css = (ROOT / 'launch/style.css').read_text()
+    mig = (ROOT / 'supabase/migrations/20261126030945_v2_map_pathfinders.sql').read_text()
+    assert '<button type="button" data-view="founders">Founders</button><button type="button" data-view="path">Pathfinders</button></div>' in js
+    assert "sb.rpc('v2_map_pathfinders', a)" in js and "$('#vm-h1').textContent = 'Who the top firms follow.';" in js
+    assert "<h2>Most followed</h2><span class=\"vm-tag\">startups followed</span>" in js
+    assert "qs.get('view') === 'pathfinders'" in js and "S.view === 'path' ? 'pathfinders' : S.view" in js  # a link can open it and the share link names it
+    assert '.vm-pl.vm-path{background:#F0861E;' in css
+    # the rule lives in the database: followed = the top firm came in later; it can also leave out big firms (not used)
+    assert 'p_max_deals integer default 50' in mig and 'b.d > a.d' in mig and 'v2_map_counted_places' in mig
+    # founder, 25 Nov, after seeing it: "just the firms that are not in top 100", so the page asks for no size limit
+    assert js.count('p_max_deals: null') == 2
+    assert 'create or replace function public.v2_map_pathfinders(' in mig and 'to anon, authenticated' in mig
+
+
+def test_pathfinders_lists_are_locked_until_the_visitor_posts_on_x_and_signs_in():
+    """Founder, 25 Nov: the first three firms are free, the rest blurred; "Post on X" with a personal link, we see X open
+    it, then "Sign in", and everything locked opens for the account. The map itself stays open."""
+    js = (ROOT / 'launch/js/map.js').read_text(); fn = (ROOT / 'launch/functions/p/[code].js').read_text()
+    assert "sb.rpc(start ? 'v2_share_start' : 'v2_share_state', { p_anon: anon() })" in js
+    assert 'data-unlock' in js and '<h3>Post anything on X with your link</h3>' in js and 'https://x.com/intent/post?text=' in js
+    assert "'Waiting for your post' : 'Post on X'" in js and 'data-open="signup">Sign in</button>' in js
+    # his four lines, word for word
+    for line in ("Side effects may include knowing who you're taking money from. Regretamin.", 'Take one before every investor meeting. Regretamin.',
+                 'For the relief of investor regret, before it starts. Regretamin.', "'We love founders' is not due diligence. Regretamin."):
+        assert line in js, line
+    # the stand-in rows carry no real firm: the names never reach the page before the unlock
+    assert "'Firm name here'" in js
+    assert 'v2_share_hit' in fn and '/Twitterbot/i' in fn and "'/?view=pathfinders'" in fn
+    # back from signing in, the lists open by themselves (he had to press a blurred row before this)
+    assert 'sb.auth.onAuthStateChange((ev, session) => { if (session) setTimeout(claim, 0); });' in js and 'setTimeout(claim, 2500)' in js
+    mig = next((ROOT / 'supabase/migrations').glob('*_v2_share_to_unlock.sql')).read_text()
+    assert 'create table if not exists public.v2_share_codes' in mig and 'enable row level security' in mig
+    assert 'r.k <= case when me.ok then 30 else 3 end' in mig  # the lock is in the database, not only a blur
+

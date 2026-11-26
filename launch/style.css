@@ -1215,6 +1215,26 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-stage.vm-live .vm-pl{transition:none}#vm-labs.vm-still .vm-lab{animation:none}
 .vm-map{touch-action:pan-y}.vm-map.vm-zoomed{touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
 .vm.vm-fview .vm-pm{display:none}
+.vm-pl.vm-path{background:#F0861E;border:1.5px solid #10201C;opacity:.92}
+.vm.vm-pview #vm-cta{display:none}
+.vm-side .vm-pfs a.vm-pf{display:flex;align-items:center;gap:10px;padding:9px 0;margin:0;border:0;border-top:1px solid #E9EDEB;border-radius:0;background:none;color:inherit;text-decoration:none}
+.vm-pfk{flex:none;width:18px;font:400 12px 'Geist Mono',monospace;color:#5B6B66}
+.vm-pfl{flex:none;width:28px;height:28px;border-radius:7px;border:1px solid #E3E8E6;object-fit:cover;background:#fff}
+.vm-pfi{display:flex;align-items:center;justify-content:center;background:#E2E7E5;color:#586964;font:600 11px 'Geist',sans-serif}
+.vm-pft{min-width:0;flex:1}.vm-pft b{display:block;font:600 14px/1.3 'Geist',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vm-pft i{display:block;font:400 12px/1.3 'Geist',sans-serif;font-style:normal;color:#5B6B66;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vm-pfn{flex:none;font:600 15px 'Geist',sans-serif}
+.vm-side .vm-pfs button.vm-pfb{display:flex;align-items:center;gap:10px;width:100%;padding:9px 0;margin:0;border:0;border-top:1px solid #E9EDEB;border-radius:0;background:none;color:inherit;text-align:left;cursor:pointer}
+.vm-pfb>*{filter:blur(5px);opacity:.75;user-select:none}
+.md.ulk{width:440px;max-width:calc(100vw - 24px);padding:26px;border-radius:20px;position:relative}
+.ulk .x{position:absolute;top:14px;right:16px;float:none}
+.ulk h3{font:600 22px/1.2 'Geist',sans-serif;letter-spacing:-.01em;margin:0 28px 14px 0}
+.ulk-l{display:flex;gap:8px;margin-bottom:16px}.ulk-l span{flex:1;min-width:0;height:44px;border:1.5px solid #10201C;border-radius:10px;display:flex;align-items:center;padding:0 12px;font:500 14px 'Geist Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ulk-l button{height:44px;padding:0 16px;border-radius:10px;border:1px solid #8A9893;background:#fff;font:600 14px 'Geist',sans-serif;color:#10201C;cursor:pointer}
+.ulk-t{display:flex;align-items:center;margin-bottom:6px}.ulk-t span{font:400 11px 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#5B6B66}
+.ulk-t button{margin-left:auto;border:0;background:none;padding:0;font:600 12px 'Geist',sans-serif;color:#10201C;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.ulk-p{background:#F3F5F4;border-radius:12px;padding:14px;margin:0 0 14px;font:500 15.5px/1.4 'Geist',sans-serif}
+.ulk-go{display:flex;align-items:center;justify-content:center;width:100%;height:46px;border:0;border-radius:10px;background:#10201C;color:#fff;font:600 15px 'Geist',sans-serif;text-decoration:none;cursor:pointer}
+.ulk-go:disabled{opacity:.6;cursor:default}.ulk-go.ulk-wait{background:#fff;color:#10201C;border:1.5px solid #10201C}
 .vm-sh{position:absolute;right:24px;bottom:196px;z-index:4;width:38px;height:38px;padding:0;border:1px solid #8A9893;border-radius:10px;background:#fff;color:#10201C;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .vm-sh svg{width:17px;height:17px}
 .vm.vm-fview .vm-sh{display:none}
@@ -1904,3 +1924,6 @@ main.prof .ph1 .bdgb svg{width:17px;height:17px}
 .bdgm .bdgr img{height:128px;width:auto;display:block}.bdgm .bdgr a:nth-child(3) img{height:48px}
 .bdgm .bdgc{margin-left:auto;font:600 12px/1 'Geist',system-ui,sans-serif;height:32px;padding:0 12px;border-radius:99px;border:1px solid #8A9893;background:#fff;color:#10201C;cursor:pointer}
 @media (max-width:640px){.bdgm .bdgr img{height:84px}.bdgm .bdgr a:nth-child(3) img{height:38px}.bdgm .bdgc{margin-left:0}}
+/* four view buttons: on a narrower window World / United States / Europe move under them instead of sitting on them */
+@media (min-width:901px) and (max-width:1180px){.vm.vm-col .vm-zoom{top:80px}}
+@media (max-width:430px){.vm .vm-views button{padding:0 8px;font-size:13px}}

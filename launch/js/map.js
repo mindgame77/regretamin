@@ -59,6 +59,7 @@
   (() => {
     const list = (k, ok) => (qs.get(k) || '').split('|').filter((v) => ok.includes(v)), num = (k) => (/^\d+$/.test(qs.get(k) || '') ? +qs.get(k) : null);
     if (qs.get('view') === 'hot' || qs.get('view') === 'founders') S.view = qs.get('view');
+    if (qs.get('view') === 'pathfinders') S.view = 'path';
     if ([90, 180, 365].includes(num('days'))) S.days = num('days');
     if (['us', 'eu'].includes(qs.get('zoom'))) S.level = qs.get('zoom');
     S.sectors = list('sectors', SECTORS); S.stages = list('stages', STAGES);
@@ -71,7 +72,7 @@
     try {
       const m = JSON.parse(sessionStorage.getItem(KEEP) || 'null');
       if (!m) return;
-      if (m.view === 'hot' || m.view === 'flow' || m.view === 'founders') S.view = m.view;
+      if (m.view === 'hot' || m.view === 'flow' || m.view === 'founders' || m.view === 'path') S.view = m.view;
       if ([90, 180, 365].includes(m.days)) S.days = m.days;
       if (['world', 'us', 'eu'].includes(m.level)) S.level = m.level;
       if (Array.isArray(m.sectors)) S.sectors = m.sectors.filter((v) => SECTORS.includes(v));
@@ -91,7 +92,7 @@
   // pressed place and, in Founders, Places / Universities / Companies and Map / Blocks. On a phone it opens the
   // phone's own share sheet. The page still never rewrites its own address; the link is built when the button is pressed.
   function shareUrl() {
-    const q = ['view=' + S.view], F = window.REGRET_FOUNDERS, f = S.view === 'founders' && F && F.state ? F.state() : null, enc = (a) => a.map(encodeURIComponent).join('%7C');
+    const q = ['view=' + (S.view === 'path' ? 'pathfinders' : S.view)], F = window.REGRET_FOUNDERS, f = S.view === 'founders' && F && F.state ? F.state() : null, enc = (a) => a.map(encodeURIComponent).join('%7C');
     if (S.view === 'hot') { q.push('days=' + S.days); if (S.who !== 'all') q.push('firms=' + S.who); }
     if (S.level !== 'world') q.push('zoom=' + S.level);
     if (S.view !== 'founders') { if (S.sectors.length) q.push('sectors=' + enc(S.sectors)); if (S.stages.length) q.push('stages=' + enc(S.stages)); }
@@ -120,6 +121,14 @@
   // ---------- data
   const cache = new Map();
   async function summary() {
+    if (S.view === 'path') {  // Pathfinders: one answer holds the places, totals and lists of all three zooms
+      const a = Object.assign({ p_max_deals: null }, args()), key = 'path' + JSON.stringify(a);  // every firm that is not on the Top 100 list (founder, 25 Nov: no size limit)
+      if (cache.has(key)) return cache.get(key);
+      let out = null;
+      if (sb && !FIXTURE) { const { data, error } = await sb.rpc('v2_map_pathfinders', a); if (!error) out = data; }
+      if (out) cache.set(key, out);
+      return out;
+    }
     const hot = S.view === 'hot';
     const a = hot ? { p_days: S.days, p_stages: S.stages.length ? S.stages : null, p_sectors: S.sectors.length ? S.sectors : null } : args();
     if (who() !== 'all') a.p_firms = who();  // sent only when a filter is on, so the plain view keeps using the first version of the function
@@ -153,6 +162,15 @@
     const a = Object.assign({ p_level: S.level, p_place: place.p }, args()), key = JSON.stringify(a);
     if (secCache.has(key)) return secCache.get(key);
     const { data, error } = await sb.rpc('v2_map_place_sectors', a);
+    if (error) return null;
+    secCache.set(key, data); return data;
+  }
+  // Pathfinders, one pressed place: its most followed firms.
+  async function pathPlace(place) {
+    if (FIXTURE || !sb) return null;
+    const a = Object.assign({ p_level: S.level, p_place: place.p, p_max_deals: null }, args()), key = 'path' + JSON.stringify(a);
+    if (secCache.has(key)) return secCache.get(key);
+    const { data, error } = await sb.rpc('v2_map_pathfinders', a);
     if (error) return null;
     secCache.set(key, data); return data;
   }
@@ -210,7 +228,7 @@
   <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a></section>
 <aside class="vm-card vm-side" id="vm-side"></aside></div>
 <aside class="vm-card vm-fp" id="vm-fp" aria-label="Firms" hidden></aside>
-<div class="vm-card vm-views" role="group" aria-label="View"><button type="button" data-view="flow">Money flow</button><button type="button" data-view="hot">Trends</button><button type="button" data-view="founders">Founders</button></div>
+<div class="vm-card vm-views" role="group" aria-label="View"><button type="button" data-view="flow">Money flow</button><button type="button" data-view="hot">Trends</button><button type="button" data-view="founders">Founders</button><button type="button" data-view="path">Pathfinders</button></div>
 <div class="vm-card vm-zoom" role="group" aria-label="Zoom to">${LEVELS.map(([k, t]) => `<button type="button" data-level="${k}">${t}</button>`).join('')}</div>
 <div class="vm-card vm-dock"><div class="vm-period" role="group" aria-label="Compare the last period with the same time before">${[[90, 'Last 90 days'], [180, 'Last 180 days'], [365, 'Last 12 months']].map(([d, t]) => `<button type="button" data-days="${d}">${t}</button>`).join('')}</div><button type="button" class="vm-play" id="vm-play" aria-label="Play"></button><button type="button" class="vm-all" id="vm-all">All years</button>
   <div class="vm-time"><div class="vm-track"><div class="vm-fill" id="vm-fill"></div>${Array.from({ length: NQ + 1 }, (_, i) => `<i class="${i % 4 ? '' : 'vm-y'}" style="left:${i / NQ * 100}%"></i>`).join('')}
@@ -305,6 +323,7 @@
   function marks() {
     el.classList.toggle('vm-hotview', S.view === 'hot');
     el.classList.toggle('vm-fview', S.view === 'founders');
+    el.classList.toggle('vm-pview', S.view === 'path');
     // in the Founders view the map underneath may not be drawn yet, so the Zoom buttons are marked here too
     el.querySelectorAll('[data-level]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.level === S.level));
     el.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === S.view));
@@ -418,12 +437,17 @@
   };
   const unitSw = () => `<span class="vm-unit" role="group" aria-label="Show change as">${[['pct', '%', 'percent'], ['num', '#', 'number of deals']].map(([k, s, l]) => `<button type="button" data-u="${k}" aria-pressed="${S.unit === k}" aria-label="${l}">${s}</button>`).join('')}</span>`;
   const sortRows = (rows) => rows.slice().sort((a, b) => a.few !== b.few ? (a.few ? 1 : -1) : S.unit === 'num' ? b.diff - a.diff : (b.pct == null ? 1e9 : b.pct) - (a.pct == null ? 1e9 : a.pct));
-  const litPlace = () => { const u = S.updates[0]; return !u || S.view === 'hot' ? null : S.level === 'world' ? u.region : u.level === S.level ? (FOLD[u.area] || u.area) : null; };
+  const litPlace = () => { const u = S.updates[0]; return !u || S.view === 'hot' || S.view === 'path' ? null : S.level === 'world' ? u.region : u.level === S.level ? (FOLD[u.area] || u.area) : null; };
   const placesNow = () => {
     const g = S.geo[S.level].places, sector = S.sectors.length > 0;
     const rows = (S.data.places || []).filter((p) => p.l === S.level && g[p.p] && !FOLD[p.p]).map((p) => Object.assign({}, p, g[p.p], { n: g[p.p].n || p.p }));
     const max = Math.max(1, ...rows.map((p) => p.d)), hot = S.view === 'hot';
     rows.forEach((p) => {
+      if (S.view === 'path') {  // one plain circle per place: the startups of its firms (those not on the Top 100 list) that a Top 100 firm later backed
+        p.kind = p.d > 0 ? 'path' : null;
+        p.r = S.level === 'world' ? Math.round(13 + 27 * Math.sqrt(p.d / max)) : Math.round(7 + 29 * Math.sqrt(p.d / max));
+        p.ax = p.x; p.ay = p.y; return;
+      }
       if (hot) {  // one plain circle per place, coloured by whether deal-making there is speeding up or slowing down
         p.pv = p.pv || 0; Object.assign(p, toneOf(p.d, p.pv));
         p.kind = S.level === 'world' || p.d + p.pv >= 10 ? 'hot' : null;
@@ -434,6 +458,7 @@
       p.r = p.kind === 'dot' ? 6 : S.level === 'world' ? Math.round(18 + 20 * Math.pow(p.d / max, 0.6)) : sector ? Math.round(7 + 30 * Math.sqrt(p.d / max)) : S.level === 'eu' ? Math.round(11 + 27 * Math.sqrt(p.d / max)) : Math.round(14 + 26 * Math.sqrt(p.d / max));
       p.ax = p.x; p.ay = p.y;
     });
+    if (S.view === 'path' && S.level !== 'world') rows.filter((p) => p.kind).sort((a, b) => b.d - a.d).slice(24).forEach((p) => { p.kind = null; });  // the 24 biggest: the map stays readable
     rows.forEach((p) => { if (p.r) p.r *= RZ(); });
     // On the US and Europe maps the smallest places are left out so the map stays readable. With narrow filters that
     // could leave it empty while the sector list still shows deals, so when few circles remain the next largest come back.
@@ -496,10 +521,10 @@
         b.className = 'vm-pl vm-in'; pls.appendChild(b); els.set(key, b); fresh.push([b, p]);
       }
       b.className = `vm-pl vm-${p.kind}${p.kind === 'hot' ? ' ' + toneCls(p) : ''}${lit === p.p ? ' vm-lit' : ''}${S.pinned === p.p ? ' vm-sel' : ''}${b.classList.contains('vm-in') ? ' vm-in' : ''}`;
-      b.dataset.i = i; b.setAttribute('aria-label', `${p.n}: ${num(p.d)} deals, ${num(p.f)} firms`);
+      b.dataset.i = i; b.setAttribute('aria-label', S.view === 'path' ? `${p.n}: ${num(p.f)} firms` : `${p.n}: ${num(p.d)} deals, ${num(p.f)} firms`);
       b.style.left = p.x - p.r + 'px'; b.style.top = p.y - p.r + 'px'; b.style.width = b.style.height = p.r * 2 + 'px';
       if (p.kind === 'ring') { b.style.backgroundColor = ''; setSlices(b, p); }
-      else if (p.kind === 'hot') b.style.backgroundColor = '';
+      else if (p.kind === 'hot' || p.kind === 'path') b.style.backgroundColor = '';
       else b.style.backgroundColor = p.kind === 'plain' ? (S.sectors.length === 1 ? COLORS[S.sectors[0]] : '#C9D1CE') : (COLORS[(p.top && p.top[0] && p.top[0][0])] || '#C9D1CE');
       // label: below, else above, else right, else left; dropped if nothing fits
       const sub = p.kind === 'hot' ? (S.level === 'world' ? toneText(p) + (hotOf(p) && p.tone !== 'few' ? ' · ' + hotOf(p)[0] : '') : num(p.d) + ' · ' + toneText(p)) : num(p.d) + (S.level === 'world' && !sector && p.so ? ' · ' + p.so : ''), small = p.kind === 'dot';
@@ -543,7 +568,9 @@
   function tip(p) {
     const t = $('#vm-tip'); if (!t) return;
     if (!p) { t.hidden = true; return; }
-    if (S.view === 'hot') {
+    if (S.view === 'path') {
+      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>`;
+    } else if (S.view === 'hot') {
       const per = S.days === 365 ? '12 months' : S.days + ' days';
       // each fact on its own line, with its numbers kept together on the right so nothing breaks mid-number
       t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-tr"><span class="vm-mu">${num(p.d)} deal${p.d === 1 ? '' : 's'} in the last ${per}</span></span><span class="vm-tr"><span>${toneHtml(p)}</span>${p.tone === 'few' ? '' : `<span class="vm-pc vm-mu">${num(p.pv)} before</span>`}</span>${hotOf(p) ? `<span class="vm-tr vm-rule"><span><i class="${toneCls(toneOf(hotOf(p)[1], hotOf(p)[2]))}"></i><b>${esc(hotOf(p)[0])}</b></span><span class="vm-pc">${num(hotOf(p)[1])} vs ${num(hotOf(p)[2])}</span></span>` : ''}${coldOf(p) ? `<span class="vm-tr${hotOf(p) ? '' : ' vm-rule'}"><span><i class="${toneCls(toneOf(coldOf(p)[1], coldOf(p)[2]))}"></i><b>${esc(coldOf(p)[0])}</b></span><span class="vm-pc">${num(coldOf(p)[1])} vs ${num(coldOf(p)[2])}</span></span>` : ''}`;
@@ -608,7 +635,16 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     const note = whoNote();
     $('#vm-legend').innerHTML = note ? `<span class="vm-whonote"><b>${esc(WHO.find(([k]) => k === who())[1])}</b><span>${esc(note)}</span></span>` : '<span class="vm-keys"><span><i class="vm-up"></i>up 10% or more</span><span><i class="vm-flat"></i>steady</span><span><i class="vm-down"></i>down 10% or more</span><span><i class="vm-few"></i>too few to call</span></span>';
   }
+  // Pathfinders: the same four rows as every view. Title and "Based on" line as in the design he approved (25 Nov).
+  function drawPathHead() {
+    const t = (S.data.totals || {})[S.level] || { firms: 0 };
+    $('#vm-h1').textContent = 'Who the top firms follow.';
+    S.countId = (S.countId || 0) + 1; S.shown = null;
+    $('#vm-based').textContent = `Based on ${num(t.firms)} firm${t.firms === 1 ? '' : 's'} the Top 100 followed`;  // one line, as in every view
+    $('#vm-legend').innerHTML = '';
+  }
   function drawHead() {
+    if (S.view === 'path') return drawPathHead();
     if (S.view === 'hot') return drawHotHead();
     const where = S.level === 'us' ? ' in the US' : S.level === 'eu' ? ' in Europe' : '', t = (S.data.totals || {})[S.level] || { deals: 0, firms: 0 };
     const sec = S.sectors.length === 1 ? inSentence(S.sectors[0]) : S.sectors.length ? 'these sectors' : '';
@@ -671,6 +707,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     $('#vm-cta').textContent = S.list ? `See the ${num(ctaN)} ${openSec ? S.list.sector + ' ' : ''}investor${ctaN === 1 ? '' : 's'} in ${S.list.place.n}` : 'See the investors';
     const units = () => side.querySelectorAll('.vm-unit button').forEach((u) => u.onclick = () => { S.unit = u.dataset.u; draw(); drawSide(); });
     drawFirms();
+    if (S.view === 'path') return drawPathSide(side);
     if (hotList) {  // a clicked place opens on its sectors; its firms open in their own panel beside the rail
       const L = S.list, rows = sortRows(((L.det || {}).sectors || []).map(([name, n, p, f, line]) => Object.assign({ name, n, p, f, line }, toneOf(n, p))));
       side.className = 'vm-card vm-side vm-list';
@@ -728,6 +765,85 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
       return `<a class="${i ? '' : 'vm-first'}" href="${slug ? ROOT + 'vc/' + encodeURIComponent(slug) + '/' : '#'}"><span class="vm-tag">${i ? '' : '<i class="vm-new" title="Newest update: its place is lit up on the map"></i>'}${esc(u.level && u.area && u.level === 'us' ? u.area : u.region || '')} · ${day(u.date)}</span><span class="vm-line" title="${esc(updateLine(u, who))}">${esc(updateLine(u, who))}</span></a>`;
     }).join('') : '<p class="vm-mu">No updates to show yet.</p>'}`;
   }
+  // Pathfinders: the most followed firms of the zoom, or of the pressed place (every firm not on the Top 100 list). A row is the rank, the firm's logo
+  // (or its initials), its name, the top firms that came after it most, and how many of its startups a Top 100 firm
+  // later backed. Which firms have a logo comes from the same list the Investors list uses, asked for once.
+  let LOGOS = null;
+  function logos() {
+    if (LOGOS !== null || !C.flv || FIXTURE) return;
+    LOGOS = false;
+    fetch(ROOT + 'assets/logos/firms.json?v=' + C.flv).then((r) => r.json()).then((a) => { LOGOS = new Set(a); if (S.view === 'path') drawSide(); }).catch(() => {});
+  }
+  const ini2 = (s) => String(s || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  function drawPathSide(side) {
+    logos();
+    const L = S.list, det = L && L.det, rows = L ? ((det || {}).list || []) : (((S.data || {}).lists || {})[S.level] || []);
+    side.className = 'vm-card vm-side' + (L ? ' vm-list' : '');
+    const head = L
+      ? `<div class="vm-lh vm-lhp"><h2>${esc(L.place.n)} · ${det ? num(det.firms) + ' firm' + (det.firms === 1 ? '' : 's') : 'Loading'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>`
+      : '<div class="vm-lh"><h2>Most followed</h2><span class="vm-tag">startups followed</span></div>';
+    side.innerHTML = head + `<div class="vm-rows vm-pfs">${rows.map(([slug, name, n, tops], i) => `<a class="vm-pf" href="${ROOT}vc/${encodeURIComponent(slug)}/"><span class="vm-pfk">${i + 1}</span>${LOGOS && LOGOS.has(slug) ? `<img class="vm-pfl" alt="" loading="lazy" src="${ROOT}assets/logos/f-${encodeURIComponent(slug)}.png">` : `<span class="vm-pfl vm-pfi">${esc(ini2(name))}</span>`}<span class="vm-pft"><b>${esc(name)}</b><i>${esc((tops || []).map(([t, c]) => t + ' ' + c).join(' · '))}</i></span><span class="vm-pfn">${num(n)}</span></a>`).join('')}${lockedRows(L ? det : S.data, rows.length, L ? (det || {}).firms : (((S.data || {}).totals || {})[S.level] || {}).firms)}</div>`;
+    const x = $('#vm-close'); if (x) x.onclick = closeList;
+    side.querySelectorAll('[data-unlock]').forEach((b) => { b.onclick = openGate; });
+  }
+
+  // ---------- share to unlock (founder, 25 Nov)
+  // Until an account has unlocked, the database sends only the first three firms of a list. The rest is drawn as blurred
+  // stand-ins (no real names are in the page). Pressing one opens a card: the visitor's personal link, a line to post,
+  // "Post on X". The card then waits until X has opened that link (X reads a link when it is posted; /p/<code> notes it),
+  // and offers "Sign in". Signed in, the account takes the code and everything locked opens.
+  const LINES = ["Side effects may include knowing who you're taking money from. Regretamin.", 'Take one before every investor meeting. Regretamin.',
+    'For the relief of investor regret, before it starts. Regretamin.', "'We love founders' is not due diligence. Regretamin."];
+  let SH = null, shLine = 0, shWait = false, shPoll = null;
+  const anon = () => { try { let a = localStorage.getItem('regretamin.anon'); if (!a) { a = crypto.randomUUID(); localStorage.setItem('regretamin.anon', a); } return a; } catch (e) { return null; } };
+  function lockedRows(d, shown, total) {
+    if (!d || !d.locked || !(total > shown)) return '';
+    return Array.from({ length: Math.min(6, total - shown) }, (_, i) => `<button type="button" class="vm-pf vm-pfb" data-unlock aria-label="Unlock the full list"><span class="vm-pfk">${shown + i + 1}</span><span class="vm-pfl vm-pfi"></span><span class="vm-pft"><b>${'Firm name here'.slice(0, 9 + (i * 3) % 6)}</b><i>Top firm 4 · Another firm 3 · One more 2</i></span><span class="vm-pfn">${9 - i}</span></button>`).join('');
+  }
+  async function shareState(start) {
+    if (!sb || !anon()) return null;
+    try { await sb.auth.getSession(); const { data } = await sb.rpc(start ? 'v2_share_start' : 'v2_share_state', { p_anon: anon() }); if (data) SH = data; return data; } catch (e) { return null; }
+  }
+  function opened() {  // unlocked: forget the short lists and ask again
+    clearInterval(shPoll); shPoll = null; shWait = false;
+    const ov = document.getElementById('unlock'); if (ov) ov.hidden = true;
+    cache.clear(); secCache.clear();
+    const back = S.list && S.list.place;
+    refresh().then(() => { if (back && S.view === 'path') openList(back); else drawSide(); });
+  }
+  function gate() {
+    let ov = document.getElementById('unlock');
+    if (!ov) { ov = document.createElement('div'); ov.className = 'ov'; ov.id = 'unlock'; document.body.appendChild(ov); }
+    const link = SH && SH.code ? location.origin + '/p/' + SH.code : '', line = LINES[shLine % LINES.length];
+    const act = !link ? '<button type="button" class="ulk-go" disabled>Loading</button>'
+      : SH.seen ? '<button type="button" class="ulk-go" data-open="signup">Sign in</button>'
+      : `<a class="ulk-go${shWait ? ' ulk-wait' : ''}" id="ulk-post" target="_blank" rel="noopener" href="https://x.com/intent/post?text=${encodeURIComponent(line)}&url=${encodeURIComponent(link)}">${shWait ? 'Waiting for your post' : 'Post on X'}</a>`;
+    ov.innerHTML = `<div class="md ulk" role="dialog" aria-modal="true" aria-label="Post anything on X with your link"><button class="x" data-close aria-label="Close">×</button>
+<h3>Post anything on X with your link</h3>
+<div class="ulk-l"><span>${esc(link.replace(/^https?:\/\//, ''))}</span><button type="button" id="ulk-copy">Copy</button></div>
+<div class="ulk-t"><span>Need a line? Here's one</span><button type="button" id="ulk-next">Another</button></div>
+<p class="ulk-p">${esc(line)}</p>${act}</div>`;
+    ov.hidden = false;
+    const copy = ov.querySelector('#ulk-copy'), next = ov.querySelector('#ulk-next'), post = ov.querySelector('#ulk-post');
+    if (copy) copy.onclick = () => { if (link && navigator.clipboard) navigator.clipboard.writeText(link).then(() => { copy.textContent = 'Copied'; setTimeout(() => { copy.textContent = 'Copy'; }, 1500); }, () => {}); };
+    if (next) next.onclick = () => { shLine++; gate(); };
+    if (post) post.addEventListener('click', () => {  // the link opens X in a new tab; this page starts waiting for X to read the link
+      shWait = true; setTimeout(gate, 50);
+      if (shPoll) return;
+      let n = 0;
+      shPoll = setInterval(async () => {
+        const s = await shareState(false);
+        if (s && s.unlocked) return opened();
+        if ((s && s.seen) || ++n > 90) { clearInterval(shPoll); shPoll = null; if (s && s.seen) gate(); }
+      }, 4000);
+    });
+  }
+  async function openGate() {
+    gate();
+    const s = await shareState(true);
+    if (s && s.unlocked) return opened();
+    gate();
+  }
   // The firms behind a place (or one of its sectors) open in a panel of their own, so the sectors stay in view.
   function drawFirms() {
     const fp = $('#vm-fp'), L = S.list;
@@ -749,7 +865,7 @@ ${S.view === 'hot' ? `<div class="vm-chips">${tags.map((x) => `<span class="vm-c
   async function openList(place) {
     // sectors first, in both views; the firms are one click away (a sector row, or the button in the top card)
     stop(); const L = S.list = { place, step: 'sectors', det: null, sector: null, data: null }; S.pinned = place.p; drawSide(); draw();
-    const det = await (S.view === 'hot' ? detail(place) : placeSectors(place));
+    const det = await (S.view === 'hot' ? detail(place) : S.view === 'path' ? pathPlace(place) : placeSectors(place));
     if (S.list === L) { L.det = det || { sectors: [] }; drawSide(); }
   }
   // Coming back to the map: the place that was open opens again, with its firms list if that was showing.
@@ -776,7 +892,16 @@ ${S.view === 'hot' ? `<div class="vm-chips">${tags.map((x) => `<span class="vm-c
     el.classList.remove('vm-busy');
     if (!d) { msg.hidden = false; msg.textContent = 'The map is not available right now.'; return; }
     msg.hidden = true; S.data = d; draw();
+    // Back from signing in, the page can ask before it knows the visitor is signed in: it asks again shortly after, and
+    // whenever the sign-in arrives (see below), so the lists open by themselves (he had to press a blurred row, 25 Nov).
+    if (S.view === 'path' && d.locked && !S.shAsked) { S.shAsked = true; claim(); setTimeout(claim, 2500); setTimeout(claim, 7000); }
   }
+  function claim() {
+    if (S.view !== 'path' || !S.data || !S.data.locked || S.claiming) return;
+    S.claiming = true;
+    shareState(false).then((s) => { S.claiming = false; if (s && s.unlocked) opened(); }, () => { S.claiming = false; });
+  }
+  if (sb && sb.auth && sb.auth.onAuthStateChange) sb.auth.onAuthStateChange((ev, session) => { if (session) setTimeout(claim, 0); });
   drawPicks(); drawTime(); drawSide(); marks();
   if (S.view === 'founders') founders();
   // The map's places, its numbers and the latest updates are asked for at the same time, not one after another.
