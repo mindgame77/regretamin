@@ -343,7 +343,7 @@ def test_play_shows_a_post_from_x_and_a_second_press_doubles_the_speed():
     """Founder, 25 Nov: posts from that time pop up on the map while Play runs (one of three per quarter, at random),
     pinned to the place of the news; first press plays, second is 2x, third stops; no close button on the small post."""
     js = (ROOT / 'launch/js/map.js').read_text()
-    assert "if (S.playing) { if ((S.speed || 1) === 1) { S.speed = 2; drawTime(); return; } return stop(); }" in js
+    assert "if (S.playing) return stop();" in js and "S.speed = 2" not in js  # he tried 2x and dropped it: press plays, press stops
     assert "https://platform.twitter.com/widgets.js" in js and "widgets.createTweet(pick[0]" in js  # X draws the post; no copy is kept
     assert "set[Math.floor(Math.random() * set.length)]" in js
     import re

@@ -301,7 +301,7 @@
     closeList(); drawTime(); refresh();
   });
   function stop() { if (S.playing) { S.playing = null; S.speed = 1; hidePost(); drawTime(); } }
-  // Play (founder, 25 Nov): first press plays, second press doubles the speed, third press stops. While it plays, a real
+  // Play (founder, 25 Nov): one press plays, the next stops. While it plays, a real
   // post from X about the big tech news of the quarter pops up on the map, pinned to the place the news came from, with
   // the pill riding on it. One of the quarter's posts is picked at random each run. Pressing the post pauses Play and
   // opens it big; closing that carries on. X draws the posts (its own embed); the page only keeps their numbers.
@@ -359,7 +359,7 @@
     xLoad().then((ok) => { if (ok) window.twttr.widgets.createTweet(pick[0], ov.querySelector('.vm-postbig-in'), { width: 440, dnt: true }); });
   }
   $('#vm-play').addEventListener('click', async () => {
-    if (S.playing) { if ((S.speed || 1) === 1) { S.speed = 2; drawTime(); return; } return stop(); }
+    if (S.playing) return stop();  // one press plays, the next stops and the post goes away; no speeding up (founder, 25 Nov, after trying it)
     closeList(); if (S.q1 >= NQ - 1) S.q1 = S.q0;  // play grows the range one quarter at a time, from the left handle
     const run = S.playing = {}; S.speed = 1;
     drawTime(); xLoad(); await refresh(); showPost(S.q1);
