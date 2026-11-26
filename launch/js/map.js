@@ -38,6 +38,9 @@
   const S = { view: 'flow', days: 90, level: 'world', q0: 0, q1: NQ - 1, stages: [], sectors: [], who: 'all', unit: 'pct', pinned: null, list: null, data: null, geo: null, updates: [], playing: null };
   // "Which firms" in the Hot right now view.
   const KEEP = 'regretamin.map.view';
+  const SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M5 12v8h14v-8"/></svg>';
+  const TICK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg>';
+  window.REGRET_SHARE_ICON = SHARE_ICON;
   let BACK = null;  // the place (and firms list) that was open when the map was left; reopened once after the first load
   const WHO = [['all', 'All firms'], ['top', 'Top firms'], ['focused', 'Focused funds'], ['first', 'New investors'], ['fresh', 'Fresh funds']];
   // 'new' was this choice's old name ("New entrants": first deal in the picked sectors). Old links and saved views open as "New investors".
@@ -61,8 +64,10 @@
     S.sectors = list('sectors', SECTORS); S.stages = list('stages', STAGES);
     if (WHO.some(([k]) => k === whoKey(qs.get('firms')))) S.who = whoKey(qs.get('firms'));
     const a = num('from'), b = num('to'); if (a !== null && b !== null && a <= b && b < NQ) { S.q0 = a; S.q1 = b; }
+    if (qs.get('unit') === 'num') S.unit = 'num';
+    if (qs.get('place')) BACK = { p: qs.get('place'), step: null, sector: null };  // a shared link with a place pressed: it opens once the map has loaded
     // No view in the address: come back to the map as it was left in this tab (after opening a firm and closing it, say).
-    if (['view', 'days', 'zoom', 'sectors', 'stages', 'firms', 'from', 'to'].some((k) => qs.has(k))) return;
+    if (['view', 'days', 'zoom', 'sectors', 'stages', 'firms', 'from', 'to', 'unit', 'place', 'fk', 'fm'].some((k) => qs.has(k))) return;
     try {
       const m = JSON.parse(sessionStorage.getItem(KEEP) || 'null');
       if (!m) return;
@@ -81,6 +86,29 @@
     try { sessionStorage.setItem(KEEP, JSON.stringify({ view: S.view, days: S.days, level: S.level, sectors: S.sectors, stages: S.stages, who: S.who, unit: S.unit, q0: S.q0, q1: S.q1, open: BACK || (S.list ? { p: S.list.place.p, step: S.list.step || null, sector: S.list.sector || null } : null) })); } catch (e) { /* private mode */ }
   }
   window.addEventListener('pagehide', remember);
+  // Share link (founder, 25 Nov: "just press on it, share link, that's it"): one button above + and -. It copies a link
+  // that opens the map as it is set up now: the view, World / US / Europe, sectors, stages, the timeline, % or #, a
+  // pressed place and, in Founders, Places / Universities / Companies and Map / Blocks. On a phone it opens the
+  // phone's own share sheet. The page still never rewrites its own address; the link is built when the button is pressed.
+  function shareUrl() {
+    const q = ['view=' + S.view], F = window.REGRET_FOUNDERS, f = S.view === 'founders' && F && F.state ? F.state() : null, enc = (a) => a.map(encodeURIComponent).join('%7C');
+    if (S.view === 'hot') { q.push('days=' + S.days); if (S.who !== 'all') q.push('firms=' + S.who); }
+    if (S.level !== 'world') q.push('zoom=' + S.level);
+    if (S.view !== 'founders') { if (S.sectors.length) q.push('sectors=' + enc(S.sectors)); if (S.stages.length) q.push('stages=' + enc(S.stages)); }
+    if (S.view !== 'hot' && (S.q0 !== 0 || S.q1 !== NQ - 1)) q.push('from=' + S.q0, 'to=' + S.q1);
+    if (S.view === 'flow' && S.unit === 'num') q.push('unit=num');
+    if (S.view !== 'founders' && S.list && S.list.place) q.push('place=' + encodeURIComponent(S.list.place.p));
+    if (f) { if (f.kind === 'unis' || f.kind === 'cos') q.push('fk=' + f.kind); if (f.mode === 'blocks') q.push('fm=blocks'); }
+    return location.origin + location.pathname + '?' + q.join('&');
+  }
+  function share(btn) {
+    const url = shareUrl();
+    const done = () => { if (!btn) return; btn.innerHTML = TICK_ICON; clearTimeout(btn._t); btn._t = setTimeout(() => { btn.innerHTML = SHARE_ICON; }, 1600); };
+    const old = () => { try { const t = document.createElement('textarea'); t.value = url; t.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); done(); } catch (e) { /* nothing to copy with */ } };
+    if (navigator.share && window.matchMedia && matchMedia('(pointer:coarse)').matches) { navigator.share({ url, title: document.title }).catch(() => {}); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, old); else old();
+  }
+  window.REGRET_SHARE = share; window.REGRET_SHARE_URL = shareUrl;
   const $ = (s, r) => (r || el).querySelector(s);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = (n) => Number(n || 0).toLocaleString('en-US');
@@ -176,7 +204,7 @@
 
   // ---------- page shell
   el.innerHTML = `
-<div class="vm-map" id="vm-map"><div class="vm-stage" id="vm-stage"><img class="vm-bg" id="vm-bg" alt=""><div class="vm-bgz" id="vm-bgz" hidden></div><div class="vm-wave" id="vm-wave"></div><div id="vm-pls"></div><div id="vm-labs"></div></div><div class="vm-tip" id="vm-tip" hidden></div><div class="vm-pm" role="group" aria-label="Zoom the map"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button></div></div>
+<div class="vm-map" id="vm-map"><div class="vm-stage" id="vm-stage"><img class="vm-bg" id="vm-bg" alt=""><div class="vm-bgz" id="vm-bgz" hidden></div><div class="vm-wave" id="vm-wave"></div><div id="vm-pls"></div><div id="vm-labs"></div></div><div class="vm-tip" id="vm-tip" hidden></div><div class="vm-pm" role="group" aria-label="Zoom the map"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button></div><button type="button" class="vm-sh" id="vm-sh" aria-label="Share link" title="Share link">${SHARE_ICON}</button></div>
 <div class="vm-colwrap"><section class="vm-card vm-head" aria-live="polite"><h1 id="vm-h1"></h1>
   <div class="vm-picks"><div class="vm-pick" data-pick="sectors"></div><div class="vm-pick" data-pick="stages"></div><div class="vm-pick vm-who" data-pick="who"></div></div>
   <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a></section>
@@ -289,7 +317,7 @@
     const a = qStart(S.q0), b = qEnd(S.q1), all = S.q0 === 0 && S.q1 === NQ - 1;
     return { from: ymd(a), to: ymd(b), text: all ? 'since 2021' : `from ${MONTHS[a.getMonth()]} ${a.getFullYear()} to ${S.q1 === NQ - 1 ? 'today' : MONTHS[b.getMonth()] + ' ' + b.getFullYear()}` };
   }
-  function founders() { land(); const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, span: span() }); }
+  function founders() { land(); const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, span: span(), kind: qs.get('fk'), mode: qs.get('fm') }); }
   function setView(v) {
     if (v === S.view) return;
     stop(); S.view = v; S.list = null; S.pinned = null; zoomReset(); marks();
@@ -544,7 +572,8 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   let dragged = false, drag = null, pinch = 0; const ptrs = new Map();
   mapBox.querySelector('.vm-pm').addEventListener('click', (e) => { const b = e.target.closest('[data-z]'); if (b) zoomAt(b.dataset.z === 'in' ? 1.7 : 1 / 1.7); });
   mapBox.addEventListener('wheel', (e) => { if (S.view === 'founders') return; e.preventDefault(); zoomAt(Math.exp(-Math.max(-60, Math.min(60, e.deltaY)) * 0.004), e.clientX, e.clientY); }, { passive: false });
-  mapBox.addEventListener('pointerdown', (e) => { if (S.view === 'founders' || e.target.closest('.vm-pm')) return; ptrs.set(e.pointerId, [e.clientX, e.clientY]); dragged = false; drag = ptrs.size === 1 ? [e.clientX, e.clientY] : null; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+  $('#vm-sh').addEventListener('click', (e) => { e.stopPropagation(); share(e.currentTarget); });
+  mapBox.addEventListener('pointerdown', (e) => { if (S.view === 'founders' || e.target.closest('.vm-pm,.vm-sh')) return; ptrs.set(e.pointerId, [e.clientX, e.clientY]); dragged = false; drag = ptrs.size === 1 ? [e.clientX, e.clientY] : null; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
   mapBox.addEventListener('pointermove', (e) => {
     if (!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     if (ptrs.size === 2 && pinch) { const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (Math.abs(d - pinch) > 4) { zoomAt(d / pinch, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); pinch = d; dragged = true; } return; }
@@ -726,7 +755,7 @@ ${S.view === 'hot' ? `<div class="vm-chips">${tags.map((x) => `<span class="vm-c
   // Coming back to the map: the place that was open opens again, with its firms list if that was showing.
   async function reopen() {
     const b = BACK; BACK = null;
-    const row = b && (stage._rows || []).find((r) => r.p === b.p);
+    const row = b && (stage._rows || []).find((r) => String(r.p) === String(b.p));
     if (!row) return;
     await openList(row);
     if (b.step === 'firms' && S.list && S.list.place.p === b.p) showFirms(b.sector);

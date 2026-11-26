@@ -1215,6 +1215,9 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-stage.vm-live .vm-pl{transition:none}#vm-labs.vm-still .vm-lab{animation:none}
 .vm-map{touch-action:pan-y}.vm-map.vm-zoomed{touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
 .vm.vm-fview .vm-pm{display:none}
+.vm-sh{position:absolute;right:24px;bottom:196px;z-index:4;width:38px;height:38px;padding:0;border:1px solid #8A9893;border-radius:10px;background:#fff;color:#10201C;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.vm-sh svg{width:17px;height:17px}
+.vm.vm-fview .vm-sh{display:none}
 .vm-pl.vm-lit{box-shadow:0 0 0 2px var(--mi),0 0 0 9px rgba(240,134,30,.32),0 0 0 20px rgba(240,134,30,.14)}
 .vm-lab{position:absolute;font-size:calc(12px*var(--lz,1));font-weight:600;line-height:calc(15px*var(--lz,1));white-space:nowrap;pointer-events:none;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 4px #fff,0 0 4px #fff}
 #vm-labs .vm-lab{animation:vm-fade .35s both}
@@ -1714,6 +1717,7 @@ main.prof #around .arstage{transform:scale(.78)}
   .vm-col .vm-zoom button{flex:1;padding:0 8px}
   .vm-col .vm-map{order:4;position:relative;left:auto;inset:auto;width:100%;height:66vw;min-height:230px;background:#fff;border:1px solid var(--ml);border-radius:16px;overflow:hidden}
   .vm .vm-pm{right:10px;bottom:10px}
+  .vm .vm-sh{right:10px;bottom:98px}
   .vm .vm-whonote b,.vm .vm-whonote span{display:inline}
   .vm .vm-whonote b{margin-right:6px}
   .vm-col .vm-legend{order:5;position:static;width:auto;margin:0;padding:0 4px}

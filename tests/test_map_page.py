@@ -274,3 +274,19 @@ def test_top_firms_have_a_logo_on_their_page_and_in_the_investors_list():
     # generic or blurry icons were left out on purpose (a default WordPress icon, 16 and 32 px icons)
     for s in ('uniiq', 'benchmark', 'accel'):
         assert s not in logos
+
+
+def test_share_link_button_copies_a_link_to_the_map_as_it_is_set_up():
+    """Founder, 25 Nov: "I like share link without all this details. Just press on it, share link. That's it." He chose
+    the spot above + and -. One button with no words; the link carries the view and its settings; nothing else changes."""
+    js = (ROOT / 'launch/js/map.js').read_text(); css = (ROOT / 'launch/style.css').read_text(); F = (ROOT / 'launch/js/founders.js').read_text()
+    assert '<button type="button" class="vm-sh" id="vm-sh" aria-label="Share link" title="Share link">' in js
+    assert '.vm-sh{position:absolute;right:24px;bottom:196px;' in css and '.vm .vm-sh{right:10px;bottom:98px}' in css
+    assert '.vm.vm-fview .vm-sh{display:none}' in css and 'class="share" id="share"' in F  # Founders shows its own, same spot
+    # every setting the link writes is one the page reads back
+    for key in ('view', 'days', 'firms', 'zoom', 'sectors', 'stages', 'from', 'to', 'unit', 'place', 'fk', 'fm'):
+        assert f"'{key}=" in js or f"'{key}'" in js, key
+        assert f"qs.get('{key}')" in js or f"num('{key}')" in js or f"list('{key}'" in js or f"whoKey(qs.get('{key}'))" in js, key
+    assert "'unit', 'place', 'fk', 'fm'].some((k) => qs.has(k))" in js  # a shared link wins over the map remembered in this tab
+    assert 'history.replaceState' not in js and 'history.pushState' not in js  # the page still never rewrites its own address
+    assert "kind: ['unis', 'cos'].includes(O.kind) ? O.kind : 'places', mode: O.mode === 'blocks' ? 'blocks' : 'map'" in F
