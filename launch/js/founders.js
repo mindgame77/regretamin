@@ -158,6 +158,8 @@ button.row:hover b{text-decoration:underline}
 .blocks{inset:96px 24px 112px 24px}
 .zoom{right:24px;bottom:108px}
 .zoom button{border:1px solid var(--ml);border-radius:12px;box-shadow:0 8px 28px rgba(16,32,28,.08)}
+.share{position:absolute;right:24px;bottom:196px;z-index:3;width:38px;height:38px;padding:0;border:1px solid var(--ml);border-radius:12px;box-shadow:0 8px 28px rgba(16,32,28,.08);background:var(--paper);color:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.share svg{width:17px;height:17px}
 .lab{paint-order:stroke;stroke:#fff;stroke-width:calc(3px * var(--k));stroke-linejoin:round}
 .pin .lab{stroke:none}
 #tip{width:236px;max-width:236px;box-sizing:border-box;background:#fff;color:var(--mi);border:1.5px solid var(--mi);border-radius:12px;padding:10px 12px;font-size:12px;line-height:1.35;flex-direction:column;gap:4px}
@@ -173,6 +175,7 @@ button.row:hover b{text-decoration:underline}
   .panel{overflow:visible}#panel{overflow:visible}
   .blocks{inset:6px}
   .zoom{right:10px;bottom:10px}
+  .share{right:10px;bottom:98px}
   .mapnote{display:none}  /* not shown on a phone: less crowded (founder, 25 Nov) */
 }
 `;
@@ -183,7 +186,7 @@ button.row:hover b{text-decoration:underline}
       <p id="based"></p><a class="cta" id="cta" href="#">See the investors</a></section>
     <section class="card panel"><div class="lh"><h2 id="ptitle"></h2><span class="unit" id="seg-mode" role="group" aria-label="Show as"><button data-v="map">Map</button><button data-v="blocks">Blocks</button></span></div><div id="panel"></div></section>
   </aside>
-  <section class="main"><div class="stage" id="stage"></div></section>
+  <section class="main"><div class="stage" id="stage"></div><button type="button" class="share" id="share" aria-label="Share link" title="Share link"></button></section>
 </div>
 <div id="tip"></div>`;
   let host = null, root = null, want = 'us', span = null;
@@ -201,6 +204,7 @@ button.row:hover b{text-decoration:underline}
     hide() { if (host) host.hidden = true; },
     setSpan(sp) { span = sp; if (api.setSpan) api.setSpan(sp); },
     setLevel(l) { want = l; if (api.setLevel) api.setLevel(l); },
+    state() { return api.state ? api.state() : null; },  // Places / Universities / Companies and Map / Blocks, for the share link
   };
 
 async function boot(O) {
@@ -219,7 +223,7 @@ async function boot(O) {
     M = { views: geo.views, shapes: geo.shapes, dots: geo.dots, europe: geo.europe, colors: COLORS, sectors, firms: D.firms || [], unis: info(orgs.unis, D.unis || []), cos: info(orgs.cos, D.cos || []) };
     ST = D.startups || [];
   } catch (e) { $('#h1').textContent = 'This view is not available right now.'; $('#based').textContent = 'Reload the page to try again.'; return; }
-  const S = { kind: 'places', mode: 'map', level: ['world', 'us', 'eu'].includes(want) ? want : 'us', from: (O.span || {}).from || 0, to: (O.span || {}).to || 99999999, when: (O.span || {}).text || 'since 2021', sel: null, area: null };
+  const S = { kind: ['unis', 'cos'].includes(O.kind) ? O.kind : 'places', mode: O.mode === 'blocks' ? 'blocks' : 'map', level: ['world', 'us', 'eu'].includes(want) ? want : 'us', from: (O.span || {}).from || 0, to: (O.span || {}).to || 99999999, when: (O.span || {}).text || 'since 2021', sel: null, area: null };
   const EU = new Set(M.europe), OTHER = 18;
   const col = (sid) => M.colors[M.sectors[sid]] || '#DADFDD', sname = (sid) => M.sectors[sid] || 'Other';
   const num = (n) => n.toLocaleString('en-US');
@@ -487,6 +491,8 @@ async function boot(O) {
   });
   $('#stage').addEventListener('mouseleave', () => { hideTip(); const hv = $('#stage .ring.hov'); if (hv) hv.setAttribute('d', ''); });
   let rz = 0; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (host.hidden) return; if (S.mode === 'blocks') drawBlocks(); else applyView(); }, 150); });
+  api.state = () => ({ kind: S.kind, mode: S.mode });
+  $('#share').innerHTML = window.REGRET_SHARE_ICON || ''; $('#share').addEventListener('click', (e) => { e.stopPropagation(); if (window.REGRET_SHARE) window.REGRET_SHARE(e.currentTarget); });
   api.setLevel = (l) => { if (!['world', 'us', 'eu'].includes(l) || l === S.level) return; S.level = l; S.sel = null; S.area = null; fresh = true; hideTip(); render(); };
   // shown again after another view: the map at rest, nothing pressed, so it is the very map the visitor was looking at
   api.redraw = () => { for (const k of Object.keys(Z)) delete Z[k]; S.sel = null; S.area = null; fresh = true; hideTip(); render(); };
