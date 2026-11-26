@@ -2112,3 +2112,11 @@ a.rd-bg:hover{border-color:#F0861E}.rd-ar{color:#B85F0A}
 @media (max-width:1000px){.rd-ccb,.rd-ig,.rd-tg{grid-template-columns:1fr}.rd-ccb>div{margin-bottom:10px}}
 @media print{.rd-cc,.rd-ic{break-inside:avoid;border:1px solid #DDE1DF}}
 .rd-ab p.rd-skipc{margin:22px 0 8px!important}
+/* Plain facts: an icon tile and text. The pill (.rd-bg) is kept for badges the site awarded a firm. */
+.rd-ft{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.rd-ft>i{flex:none;width:30px;height:30px;border-radius:9px;background:#E6EAE8;color:#10201C;display:flex;align-items:center;justify-content:center}.rd-ft.rd-o>i{background:#10201C;color:#F0861E}
+.rd-ft>span{display:flex;flex-direction:column;min-width:0;line-height:1.3;padding-top:1px}.rd-ft b{font-weight:600;font-size:15px}
+.rd-ft em{font:400 11px 'Geist Mono',ui-monospace,monospace;font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:#6B7772;margin-top:2px}
+.rd-fts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}.rd-fts.rd-col{grid-template-columns:1fr}.rd-grow{flex:1;align-content:start}
+.rd-ab .rd-cc.rd-skips{margin-top:0;padding:4px 18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 28px}.rd-skips .rd-fl{border-top:0;border-bottom:1px solid #EEF1EF}
+@media (max-width:1000px){.rd-fts,.rd-ab .rd-cc.rd-skips{grid-template-columns:1fr}}
