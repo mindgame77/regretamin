@@ -190,7 +190,7 @@ export function buildResearch(rows, ours, report, meta, tips, signals) {
       if (e.name) facts.push({ k: 'built', v: e.name, n: `A founder built it before${end ? ', ' + end : ''}` });
     }
     return { name: c.name, site: c.site, what: c.what, move: c.move, src: c.src, facts, strong: c.strong || [], news: c.news || [],
-      raised: mine ? { ours: true, text: `${usd(Number(h.amount))} ${h.round || 'round'}`, date: h.date || null } : c.raised ? { ours: false, text: c.raised } : null,
+      raised: mine ? { ours: true, text: `${usd(Number(h.amount))} ${h.round && h.round !== 'Other' ? h.round : 'round'}`, date: h.date || null } : c.raised ? { ours: false, text: c.raised } : null,
       backers };
   });
   const skip = (Array.isArray(o.skip) ? o.skip : []).map((s) => ({ slug: s.slug, name: s.name, backed: (Array.isArray(s.backed) ? s.backed : []).slice(0, 3) })).slice(0, 8);
