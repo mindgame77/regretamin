@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CHECKLIST } from './checklist.js';
-import { importance, assemble, parseModelJson, systemPrompt, FROM_OUR_DATA, sayTo } from './rules.js';
+import { importance, score, marksOf, assemble, parseModelJson, systemPrompt, FROM_OUR_DATA, sayTo } from './rules.js';
 
 test('the checklist holds the 216 questions of the sheet', () => {
   assert.equal(CHECKLIST.length, 216);
@@ -42,4 +42,44 @@ test('the model is not asked what only our data can answer, and its answer is re
   assert.deepEqual(parseModelJson('Here it is:\n```json\n{"a":1}\n```'), { a: 1 });
   assert.equal(parseModelJson('no json'), null);
   assert.match(sayTo({ fit: 1, stage_pct: 10, sector_pct: 5, n90: 0 }, 'Seed', 'Fintech'), /1 seed deal in your field/);
+});
+
+test('scores run the other way: 10 is as good as it gets, a red flag is at the bottom', () => {
+  assert.equal(score(4, 'red', 'Seed'), 1);                 // no ask
+  assert.equal(score(107, 'red', 'Seed'), 2);
+  assert.equal(score(0, 'lead', 'Seed'), 10);
+  for (const st of ['Pre-seed', 'Seed']) for (const n of [1, 37, 89, 120, 160]) {
+    const r = score(n, 'red', st), y = score(n, 'yellow', st), g = score(n, 'good', st);
+    assert.ok(r >= 1 && r <= 4 && y >= 4 && y <= 7 && (g === 8 || g === 9) && r <= y && y < g);
+  }
+  const model = { company: { stage: 'Pre-seed' }, flags: [{ n: 4, level: 'red' }, { n: 125, level: 'yellow' }, { n: 51, level: 'yellow' }],
+    strengths: [{ n: 37, what: 'Founders lived the problem', where: 'Slide 2', why: 'x' }, { n: 4, what: 'repeat of a flag' }, { n: 207, what: 'our data row' }, { n: 56, what: 'One named buyer', where: 'Slide 3' }],
+    lead_with: { text: 'A founder sold a company in this field.', where: 'Slide 9' } };
+  const a = assemble(model, null);
+  assert.deepEqual(a.good.map((g) => g.n), [37, 56]);       // a row that is already a flag, and an our-data row, are dropped
+  assert.equal(a.good[0].score, 9);
+  assert.ok(a.scores.deck >= 1 && a.scores.deck <= 10 && a.scores.founders >= 8);   // founders: a strength, a long-bios note and the exceptional thing
+  assert.equal(assemble({ company: { stage: 'Seed' }, flags: [{ n: 4, level: 'red' }] }, null).scores.founders, null);  // nothing said about the founders
+  assert.deepEqual(a.scores, assemble(JSON.parse(JSON.stringify(model)), null).scores);
+  assert.match(systemPrompt(), /"strengths":\[\{"n":0/);
+});
+
+test('a firm gets a mark only for what is great about it', () => {
+  assert.deepEqual(marksOf({ sector_pct: 48, stage_pct: 52, n90: 3 }), ['Your field is its main field']);
+  assert.deepEqual(marksOf({ sector_pct: 16, stage_pct: 84, n90: 5 }), ['Almost only first cheques', 'Investing fast right now']);
+  assert.deepEqual(marksOf({ sector_pct: 10, stage_pct: 30, n90: 0 }), []);
+  assert.deepEqual(assemble({ company: { stage: 'Seed' } }, { firms: [{ name: 'F', fit: 1, sector_pct: 60, stage_pct: 10, n90: 0 }] }).firms[0].marks, ['Your field is its main field']);
+});
+
+test('what is special is rare, comes from the written list, and only ever adds', () => {
+  const base = { company: { stage: 'Pre-seed' }, flags: [{ n: 4, level: 'red' }, { n: 51, level: 'yellow' }] };
+  const a = assemble({ ...base, special: [{ kind: 'university', what: 'PhD in dairy science at Wageningen', where: 'Slide 9', why: 'x' }, { kind: 'Age', what: 'young' }, { kind: 'University', what: 'again' },
+    { kind: 'Exclusive data', what: 'Sensor data from 40 farms', where: 'Slide 5' }, { kind: 'Speed', what: 'Ships weekly' }, { kind: 'Backers', what: 'a fourth' }] }, null);
+  assert.deepEqual(a.special.map((x) => x.kind), ['University', 'Exclusive data', 'Speed']);   // unknown kinds and repeats dropped; three at most
+  assert.ok(a.special.every((x) => x.score === 12) && a.scores.deck <= 10 && a.scores.founders <= 10);   // the fire is 12 out of 10; the overall scores stop at 10
+  const none = assemble(base, null);
+  assert.deepEqual(none.special, []);
+  assert.ok(a.scores.deck >= none.scores.deck && a.scores.founders >= none.scores.founders);    // having none costs nothing
+  const p = systemPrompt();
+  assert.ok(/University \| Did a founder study/.test(p) && /Never guess a founder's age/.test(p));
 });

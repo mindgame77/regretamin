@@ -34,6 +34,10 @@ def test_the_page_asks_only_for_the_deck_linkedin_and_a_note():
     js = read('launch', 'js', 'ready.js')
     assert "20 * 1024 * 1024" in js and "from('decks').upload(" in js and "fetch('/api/ready'" in js
     assert "'js/ready.js'" in read('launch', 'build.py')
+    assert 'class="rd-cup"' in js and 'g.score >= 9 ? CUP' in js and 'class="rd-mark">${CUP}' in js   # great points and great fits carry the cup
+    assert 'class="rd-fire"' in js and 'Special in your field' in js
+    assert '12<i>/10</i>' in js   # founder, 26 Nov: the fire is 12 out of 10   # the fire: rare, only what is special in the field
+    assert "<span>Score</span>" in js and "What's good" in js and "tile('Deck', scores.deck)" in js and 'Founders for this startup' not in js and 'rd-plan' not in js   # 10 is best; good things first
 
 
 def test_the_function_keeps_the_key_on_the_server_and_only_serves_the_owner():

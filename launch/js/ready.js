@@ -80,8 +80,14 @@
 
   const money = (n) => (n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : '$' + Math.round(n / 1e3) + 'K');
   const day = (d) => { const t = new Date(d + 'T00:00:00Z'); return isNaN(t) ? '' : t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); };
-  const rows = (list, cls) => list.map((f) => `<div class="rd-row"><i class="rd-dot ${cls}"></i><b>${esc(f.what)}</b><span class="rd-wh">${esc(f.where)}</span><span class="rd-imp">${f.matters}<i>/10</i></span><span>${esc(f.why)}</span><span>${esc(f.fix)}</span></div>`).join('');
-  const head = (fix) => `<div class="rd-row rd-hd"><span></span><span>What</span><span>Where</span><span>Matters</span><span>Why it matters</span><span>${fix}</span></div>`;
+  const sc = (f) => (f.score != null ? f.score : 11 - f.matters);   // reports saved before the scores were turned round
+  const rows = (list, cls) => list.map((f) => `<div class="rd-row"><i class="rd-dot ${cls}"></i><b>${esc(f.what)}</b><span class="rd-wh">${esc(f.where)}</span><span class="rd-imp ${cls}">${sc(f)}<i>/10</i></span><span>${esc(f.why)}</span><span>${esc(f.fix)}</span></div>`).join('');
+  const head = (fix) => `<div class="rd-row rd-hd"><span></span><span>What</span><span>Where</span><span>Score</span><span>Why it matters</span><span>${fix}</span></div>`;
+  // The mark for what is great: a small cup, our own drawing (no emoji).
+  const CUP = '<svg class="rd-cup" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4"/><path d="M12 13v4M9 20h6M10 17h4"/></svg>';
+  // The mark for what is special in this field: a flame, our own drawing.
+  const FIRE = '<svg class="rd-fire" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12.5 2c.6 3.400 4.500 5.200 4.500 10.200A5 5 0 0 1 7 12.200c0-1.700.700-3 1.700-4 .2 1.500.9 2.400 1.900 2.900C10.300 8.200 11 4.600 12.500 2z" fill="#E8501E"/><path d="M12 13.500c1 .9 1.900 1.900 1.900 3.300a1.900 1.900 0 0 1-3.800 0c0-1.300.9-2.300 1.900-3.300z" fill="#FFD36B"/></svg>';
+  const tile = (label, n) => `<div class="rd-score"><span>${label}</span><b>${n == null ? '–' : n}<i>/10</i></b></div>`;
   const step = (n, body, last) => `<div class="rd-step"><div class="rd-rail"><span>${n}</span>${last ? '' : '<i></i>'}</div><div class="rd-box">${body}</div></div>`;
 
   function firmRow(f, i) {
@@ -91,19 +97,24 @@
     const sum = f.summary && f.summary.text ? `<div class="rd-sum"><span>Summary:</span> ${esc(f.summary.text)} <em>${esc([f.summary.who, f.summary.title, f.summary.year].filter(Boolean).join(' · '))}</em></div>` : '';
     const ini = esc(String(f.name || '').slice(0, 2));
     return `<div class="rd-frow"><span class="rd-ord">${i + 1}</span><span class="rd-lg"><img src="/assets/logos/f-${encodeURIComponent(f.slug)}.png" alt="" onerror="this.parentNode.textContent='${ini}'"></span>`
-      + `<div><a class="rd-nm" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a><div class="rd-pl">${esc(place)}</div></div><div class="rd-why">${esc(why)}</div><div class="rd-say">${sum}${esc(f.say || '')}</div></div>`;
+      + `<div><a class="rd-nm" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a><div class="rd-pl">${esc(place)}</div>${(f.marks || []).map((m) => `<span class="rd-mark">${CUP}${esc(m)}</span>`).join('')}</div><div class="rd-why">${esc(why)}</div><div class="rd-say">${sum}${esc(f.say || '')}</div></div>`;
   }
 
   function draw(r) {
     const co = r.company || {};
     const line = [co.name, co.stage ? co.stage.toLowerCase() : '', co.sector && co.sector !== 'Other' ? co.sector : '', co.ask_usd ? 'raising ' + money(co.ask_usd) : '', co.based_in].filter(Boolean).join(' · ');
     const reds = r.reds || [], yel = r.yellows || [], firms = r.firms || [], then = r.then || [];
-    const lead = r.lead ? `<div class="rd-lead"><i></i><div><b>Lead with this.</b> ${esc(r.lead.text)}${r.lead.where ? ' <span class="rd-wh">' + esc(r.lead.where) + '</span>' : ''}</div></div>` : '';
+    const lead = r.lead ? `<div class="rd-lead">${CUP}<div><b>Lead with this.</b> ${esc(r.lead.text)}${r.lead.where ? ' <span class="rd-wh">' + esc(r.lead.where) + '</span>' : ''}</div><span class="rd-imp rd-ten">10<i>/10</i></span></div>` : '';
+    const good = r.good || [], scores = r.scores || null;
+    const special = r.special || [];
+    const fire = special.map((x) => `<div class="rd-sp">${FIRE}<div><span class="rd-kind">${esc(x.kind)}</span><b>${esc(x.what)}</b>${x.where ? ' <span class="rd-wh">' + esc(x.where) + '</span>' : ''}<p>${esc(x.why)}</p></div><span class="rd-imp rd-hot">12<i>/10</i></span></div>`).join('');
+    const goodBox = good.length || lead || fire ? `<div class="rd-good"><h2>What's good</h2>${fire ? `<p class="rd-cap rd-spcap">Special in your field</p>${fire}` : ''}${good.length ? `<div class="rd-row rd-g rd-hd"><span></span><span>What</span><span>Where</span><span>Score</span><span>Why investors like it</span></div>` + good.map((g) => `<div class="rd-row rd-g">${g.score >= 9 ? CUP : '<i class="rd-dot rd-grn"></i>'}<b>${esc(g.what)}</b><span class="rd-wh">${esc(g.where)}</span><span class="rd-imp rd-grn">${g.score}<i>/10</i></span><span>${esc(g.why)}</span></div>`).join('') : ''}${lead}</div>` : '';
     const blur = '<div class="rd-row"><i class="rd-dot"></i><b>Company name, city</b><span class="rd-wh">Series A</span><span></span><span>$00M · backed by Firm name, Firm name</span><span>2026</span></div>'.repeat(3);
     res.innerHTML = `<div class="rd-bar"><h1>Your raise report</h1><span class="rd-who">${esc(line)}</span><button type="button" class="rd-btn rd-k" id="rd-pdf">Download PDF</button><button type="button" class="rd-btn" id="rd-again">Upload a new version</button></div>`
-      + `<div class="rd-verdict"><div><p class="rd-cap">Verdict</p><h2>${esc(r.verdict)}</h2></div><div class="rd-plan"><span>1 Remove the red flags</span><i>→</i><span>2 Improve</span><i>→</i><span>3 Know your competitors</span><i>→</i><span>4 Pitch</span></div></div>`
+      + `<div class="rd-verdict"><div><p class="rd-cap">Verdict</p><h2>${esc(r.verdict)}</h2></div>${scores ? tile('Deck', scores.deck) : ''}</div>`   // founder, 26 Nov: the founders score is kept on the report (scores.founders) but not shown; the four-step strip is gone
+      + goodBox
       + step(1, `<h2>Get rid of the red flags <small>${reds.length ? reds.length + ' · most important first' : 'none found'}</small></h2>${reds.length ? head('How to fix it') + rows(reds, 'rd-red') : ''}`)
-      + step(2, `<h2>Improve these <small>${yel.length ? yel.length + ' · not deal-breakers, but investors will notice' : 'nothing stood out'}</small></h2>${yel.length ? head('How to improve it') + rows(yel, 'rd-yel') : ''}${lead}`)
+      + step(2, `<h2>Improve these <small>${yel.length ? yel.length + ' · not deal-breakers, but investors will notice' : 'nothing stood out'}</small></h2>${yel.length ? head('How to improve it') + rows(yel, 'rd-yel') : ''}`)
       + step(3, `<h2>Know your competitors</h2><div class="rd-lock"><div class="rd-blur">${blur}</div><div class="rd-offer"><div><b>Full research</b><p>Your competitors and who funded them. Who tried this before, and the founders to ask. The firms to skip.</p></div><span class="rd-pr">10 credits</span><button type="button" class="rd-buy" disabled>Get the full research</button></div></div>`)
       + step(4, `<h2>Pitch these firms, in this order</h2>${firms.length ? `<div class="rd-sub"><span class="rd-tag">Start here</span><span>They fit your stage and field and are writing cheques now.</span></div><div class="rd-frow rd-hd"><span></span><span></span><span>Firm</span><span>Why it fits</span><span>What to say to this firm</span></div>${firms.map(firmRow).join('')}` : '<p class="rd-none">We found no firm with a recent deal at your stage in your field.</p>'}`
         + (then.length ? `<div class="rd-sub rd-sub2"><span class="rd-tag rd-tag2">Then these</span><span>After the first cheque is in: big firms that later invested where the firms above went first.</span></div><div class="rd-then">${then.map((t) => `<a href="/vc/${encodeURIComponent(t.slug)}/"><b>${esc(t.name)}</b><span>after ${esc(t.after)}${t.n > 1 ? ', ' + t.n + ' startups' : ''}</span></a>`).join('')}</div>` : ''), true);
