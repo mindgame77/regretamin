@@ -2085,3 +2085,30 @@ nav a#readynav:hover{background:#E07810}
 .rd-skipc{margin:16px 0 2px}
 @media (max-width:1000px){.rd-irow{grid-template-columns:1fr}.rd-irow>div{margin-bottom:6px}.rd-irow>div:last-child{text-align:left}}
 @media print{.rd-irow{break-inside:avoid}}
+/* The research in the look of the firm badges: capsules with an icon half, cards on the grey box. */
+.rd-bg{display:inline-flex;align-items:stretch;border:1.5px solid #10201C;border-radius:22px;overflow:hidden;background:#fff;max-width:100%;text-decoration:none!important;color:#10201C!important}
+.rd-bg>i{display:flex;align-items:center;justify-content:center;flex:none;width:34px;background:#E6EAE8;color:#10201C}.rd-bg.rd-o>i{background:#10201C;color:#F0861E}
+.rd-bg>span{display:flex;flex-direction:column;justify-content:center;padding:5px 14px 5px 10px;min-width:0;line-height:1.25}
+.rd-bg b{font-weight:600;font-size:14.5px}.rd-bg em{font:400 10.5px 'Geist Mono',ui-monospace,monospace;font-style:normal;letter-spacing:.07em;text-transform:uppercase;color:#6B7772;margin-top:1px}
+a.rd-bg:hover{border-color:#F0861E}.rd-ar{color:#B85F0A}
+.rd-bgs{display:flex;flex-wrap:wrap;gap:8px}.rd-bgs.rd-col{flex-direction:column;align-items:flex-start;flex:1}
+.rd-cc{background:#fff;border-radius:18px;padding:16px 18px;margin-top:12px}
+.rd-cch{display:flex;gap:12px;align-items:flex-start}.rd-cch>div{flex:1;min-width:0}.rd-cch p{margin:2px 0 0!important;color:#33413D}
+.rd-ci{flex:none;width:40px;height:40px;border-radius:12px;background:#10201C;color:#F0861E;font-weight:600;font-size:18px;display:flex;align-items:center;justify-content:center}
+.rd-cn{font-weight:600;font-size:17px}
+.rd-ccb{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:0 24px;margin-top:12px}.rd-ccb .rd-cap{margin-bottom:6px}
+.rd-bk{margin:10px 0 0!important;font-size:14.5px}.rd-bk .rd-d{margin-right:8px;vertical-align:2px}
+.rd-move{display:flex;align-items:center;gap:10px;background:#FDF2E7;border-radius:12px;padding:10px 14px;margin-top:14px;flex-wrap:wrap}.rd-move>i{display:flex;color:#B85F0A}.rd-move b{font-weight:600;flex:1;min-width:240px}
+.rd-ig{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+.rd-ic{background:#fff;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.rd-ich{display:flex;align-items:center;gap:10px}.rd-ich a{font-weight:600;font-size:16px}.rd-ich .rd-lg{flex:none}
+.rd-ab a.rd-pb{display:block;text-align:center;background:#F0861E;color:#10201C;font-weight:600;border-radius:12px;padding:10px 16px;text-decoration:none;white-space:nowrap}.rd-ab a.rd-pb:hover{background:#E07A14}
+.rd-skipc{margin:18px 0 8px}.rd-skips{display:flex;flex-wrap:wrap;gap:8px}
+.rd-skip{background:#fff;border-radius:20px;padding:6px 12px;font-size:14px}.rd-skip a{font-weight:600}.rd-skip em{font-style:normal;color:#6B7772;margin-left:8px}
+.rd-tg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.rd-tc{display:flex;flex-direction:column;gap:12px}
+.rd-lbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}
+.rd-ab a.rd-lb{border:1.5px solid #10201C;border-radius:12px;padding:6px 12px;font-weight:600;font-size:14px;text-decoration:none}.rd-ab a.rd-lb:hover{border-color:#F0861E}
+.rd-ab .rd-cc .rd-track{margin-top:30px}.rd-q3{margin-top:12px}
+@media (max-width:1000px){.rd-ccb,.rd-ig,.rd-tg{grid-template-columns:1fr}.rd-ccb>div{margin-bottom:10px}}
+@media print{.rd-cc,.rd-ic{break-inside:avoid;border:1px solid #DDE1DF}}
+.rd-ab p.rd-skipc{margin:22px 0 8px!important}
