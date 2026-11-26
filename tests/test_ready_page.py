@@ -95,7 +95,8 @@ def test_the_full_research():
     for words in ("Your competitors", "Your investors", "Skip these firms", 'class="rd-pb"', "Who tried this before", "Your ask against similar rounds", "Our data", "Looked up",
                   "They have", "In the news", "Your move", "Do this next", "Read what happened", "'ABCD'"):   # lettered parts, each ending with one thing to do
         assert words in js, words
-    assert 'class="rd-bg' in js and "const ICON = {" in js and "the firm badges' own" in js   # facts are drawn as badges, in the look of the firm badges
+    assert 'class="rd-ft' in js and "const ICON = {" in js and "the firm badges' own" in js   # facts are icon rows in blocks
+    assert "const AWARDED = [" in js and js.count("bdg(") == 1   # the pill is kept for badges the site awarded a firm (founder, 26 Nov: "pill system no ... something special")
     assert open(os.path.join(ROOT, "launch", "edge", "card", "badge.mjs")).read().count("M13.800 1.500L4.500 13.600h6.300L9.200 22.500l10.300-12.700h-6.600z") == 1 and "M13.800 1.500L4.500 13.600h6.300L9.200 22.500l10.300-12.700h-6.600z" in js   # the same bolt
     fn = open(os.path.join(ROOT, "launch", "functions", "api", "research.js")).read()
     assert "web_search_20250305" in fn and "v2_ready_research" in fn and "temperature" not in fn.replace("no temperature", "") and "pause_turn" in fn

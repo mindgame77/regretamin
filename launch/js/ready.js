@@ -149,6 +149,11 @@
   // A badge in the shape of the firm badges: an icon half and a text half. Dark half = our data; light half = looked up.
   const bdg = (k, v, n, ours, url) => { const inner = `<i>${ico(k)}</i><span><b>${esc(v)}${url ? '<span aria-hidden="true" class="rd-ar"> ↗</span>' : ''}</b>${n ? `<em>${esc(n)}</em>` : ''}</span>`;
     return url ? `<a class="rd-bg${ours ? ' rd-o' : ''}" target="_blank" rel="noopener nofollow" href="${esc(url)}">${inner}</a>` : `<span class="rd-bg${ours ? ' rd-o' : ''}">${inner}</span>`; };
+  // A plain fact: an icon tile and two lines of text. Dark tile = our data; light tile = looked up.
+  // (Founder, 26 Nov: "the block system looks good, icons looks good, pill system no ... make this pill like something special".)
+  const fact = (k, v, n, ours, url) => `<div class="rd-ft${ours ? ' rd-o' : ''}"><i>${ico(k, 16)}</i><span><b>${url ? ext(url, v) : esc(v)}</b>${n ? `<em>${esc(n)}</em>` : ''}</span></div>`;
+  // The pill is kept for one thing only: a badge the site has awarded the firm.
+  const AWARDED = ['The Magnificent 100', 'Shot Caller', 'Fast & Curious', 'Pathfinder', 'Laser Focus', 'Hot & Fresh'];
   const logo = (f) => `<span class="rd-lg"><img src="/assets/logos/f-${encodeURIComponent(f.slug)}.png" alt="" onerror="this.parentNode.textContent='${esc(String(f.name || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 2) || '?')}'"></span>`;
   // One lettered part: what is going on, the facts, and one thing to do next (founder, 26 Nov: "the actionable map").
   const part = (letter, title, tags, now, body, next) => `<div class="rd-ab"><div class="rd-abh"><span class="rd-let">${letter}</span><h3>${title}</h3>${tags}</div>${now ? `<p class="rd-rs">${esc(now)}</p>` : ''}${body}${next ? `<div class="rd-next"><span class="rd-tag">Do this next</span><span>${esc(next)}</span></div>` : ''}</div>`;
@@ -157,22 +162,22 @@
     const comp = x.competitors || [], skip = x.skip || [], tried = x.tried || [], rr = x.rounds, now = x.now || {}, todo = x.todo || {};
     const letters = 'ABCD'.split(''); const parts = [];
     const has = (c) => [
-      c.raised ? bdg('chq', c.raised.text, c.raised.date ? day(c.raised.date) : 'Raised', c.raised.ours) : '',
-      ...(c.facts || []).map((f) => bdg(f.k, f.v, f.n, true)),
-      ...(c.strong || []).map((g) => bdg('web', g.what, '', false, g.src)),
+      c.raised ? fact('chq', c.raised.text, c.raised.date ? 'Raised · ' + day(c.raised.date) : 'Raised', c.raised.ours) : '',
+      ...(c.facts || []).map((f) => fact(f.k, f.v, f.n, true)),
+      ...(c.strong || []).map((g) => fact('web', g.what, '', false, g.src)),
     ].join('');
     const cards = comp.map((c) => `<div class="rd-cc"><div class="rd-cch"><span class="rd-ci">${esc((c.name || '?').slice(0, 1).toUpperCase())}</span><div>${c.site ? ext('https://' + c.site, c.name, 'rd-cn') : `<b class="rd-cn">${esc(c.name)}</b>`}<p>${esc(c.what)}</p></div>${ext(c.src, 'Source', 'rd-src')}</div>`
-      + `<div class="rd-ccb"><div><p class="rd-cap">They have</p><div class="rd-bgs">${has(c) || '<span class="rd-pl">Nothing we could check.</span>'}</div>${c.backers && c.backers.list.length ? `<p class="rd-bk"><i class="rd-d${c.backers.ours ? ' rd-o' : ''}"></i>Backed by ${c.backers.list.map((b) => (b.slug ? firmA(b) : esc(b.name))).join(', ')}</p>` : ''}</div>`
-      + `<div><p class="rd-cap">In the news</p><div class="rd-bgs">${(c.news || []).map((g) => bdg('news', g.what, '', false, g.src)).join('') || '<span class="rd-pl">Nothing found.</span>'}</div></div></div>`
+      + `<div class="rd-ccb"><div><p class="rd-cap">They have</p><div class="rd-fts">${has(c) || '<span class="rd-pl">Nothing we could check.</span>'}</div>${c.backers && c.backers.list.length ? `<p class="rd-bk"><i class="rd-d${c.backers.ours ? ' rd-o' : ''}"></i>Backed by ${c.backers.list.map((b) => (b.slug ? firmA(b) : esc(b.name))).join(', ')}</p>` : ''}</div>`
+      + `<div><p class="rd-cap">In the news</p><div class="rd-fts rd-col">${(c.news || []).map((g) => fact('news', g.what, '', false, g.src)).join('') || '<span class="rd-pl">Nothing found.</span>'}</div></div></div>`
       + (c.move || c.you ? `<div class="rd-move"><i>${ico('move', 16)}</i><span class="rd-cap">Your move</span><b>${esc(c.move || c.you)}</b></div>` : '') + '</div>').join('');
     parts.push(['Your competitors', OURS + WEB, now.competitors, comp.length ? cards : '<p class="rd-none">None found with a source we could check.</p>', todo.competitors]);
     const inv = x.investors || [];
     if (inv.length || skip.length) parts.push(['Your investors', OURS, now.firms,
-      (inv.length ? `<div class="rd-ig">${inv.map((f) => `<div class="rd-ic"><div class="rd-ich">${logo(f)}${firmA(f)}</div><div class="rd-bgs rd-col">${(f.badges || []).map((b) => bdg(b.k, b.v, b.n, true, b.url)).join('')}</div>${f.apply ? `<a class="rd-pb" target="_blank" rel="noopener nofollow" href="${esc(f.apply)}">Pitch<span aria-hidden="true"> ↗</span></a>` : ''}</div>`).join('')}</div>` : '')
-      + (skip.length ? `<p class="rd-cap rd-skipc">Skip these firms: they hold one of your competitors</p><div class="rd-skips">${skip.map((f) => `<span class="rd-skip">${firmA(f)}<em>backed ${esc((f.backed || []).join(', '))}</em></span>`).join('')}</div>` : ''), todo.firms]);
+      (inv.length ? `<div class="rd-ig">${inv.map((f) => `<div class="rd-ic"><div class="rd-ich">${logo(f)}${firmA(f)}</div>${(f.badges || []).some((b) => AWARDED.includes(b.v)) ? `<div class="rd-bgs">${f.badges.filter((b) => AWARDED.includes(b.v)).map((b) => bdg(b.k, b.v, b.n, true)).join('')}</div>` : ''}<div class="rd-fts rd-col rd-grow">${(f.badges || []).filter((b) => !AWARDED.includes(b.v)).map((b) => fact(b.k, b.v, b.n, true, b.url)).join('')}</div>${f.apply ? `<a class="rd-pb" target="_blank" rel="noopener nofollow" href="${esc(f.apply)}">Pitch<span aria-hidden="true"> ↗</span></a>` : ''}</div>`).join('')}</div>` : '')
+      + (skip.length ? `<p class="rd-cap rd-skipc">Skip these firms: they hold one of your competitors</p><div class="rd-cc rd-skips">${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}</div>` : ''), todo.firms]);
     const who = (t) => (t.founders || []).map((f) => ext('https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(f + ' ' + t.name), f + ' on LinkedIn', 'rd-lb')).join('');
     parts.push(['Who tried this before', WEB, now.tried, tried.length
-      ? `<div class="rd-tg">${tried.map((t) => `<div class="rd-cc rd-tc"><div class="rd-cch"><div><b class="rd-cn">${esc(t.name)}</b><p>${esc(t.happened)}</p></div></div><div class="rd-bgs">${bdg(OUT[t.outcome] || 'turn', t.outcome || 'Earlier attempt', t.years, false)}</div><div class="rd-lbs">${ext(t.src, 'Read what happened', 'rd-lb')}${who(t)}</div></div>`).join('')}</div>`
+      ? `<div class="rd-tg">${tried.map((t) => `<div class="rd-cc rd-tc"><div class="rd-cch"><div><b class="rd-cn">${esc(t.name)}</b><p>${esc(t.happened)}</p></div></div><div class="rd-fts rd-col">${fact(OUT[t.outcome] || 'turn', t.outcome || 'Earlier attempt', t.years, false)}</div><div class="rd-lbs">${ext(t.src, 'Read what happened', 'rd-lb')}${who(t)}</div></div>`).join('')}</div>`
         + '<div class="rd-q3"><b>Three questions to ask them</b><ol><li>What ended it, in one sentence?</li><li>If you started again, what would you do in the first six months?</li><li>Which investors understood it, and which wasted your time?</li></ol></div>'
       : '<p class="rd-none">None found with a source we could check.</p>', todo.tried]);
     if (rr) {
