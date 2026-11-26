@@ -148,22 +148,32 @@ export function askLine(ask, r) {
 
 // Tips about the firms the report tells the founder to pitch (founder, 26 Nov: "extra insights about some investors ... if we
 // have a button to pitch, it's even better"). Our data only (v2_ready_firm_tips); a firm shows only what we hold about it.
-export function investorTips(firms, tips, sector) {
+// The firm badges the site already awards, by signal: [name, what it is for].
+const SIGNAL = { top: ['The Magnificent 100', 'Top 100 firms'], lead: ['Shot Caller', 'Leads rounds'], up: ['Fast & Curious', 'Investing faster'],
+  chain: ['Pathfinder', 'Top firms follow it'], spec: ['Laser Focus', 'One sector focus'], fund: ['Hot & Fresh', 'New fund raised'] };
+
+// Each firm comes back as { slug, name, apply, badges: [{ k, v, n, url }] }: k names the icon, v is the big line, n the small one.
+// signals: { slug: ['top', 'spec', ...] } as v2_firm_signals_for answers.
+export function investorTips(firms, tips, sector, signals) {
   const by = new Map((Array.isArray(tips) ? tips : []).map((t) => [t && t.slug, t]));
+  const consumer = /consumer/i.test(String(sector || ''));
   return (Array.isArray(firms) ? firms : []).map((f) => {
-    const t = by.get(f.slug) || {}, lines = [], a = t.audience;
-    if (a && Number(a.followers) >= 10000) lines.push({ t: `Big audience: ${Number(a.followers).toLocaleString('en-US')} followers on ${clip(a.platform, 20)}.${/consumer/i.test(String(sector || '')) ? ' That helps when you sell to consumers.' : ''}`, url: /^https?:\/\//i.test(a.url || '') ? a.url : '' });
-    const deals = Number(t.deals) || 0, led = Number(t.led) || 0;   // only what we know: a firm with no recorded lead gets no line
-    if (deals >= 5 && led >= 1) lines.push({ t: led / deals >= 0.4 ? `Often leads: it led ${led} of its ${deals} deals in the last year. Ask it to lead.` : `Sometimes leads: it led ${led} of its ${deals} deals in the last year.` });
-    if (t.cheque) lines.push({ t: `Cheque size: ${clip(t.cheque, 40)}.` });
+    const t = by.get(f.slug) || {}, badges = [], a = t.audience;
+    const sig = (signals && Array.isArray(signals[f.slug]) ? signals[f.slug] : []).filter((x) => SIGNAL[x]);
+    const deals = Number(t.deals) || 0, led = Number(t.led) || 0, share = deals ? led / deals : 0;
+    const ledLine = deals >= 5 && led >= 1 ? `Led ${led} of its ${deals} deals in the last year` : '';   // only what we know: no recorded lead, no line
+    for (const x of sig) badges.push({ k: x, v: SIGNAL[x][0], n: x === 'lead' && ledLine ? ledLine + '. Ask it to lead.' : SIGNAL[x][1] });
+    if (ledLine && !sig.includes('lead')) badges.push({ k: 'lead', v: share >= 0.4 ? 'Often leads' : 'Sometimes leads', n: ledLine + (share >= 0.4 ? '. Ask it to lead.' : '') });
+    if (a && Number(a.followers) >= 10000) badges.push({ k: 'aud', v: `${Number(a.followers).toLocaleString('en-US')} on ${clip(a.platform, 20)}`, n: consumer ? 'Big audience. Helps when you sell to consumers.' : 'Big audience', url: /^https?:\/\//i.test(a.url || '') ? a.url : '' });
+    if (t.cheque) badges.push({ k: 'chq', v: clip(t.cheque, 40), n: 'Cheque size' });
     const apply = /^https?:\/\//i.test(t.apply || '') ? t.apply : '';
-    return apply || lines.length ? { slug: f.slug, name: f.name, apply, tips: lines } : null;
+    return apply || badges.length ? { slug: f.slug, name: f.name, apply, badges: badges.slice(0, 5) } : null;
   }).filter(Boolean).slice(0, 6);
 }
 
 // Looked-up rows + our data -> what step 3 of the report draws.
 //   ours: the answer of v2_ready_research; tips: the answer of v2_ready_firm_tips for the report's firms.
-export function buildResearch(rows, ours, report, meta, tips) {
+export function buildResearch(rows, ours, report, meta, tips, signals) {
   const o = ours && typeof ours === 'object' ? ours : {};
   const co = (report && report.company) || {};
   const held = new Map((Array.isArray(o.competitors) ? o.competitors : []).map((c) => [String(c.asked || '').toLowerCase(), c]));
@@ -171,15 +181,15 @@ export function buildResearch(rows, ours, report, meta, tips) {
     const h = held.get(c.name.toLowerCase());
     const mine = h && h.amount > 0 && h.currency === 'USD';
     const backers = h && Array.isArray(h.backers) && h.backers.length ? { ours: true, list: h.backers.slice(0, 6).map((b) => ({ name: b.name, slug: b.slug })) } : { ours: false, list: c.backers.map((b) => ({ name: b })) };
-    // What we hold about the founders (our data): where they worked and studied, and what they built before.
-    const team = [];
-    if (h && Array.isArray(h.worked_at) && h.worked_at.length) team.push(`Founders worked at ${h.worked_at.slice(0, 4).join(', ')}`);
-    if (h && Array.isArray(h.studied_at) && h.studied_at.length) team.push(`Founders studied at ${h.studied_at.slice(0, 3).join(', ')}`);
+    // What we hold about the founders (our data), as badges: where they worked and studied, and what they built before.
+    const facts = [];
+    if (h && Array.isArray(h.worked_at) && h.worked_at.length) facts.push({ k: 'work', v: h.worked_at.slice(0, 3).join(', '), n: 'Founders worked at' });
+    if (h && Array.isArray(h.studied_at) && h.studied_at.length) facts.push({ k: 'study', v: h.studied_at.slice(0, 3).join(', '), n: 'Founders studied at' });
     for (const e of (h && Array.isArray(h.built_before) ? h.built_before : []).slice(0, 2)) {
       const end = e.outcome === 'acquired' ? (e.acquirer ? `acquired by ${e.acquirer}` : 'acquired') : e.outcome === 'ipo' ? 'went public' : e.outcome === 'shut_down' ? 'shut down' : '';
-      if (e.name) team.push(`A founder built ${e.name} before${end ? ` (${end})` : ''}`);
+      if (e.name) facts.push({ k: 'built', v: e.name, n: `A founder built it before${end ? ', ' + end : ''}` });
     }
-    return { name: c.name, site: c.site, what: c.what, move: c.move, src: c.src, team, strong: c.strong || [], news: c.news || [],
+    return { name: c.name, site: c.site, what: c.what, move: c.move, src: c.src, facts, strong: c.strong || [], news: c.news || [],
       raised: mine ? { ours: true, text: `${usd(Number(h.amount))} ${h.round || 'round'}`, date: h.date || null } : c.raised ? { ours: false, text: c.raised } : null,
       backers };
   });
@@ -187,7 +197,7 @@ export function buildResearch(rows, ours, report, meta, tips) {
   const stage = o.stage || co.stage || 'Seed';
   const r = o.rounds && Number(o.rounds.n) >= 5 ? { n: Number(o.rounds.n), p25: Number(o.rounds.p25), p50: Number(o.rounds.p50), p75: Number(o.rounds.p75), p90: Number(o.rounds.p90) } : null;
   const ask = Number(co.ask_usd) > 0 ? Number(co.ask_usd) : null;
-  const investors = investorTips(report && report.firms, tips, co.sector);
+  const investors = investorTips(report && report.firms, tips, co.sector, signals);
   // One thing to do per part (founder, 26 Nov: "make it useful for someone who's reading and actionable"). Fixed wording, by rule.
   const todo = {
     competitors: competitors.length ? 'Put these on your competition slide. Have your answer ready for each one.' : '',

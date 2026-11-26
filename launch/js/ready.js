@@ -125,40 +125,62 @@
   const firmA = (f) => `<a target="_blank" rel="noopener" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a>`;
   // A link that leaves the site says so with an arrow and opens in a new page.
   const ext = (u, label, cls) => `<a class="rd-x${cls ? ' ' + cls : ''}" target="_blank" rel="noopener nofollow" href="${esc(u)}">${esc(label)}<span aria-hidden="true"> ↗</span></a>`;
-  const li = (html, ours) => `<div class="rd-li"><i class="rd-d${ours ? ' rd-o' : ''}"></i><span>${html}</span></div>`;
+  // Icons, our own drawings in a 24 x 24 box. The first six are the firm badges' own (launch/edge/card/badge.mjs).
+  const ICON = {
+    top: 'M2.5 6.5l5 4.3L12 3.5l4.5 7.3 5-4.3-1.9 11H4.4zM4.8 19.3h14.4v2.200H4.8z',
+    lead: 'M2.5 9.2h4.3L15.5 4v16l-8.700-5.200H2.5zM6.200 16.200h3.300l1.200 5.300H7.400zM17.800 9.500h2v5h-2zM21 7.500h1.500v9H21z',
+    up: 'M13.800 1.500L4.500 13.600h6.300L9.200 22.500l10.300-12.700h-6.600z',
+    chain: 'M12 2a10 10 0 110 20 10 10 0 010-20zm0 2.300a7.700 7.700 0 100 15.400 7.700 7.700 0 000-15.400zM16.400 7.600l-2.700 6.100-6.100 2.700 2.700-6.100z',
+    spec: 'M12 5a7 7 0 110 14 7 7 0 010-14zm0 2.300a4.700 4.700 0 100 9.400 4.700 4.700 0 000-9.400zM12 10.200a1.800 1.800 0 110 3.600 1.800 1.800 0 010-3.600zM11 1h2v3h-2zM11 20h2v3h-2zM1 11h3v2H1zM20 11h3v2h-3z',
+    fund: 'M12.600 1.500c.700 3.900 5.600 6 5.600 11.400a6.200 6.200 0 01-12.400 0c0-2.200.900-4 2.100-5.300.300 1.800 1 2.900 2.100 3.300C9.800 7.800 10.700 4.100 12.600 1.500z',
+    aud: 'M12 8.500a3 3 0 110 6 3 3 0 010-6zM6.300 5.800a8 8 0 000 11.400l1.500-1.500a5.900 5.900 0 010-8.400zM17.700 5.800l-1.500 1.500a5.900 5.900 0 010 8.400l1.500 1.500a8 8 0 000-11.400zM3.200 2.700a12.400 12.400 0 000 17.600l1.500-1.500a10.300 10.300 0 010-14.600zM20.800 2.700l-1.500 1.500a10.300 10.300 0 010 14.600l1.500 1.500a12.400 12.400 0 000-17.600z',
+    chq: 'M12 2a10 10 0 110 20 10 10 0 010-20zm1 3.800h-2v1.700a3.100 3.100 0 00.300 6.200h1.400a1 1 0 010 2H9v2.100h2v1.400h2v-1.500a3.100 3.100 0 00-.300-6.100h-1.400a1 1 0 010-2H15V7.500h-2z',
+    work: 'M9 3h6a2 2 0 012 2v2h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2h3V5a2 2 0 012-2zm0 4h6V5H9z',
+    study: 'M12 3l11 6-11 6L1 9zM5 12.900V17c2 2 4.500 3 7 3s5-1 7-3v-4.100l-7 3.800zM21 10.500h1.500V16H21z',
+    built: 'M5 2h2v20H5zM8.500 3H20l-2.800 4.500L20 12H8.500z',
+    web: 'M12 2a10 10 0 110 20 10 10 0 010-20zM9.800 11h4.400c-.2-2.900-1-5.200-2.200-6.800-1.200 1.600-2 3.900-2.200 6.800zm-5.500 0h3.500c.1-2.300.6-4.300 1.400-5.900A7.800 7.800 0 004.300 11zm0 2a7.800 7.800 0 004.900 5.900c-.8-1.600-1.300-3.600-1.400-5.900zm5.500 0c.2 2.900 1 5.200 2.200 6.800 1.200-1.600 2-3.900 2.200-6.800zm6.400 0c-.1 2.300-.6 4.300-1.400 5.900a7.800 7.800 0 004.900-5.900zm3.500-2a7.800 7.800 0 00-4.900-5.900c.8 1.600 1.300 3.600 1.400 5.900z',
+    news: 'M3 4h14v14a2 2 0 002 2H5a2 2 0 01-2-2zm16 4h2v10a1 1 0 01-2 0zM6 7h8v3H6zm0 5h8v1.500H6zm0 3h8v1.500H6z',
+    move: 'M4 11h11.200l-4.600-4.600L12 5l7 7-7 7-1.400-1.400 4.600-4.600H4z',
+    shut: 'M12 2a10 10 0 110 20 10 10 0 010-20zM8.500 7.100L7.100 8.500l3.500 3.500-3.500 3.500 1.400 1.400 3.500-3.500 3.500 3.500 1.400-1.400-3.500-3.500 3.500-3.500-1.400-1.400-3.500 3.500z',
+    acq: 'M3 5h5.500l4 6H18l-2.600-2.600L16.800 7l5.200 5-5.200 5-1.400-1.400L18 13h-5.500l-4 6H3v-2h4.400l3.400-5-3.400-5H3z',
+    turn: 'M5 20v-8a5 5 0 015-5h5.200l-2.600-2.600L14 3l5 5-5 5-1.400-1.400L15.200 9H10a3 3 0 00-3 3v8z',
+  };
+  const ico = (k, px) => `<svg viewBox="0 0 24 24" width="${px || 15}" height="${px || 15}" fill="currentColor" fill-rule="evenodd" aria-hidden="true"><path d="${ICON[k] || ICON.web}"/></svg>`;
+  // A badge in the shape of the firm badges: an icon half and a text half. Dark half = our data; light half = looked up.
+  const bdg = (k, v, n, ours, url) => { const inner = `<i>${ico(k)}</i><span><b>${esc(v)}${url ? '<span aria-hidden="true" class="rd-ar"> ↗</span>' : ''}</b>${n ? `<em>${esc(n)}</em>` : ''}</span>`;
+    return url ? `<a class="rd-bg${ours ? ' rd-o' : ''}" target="_blank" rel="noopener nofollow" href="${esc(url)}">${inner}</a>` : `<span class="rd-bg${ours ? ' rd-o' : ''}">${inner}</span>`; };
+  const logo = (f) => `<span class="rd-lg"><img src="/assets/logos/f-${encodeURIComponent(f.slug)}.png" alt="" onerror="this.parentNode.textContent='${esc(String(f.name || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 2) || '?')}'"></span>`;
   // One lettered part: what is going on, the facts, and one thing to do next (founder, 26 Nov: "the actionable map").
   const part = (letter, title, tags, now, body, next) => `<div class="rd-ab"><div class="rd-abh"><span class="rd-let">${letter}</span><h3>${title}</h3>${tags}</div>${now ? `<p class="rd-rs">${esc(now)}</p>` : ''}${body}${next ? `<div class="rd-next"><span class="rd-tag">Do this next</span><span>${esc(next)}</span></div>` : ''}</div>`;
+  const OUT = { 'Shut down': 'shut', Acquired: 'acq', 'Changed direction': 'turn' };
   function researchHtml(x) {
     const comp = x.competitors || [], skip = x.skip || [], tried = x.tried || [], rr = x.rounds, now = x.now || {}, todo = x.todo || {};
     const letters = 'ABCD'.split(''); const parts = [];
     const has = (c) => [
-      c.raised ? li(esc(c.raised.text) + (c.raised.date ? ` <span class="rd-pl">${esc(day(c.raised.date))}</span>` : ''), c.raised.ours) : '',
-      c.backers && c.backers.list.length ? li('Backed by ' + c.backers.list.map((b) => (b.slug ? firmA(b) : esc(b.name))).join(', '), c.backers.ours) : '',
-      ...(c.team || []).map((t) => li(esc(t), true)),
-      ...(c.strong || []).map((g) => li(ext(g.src, g.what), false)),
-    ].join('') || '–';
-    const cRows = comp.map((c) => `<div class="rd-crow"><div>${c.site ? ext('https://' + c.site, c.name, 'rd-cn') : `<b>${esc(c.name)}</b>`}<p>${esc(c.what)}</p>${ext(c.src, 'Source', 'rd-src')}</div>`
-      + `<div>${has(c)}</div>`
-      + `<div>${(c.news || []).map((g) => li(ext(g.src, g.what), false)).join('') || '–'}</div>`
-      + `<div class="rd-mv">${esc(c.move || c.you || '')}</div></div>`).join('');
-    parts.push(['Your competitors', OURS + WEB, now.competitors, comp.length
-      ? `<div class="rd-crow rd-hd"><span>Company</span><span>They have</span><span>In the news</span><span>Your move</span></div>${cRows}`
-      : '<p class="rd-none">None found with a source we could check.</p>', todo.competitors]);
+      c.raised ? bdg('chq', c.raised.text, c.raised.date ? day(c.raised.date) : 'Raised', c.raised.ours) : '',
+      ...(c.facts || []).map((f) => bdg(f.k, f.v, f.n, true)),
+      ...(c.strong || []).map((g) => bdg('web', g.what, '', false, g.src)),
+    ].join('');
+    const cards = comp.map((c) => `<div class="rd-cc"><div class="rd-cch"><span class="rd-ci">${esc((c.name || '?').slice(0, 1).toUpperCase())}</span><div>${c.site ? ext('https://' + c.site, c.name, 'rd-cn') : `<b class="rd-cn">${esc(c.name)}</b>`}<p>${esc(c.what)}</p></div>${ext(c.src, 'Source', 'rd-src')}</div>`
+      + `<div class="rd-ccb"><div><p class="rd-cap">They have</p><div class="rd-bgs">${has(c) || '<span class="rd-pl">Nothing we could check.</span>'}</div>${c.backers && c.backers.list.length ? `<p class="rd-bk"><i class="rd-d${c.backers.ours ? ' rd-o' : ''}"></i>Backed by ${c.backers.list.map((b) => (b.slug ? firmA(b) : esc(b.name))).join(', ')}</p>` : ''}</div>`
+      + `<div><p class="rd-cap">In the news</p><div class="rd-bgs">${(c.news || []).map((g) => bdg('news', g.what, '', false, g.src)).join('') || '<span class="rd-pl">Nothing found.</span>'}</div></div></div>`
+      + (c.move || c.you ? `<div class="rd-move"><i>${ico('move', 16)}</i><span class="rd-cap">Your move</span><b>${esc(c.move || c.you)}</b></div>` : '') + '</div>').join('');
+    parts.push(['Your competitors', OURS + WEB, now.competitors, comp.length ? cards : '<p class="rd-none">None found with a source we could check.</p>', todo.competitors]);
     const inv = x.investors || [];
     if (inv.length || skip.length) parts.push(['Your investors', OURS, now.firms,
-      inv.map((f) => `<div class="rd-irow"><div>${firmA(f)}</div><div>${(f.tips || []).map((t) => li(t.url ? ext(t.url, t.t) : esc(t.t), true)).join('') || '–'}</div><div>${f.apply ? `<a class="rd-pb" target="_blank" rel="noopener nofollow" href="${esc(f.apply)}">Pitch<span aria-hidden="true"> ↗</span></a>` : ''}</div></div>`).join('')
-      + (skip.length ? `<p class="rd-cap rd-skipc">Skip these firms: they hold one of your competitors</p>${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}` : ''), todo.firms]);
-    const who = (t) => (t.founders || []).map((f) => ext('https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(f + ' ' + t.name), f)).join(', ');
+      (inv.length ? `<div class="rd-ig">${inv.map((f) => `<div class="rd-ic"><div class="rd-ich">${logo(f)}${firmA(f)}</div><div class="rd-bgs rd-col">${(f.badges || []).map((b) => bdg(b.k, b.v, b.n, true, b.url)).join('')}</div>${f.apply ? `<a class="rd-pb" target="_blank" rel="noopener nofollow" href="${esc(f.apply)}">Pitch<span aria-hidden="true"> ↗</span></a>` : ''}</div>`).join('')}</div>` : '')
+      + (skip.length ? `<p class="rd-cap rd-skipc">Skip these firms: they hold one of your competitors</p><div class="rd-skips">${skip.map((f) => `<span class="rd-skip">${firmA(f)}<em>backed ${esc((f.backed || []).join(', '))}</em></span>`).join('')}</div>` : ''), todo.firms]);
+    const who = (t) => (t.founders || []).map((f) => ext('https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(f + ' ' + t.name), f + ' on LinkedIn', 'rd-lb')).join('');
     parts.push(['Who tried this before', WEB, now.tried, tried.length
-      ? tried.map((t) => `<div class="rd-trow"><span class="rd-wh">${esc(t.years)}</span><div><b>${esc(t.name)}</b>${t.outcome ? `<span class="rd-out">${esc(t.outcome)}</span>` : ''}<p>${esc(t.happened)}</p><p class="rd-pl">${ext(t.src, 'Read what happened')}${t.founders && t.founders.length ? ' · Founders to ask, on LinkedIn: ' + who(t) : ''}</p></div></div>`).join('')
+      ? `<div class="rd-tg">${tried.map((t) => `<div class="rd-cc rd-tc"><div class="rd-cch"><div><b class="rd-cn">${esc(t.name)}</b><p>${esc(t.happened)}</p></div></div><div class="rd-bgs">${bdg(OUT[t.outcome] || 'turn', t.outcome || 'Earlier attempt', t.years, false)}</div><div class="rd-lbs">${ext(t.src, 'Read what happened', 'rd-lb')}${who(t)}</div></div>`).join('')}</div>`
         + '<div class="rd-q3"><b>Three questions to ask them</b><ol><li>What ended it, in one sentence?</li><li>If you started again, what would you do in the first six months?</li><li>Which investors understood it, and which wasted your time?</li></ol></div>'
       : '<p class="rd-none">None found with a source we could check.</p>', todo.tried]);
     if (rr) {
       const top = Math.max(rr.p90 * 1.12, (rr.ask || 0) * 1.12), at = (v) => Math.max(0, Math.min(100, (100 * v) / top)).toFixed(1) + '%';
       parts.push(['Your ask against similar rounds', OURS, `${rr.n.toLocaleString('en-US')} ${rr.sector ? rr.sector.toLowerCase() + ' ' : ''}${String(rr.stage).toLowerCase()} rounds in the last 24 months with a known amount.`,
-        `<div class="rd-track"><i class="rd-band" style="left:${at(rr.p25)};width:calc(${at(rr.p75)} - ${at(rr.p25)})"></i><i class="rd-mid" style="left:${at(rr.p50)}"></i><i class="rd-p90" style="left:${at(rr.p90)}"></i>${rr.ask ? `<span class="rd-you" style="left:${at(rr.ask)}">You: ${usd(rr.ask)}</span>` : ''}</div>`
+        `<div class="rd-cc"><div class="rd-track"><i class="rd-band" style="left:${at(rr.p25)};width:calc(${at(rr.p75)} - ${at(rr.p25)})"></i><i class="rd-mid" style="left:${at(rr.p50)}"></i><i class="rd-p90" style="left:${at(rr.p90)}"></i>${rr.ask ? `<span class="rd-you" style="left:${at(rr.ask)}">You: ${usd(rr.ask)}</span>` : ''}</div>`
         + `<div class="rd-qs"><div><b>${usd(rr.p25)}</b><span>a quarter raised less</span></div><div><b>${usd(rr.p50)}</b><span>the middle</span></div><div><b>${usd(rr.p75)}</b><span>a quarter raised more</span></div><div><b>${usd(rr.p90)}</b><span>top tenth</span></div></div>`
-        + (rr.line ? `<p class="rd-rl">${esc(rr.line)}</p>` : ''), todo.ask]);
+        + (rr.line ? `<p class="rd-rl">${esc(rr.line)}</p>` : '') + '</div>', todo.ask]);
     }
     return parts.map((p, n) => part(letters[n] || '', p[0], p[1], p[2], p[3], p[4])).join('');
   }

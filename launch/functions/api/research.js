@@ -51,7 +51,12 @@ export async function onRequestPost(ctx) {
     rpc('v2_ready_firm_tips', { p_slugs: (Array.isArray(row.result.firms) ? row.result.firms : []).map((f) => f && f.slug).filter(Boolean).slice(0, 12) }),
   ]);
 
-  const research = buildResearch(rows, ours, row.result, { at: new Date().toISOString(), searches: got.searches, model: got.model, tokens_in: got.usage.in, tokens_out: got.usage.out }, tips);
+  // The badges the site already awards each of those firms (the same read the firm pages use).
+  const slugs = (Array.isArray(row.result.firms) ? row.result.firms : []).map((f) => f && f.slug).filter(Boolean).slice(0, 6);
+  const signals = {};
+  await Promise.all(slugs.map(async (slug) => { const g = await rpc('v2_firm_signals_for', { p_slug: slug }); if (g && Array.isArray(g.signals)) signals[slug] = g.signals; }));
+
+  const research = buildResearch(rows, ours, row.result, { at: new Date().toISOString(), searches: got.searches, model: got.model, tokens_in: got.usage.in, tokens_out: got.usage.out }, tips, signals);
   await save({ result: { ...row.result, research }, error: null });
   return json({ research, id });
 }

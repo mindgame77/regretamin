@@ -57,8 +57,9 @@ test('our data replaces looked-up funding where we hold the company, and firms t
   assert.equal(r.rounds.line, 'Your ask is below most rounds like yours. Announced rounds lean large, so the true middle is lower than $1.5M.');
   assert.equal(r.tried[0].src, 'https://blog.example/why-cowlar-closed');
   assert.equal(r.v, 2);
-  assert.deepEqual(r.competitors[0].team, ['Founders worked at Rocket Lab', 'Founders studied at Auckland', 'A founder built Farm Co before (acquired by Big Ag)', 'A founder built Other Co before (shut down)']);
-  assert.deepEqual(r.competitors[1].team, []);   // a competitor we do not hold: nothing is said about its founders from our side
+  assert.deepEqual(r.competitors[0].facts, [{ k: 'work', v: 'Rocket Lab', n: 'Founders worked at' }, { k: 'study', v: 'Auckland', n: 'Founders studied at' },
+    { k: 'built', v: 'Farm Co', n: 'A founder built it before, acquired by Big Ag' }, { k: 'built', v: 'Other Co', n: 'A founder built it before, shut down' }]);
+  assert.deepEqual(r.competitors[1].facts, []);   // a competitor we do not hold: nothing is said about its founders from our side
   assert.deepEqual(r.now, { competitors: '2 companies an investor will compare you with.', firms: '1 firm we list already holds one of your competitors.', tried: '1 company tried this before you.' });
   assert.deepEqual(r.todo, { competitors: 'Put these on your competition slide. Have your answer ready for each one.', firms: 'Take the firms that hold a competitor off your target list.',
     tried: 'Message one of these founders this week. Ask the three questions.', ask: 'Be ready to defend your number against these rounds.' });
@@ -102,6 +103,7 @@ test('the function: only the owner of a finished report, made once, saved on the
       assert.equal(b.messages[1].role, 'assistant'); assert.equal(b.messages[1].content.length, 3);   // the paused answer goes back unchanged
       return ok({ stop_reason: 'end_turn', content: CONTENT.slice(3), usage: { input_tokens: 200, output_tokens: 300 } });
     }
+    if (u.includes('/rpc/v2_firm_signals_for')) { assert.equal(JSON.parse(opt.body).p_slug, 'true-ventures'); return ok({ signals: ['top'], deals_now: 24, led_now: 6 }); }
     if (u.includes('/rpc/v2_ready_firm_tips')) { assert.deepEqual(JSON.parse(opt.body).p_slugs, ['true-ventures']); return ok([{ slug: 'true-ventures', apply: 'https://www.trueventures.com/pitch', audience: { platform: 'X', followers: 112795, url: 'https://x.com/trueventures' }, cheque: null, deals: 24, led: 6 }]); }
     if (u.includes('/rpc/v2_ready_research')) { const b = JSON.parse(opt.body); assert.deepEqual(b.p_names, ['Halter', 'Nofence']); assert.deepEqual(b.p_domains, ['halterhq.com', 'nofence.no']); return ok({ competitors: [], skip: [], rounds: { n: 14, p25: 1325000, p50: 1500000, p75: 2012500, p90: 4265000 }, stage: 'Pre-seed', sector_known: true }); }
     throw new Error('unexpected ' + u);
@@ -115,6 +117,7 @@ test('the function: only the owner of a finished report, made once, saved on the
     assert.equal(a.research.searches, 1); assert.equal(a.research.tokens_in, 300);
     assert.ok(saved && saved.tried.length === 1);
     assert.equal(a.research.investors[0].apply, 'https://www.trueventures.com/pitch');
+    assert.equal(a.research.investors[0].badges[0].v, 'The Magnificent 100');
     assert.equal(a.research.todo.firms, 'Press Pitch on the first one today.');
     const before = calls.filter((c) => c.includes('anthropic')).length;
     const b = await (await ask('good')).json();                                  // asked again: the saved one, no second search
@@ -130,17 +133,19 @@ test('five competitors at most', () => {
   assert.ok(/5 at most/.test(researchPrompt()));
 });
 
-test('investor tips say only what we hold, and a firm with nothing to say is left out', () => {
+test('investor badges say only what we hold, and a firm with nothing to say is left out', () => {
   const firms = [{ slug: 'true-ventures', name: 'True Ventures' }, { slug: 'draper', name: 'Draper Associates' }, { slug: 'sparrow', name: 'Sparrow Capital' }, { slug: 'quiet', name: 'Quiet Fund' }];
   const tips = [{ slug: 'true-ventures', apply: 'https://www.trueventures.com/pitch', audience: { platform: 'X', followers: 112795, url: 'https://x.com/trueventures' }, cheque: null, deals: 24, led: 6 },
     { slug: 'draper', apply: 'javascript:alert(1)', audience: { platform: 'LinkedIn', followers: 459, url: 'https://linkedin.com/x' }, cheque: null, deals: 37, led: 18 },
     { slug: 'sparrow', apply: null, audience: null, cheque: '$1M-$2M', deals: 10, led: 0 }, { slug: 'quiet', apply: null, audience: null, cheque: null, deals: 3, led: 0 }];
-  const out = investorTips(firms, tips, 'Consumer');
+  const out = investorTips(firms, tips, 'Consumer', { 'true-ventures': ['top', 'down'], draper: ['lead'] });
   assert.deepEqual(out.map((f) => f.slug), ['true-ventures', 'draper', 'sparrow']);
-  assert.deepEqual(out[0], { slug: 'true-ventures', name: 'True Ventures', apply: 'https://www.trueventures.com/pitch', tips: [
-    { t: 'Big audience: 112,795 followers on X. That helps when you sell to consumers.', url: 'https://x.com/trueventures' }, { t: 'Sometimes leads: it led 6 of its 24 deals in the last year.' }] });
+  assert.deepEqual(out[0], { slug: 'true-ventures', name: 'True Ventures', apply: 'https://www.trueventures.com/pitch', badges: [
+    { k: 'top', v: 'The Magnificent 100', n: 'Top 100 firms' },                                     // the badge the site already awards; "slowing down" has none
+    { k: 'lead', v: 'Sometimes leads', n: 'Led 6 of its 24 deals in the last year' },
+    { k: 'aud', v: '112,795 on X', n: 'Big audience. Helps when you sell to consumers.', url: 'https://x.com/trueventures' }] });
   assert.equal(out[1].apply, '');                                                                  // not a web address: no button
-  assert.deepEqual(out[1].tips, [{ t: 'Often leads: it led 18 of its 37 deals in the last year. Ask it to lead.' }]);   // 459 followers is not a big audience
-  assert.deepEqual(out[2].tips, [{ t: 'Cheque size: $1M-$2M.' }]);                                  // no recorded lead: nothing is said about leading
-  assert.ok(!/consumers/.test(investorTips(firms, tips, 'Fintech')[0].tips[0].t));
+  assert.deepEqual(out[1].badges, [{ k: 'lead', v: 'Shot Caller', n: 'Led 18 of its 37 deals in the last year. Ask it to lead.' }]);   // 459 followers is not a big audience
+  assert.deepEqual(out[2].badges, [{ k: 'chq', v: '$1M-$2M', n: 'Cheque size' }]);                  // no recorded lead: nothing is said about leading
+  assert.equal(investorTips(firms, tips, 'Fintech', {})[0].badges.find((b) => b.k === 'aud').n, 'Big audience');
 });
