@@ -2020,3 +2020,15 @@ nav a#readynav:hover{background:#E07810}
 .rd-none{padding:10px 0;color:#6B7772}
 @media (max-width:1000px){.rd-up{grid-template-columns:1fr;gap:28px;min-height:0}.rd-pitch h1{font-size:44px}.rd-row,.rd-frow{grid-template-columns:18px 1fr}.rd-row>*,.rd-frow>*{grid-column:2}.rd-row>.rd-dot,.rd-frow>.rd-ord{grid-column:1;grid-row:1}.rd-hd{display:none}.rd-lg{margin-bottom:6px}.rd-step{grid-template-columns:1fr}.rd-rail{display:none}.rd-offer{position:static;transform:none;width:auto;flex-direction:column;align-items:stretch;margin-top:10px}.rd-blur{display:none}.rd-then{grid-template-columns:1fr}.rd-btn.rd-k{margin-left:0}}
 @media print{body>nav,body>footer,.ckbar,.rd-bar button,.rd-lock{display:none!important}.rdy{padding:0}.rd-box,.rd-verdict{break-inside:avoid}}
+/* "Am I ready to pitch?": scores where 10 is best, the two overall scores, and "What's good" first (founder, 26 Nov). */
+.rd-score{background:#fff;border-radius:16px;padding:8px 16px;min-width:108px}
+.rd-score span{display:block;font:400 12px 'Geist Mono',ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#6B7772}
+.rd-score b{font-size:30px;font-weight:600;line-height:1.1}.rd-score b i{font-style:normal;font-weight:400;font-size:15px;color:#6B7772}
+.rd-good{background:#EAF4EC;border-radius:24px;padding:20px 24px 12px;margin:18px 0 0 56px}
+.rd-good h2{font-size:22px;font-weight:600}
+.rd-row.rd-g{grid-template-columns:18px 290px 96px 64px 1fr}
+.rd-good .rd-row{border-top-color:#D3E6D8}
+.rd-dot.rd-grn{background:#2E9B57}
+.rd-imp.rd-red{background:#FBE3E1;color:#A3231C}.rd-imp.rd-yel{background:#FBF0CC;color:#7A5A00}.rd-imp.rd-grn{background:#fff;color:#1E7A41}.rd-imp.rd-ten{background:#fff;color:#5A35B0;margin-left:auto;align-self:center}
+.rd-good .rd-lead{align-items:flex-start}
+@media (max-width:1000px){.rd-good{margin-left:0}.rd-row.rd-g{grid-template-columns:18px 1fr}}

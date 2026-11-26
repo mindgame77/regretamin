@@ -35,6 +35,27 @@ export function importance(n, level, stage) {
   return level === 'red' ? Math.max(7, Math.min(10, v)) : Math.max(3, Math.min(6, v));
 }
 
+// The score shown beside each point, 1 to 10, where 10 is as good as it gets (founder, 26 Nov: "when people see 1 of 10,
+// they understand they have to level it up"). A red flag scores 1 to 4, an improvement 4 to 7, a strength 8 or 9, and
+// the one exceptional thing 10. It is the importance turned round, so the most important red flag has the lowest score.
+export function score(n, level, stage) {
+  if (level === 'lead') return 10;
+  if (level === 'good') { const it = BY_N.get(n); const w = (it && AREA_WEIGHT[it.area] ? AREA_WEIGHT[it.area] : [5, 5])[normStage(stage) === 'Pre-seed' ? 0 : 1]; return w >= 8 ? 9 : 8; }
+  return level === 'red' ? 11 - importance(n, 'red', stage) : 10 - importance(n, 'yellow', stage);
+}
+const TEAM_AREAS = new Set(['Founders and team', 'Virality and audience']);
+// One number for the deck and one for the founders: the average of every point judged, each counted by how much its
+// area matters at this stage. No points about the founders means no founders score (the deck says too little).
+function overall(items, stage, teamOnly) {
+  let sum = 0, wsum = 0;
+  for (const x of items) {
+    if (teamOnly && !TEAM_AREAS.has(x.area)) continue;
+    const w = (AREA_WEIGHT[x.area] || [5, 5])[stage === 'Pre-seed' ? 0 : 1];
+    sum += x.score * w; wsum += w;
+  }
+  return wsum ? Math.max(1, Math.min(10, Math.round(sum / wsum))) : null;
+}
+
 const clip = (s, n) => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s; };
 
 // The model's text is JSON, sometimes wrapped in a code fence or a sentence.
@@ -57,18 +78,26 @@ export function assemble(model, firms) {
     if (it.stage !== 'Both' && it.stage !== stage) return null;
     seen.add(n);
     return { n, level, area: it.area, what: clip(f.what || (level === 'red' ? it.red : it.yellow), 110), where: clip(f.where || '', 24),
-      why: clip(f.why || '', 150), fix: clip(f.fix || it.fix, 170), matters: importance(n, level, stage) };
+      why: clip(f.why || '', 150), fix: clip(f.fix || it.fix, 170), matters: importance(n, level, stage), score: score(n, level, stage) };
   }).filter(Boolean).sort((x, y) => y.matters - x.matters || x.n - y.n);
   const reds = flags.filter((f) => f.level === 'red').slice(0, 8), yellows = flags.filter((f) => f.level === 'yellow').slice(0, 6);
   const lead = m.lead_with && m.lead_with.text ? { text: clip(m.lead_with.text, 220), where: clip(m.lead_with.where || '', 24) } : null;
+  const good = (Array.isArray(m.strengths) ? m.strengths : []).map((g) => {
+    const n = Number(g && g.n), it = BY_N.get(n);
+    if (!it || FROM_OUR_DATA.has(n) || seen.has(n) || !g.what) return null;
+    seen.add(n);
+    return { n, level: 'good', area: it.area, what: clip(g.what, 110), where: clip(g.where || '', 24), why: clip(g.why || '', 150), score: score(n, 'good', stage) };
+  }).filter(Boolean).sort((x, y) => y.score - x.score || x.n - y.n).slice(0, 5);
+  const judged = [...reds, ...yellows, ...good, ...(lead ? [{ area: 'Founders and team', score: 10 }] : [])];
   const f = firms && typeof firms === 'object' ? firms : {};
   return {
-    v: 1,
+    v: 2,
     company: { name: clip(co.name, 60), one_line: clip(co.one_line, 140), stage, stage_stated: !!co.stage && !/unknown/i.test(String(co.stage)),
       sector: SECTORS.includes(co.sector) ? co.sector : 'Other', ask_usd: Number(co.ask_usd) > 0 ? Math.round(Number(co.ask_usd)) : null,
       based_in: clip(co.based_in, 60), slides: Number(co.slides) > 0 ? Math.round(Number(co.slides)) : null },
     verdict: reds.length ? `Fix ${reds.length} thing${reds.length === 1 ? '' : 's'} first.` : 'Ready to send.',
-    reds, yellows, lead,
+    reds, yellows, lead, good,
+    scores: { deck: overall(judged, stage, false), founders: overall(judged, stage, true) },
     facts: (Array.isArray(m.facts) ? m.facts : []).slice(0, 20).map((x) => ({ claim: clip(x && x.claim, 140), proof: ['proven', 'shown', 'claimed', 'assumed'].includes(x && x.proof) ? x.proof : 'claimed', where: clip(x && x.where, 24) })),
     competitors_named: (Array.isArray(m.competitors_named) ? m.competitors_named : []).slice(0, 10).map((x) => clip(x, 60)),
     firms: (Array.isArray(f.firms) ? f.firms : []).map((x) => ({ ...x, say: sayTo(x, stage, co.sector) })),
@@ -97,13 +126,15 @@ Work in this order:
 1. Read every slide. Work out the company, its stage (Pre-seed or Seed; if the deck does not say, judge from the ask and traction and say "unknown" only if you truly cannot tell), its sector, the ask in US dollars, and where it is based.
 2. List the main factual claims and how well each is proven: "proven" (a document, a named customer, a public source shown), "shown" (a screenshot, chart or link), "claimed" (the deck says so, nothing more), "assumed" (a forecast or a guess).
 3. Go through the checklist below. Raise a flag ONLY where the deck gives real evidence that the RED or YELLOW description applies. Skip rows that the deck gives you no basis to judge, rows for the other stage, and rows where the deck is fine. Most rows will be skipped. Never raise more than 8 red and 6 yellow flags: keep the ones an investor would notice first.
-4. Find at most one truly exceptional strength (the kind an investor repeats to a partner, for example a founder who built and sold a company in this field). If there is none, use null. Ordinary good things are not exceptional.
+4. List what is good: 3 to 5 checklist rows where the deck clearly does well, with the evidence on a slide. Be as strict as with the flags. If the deck has fewer real strengths, list fewer; never pad.
+5. Find at most one truly exceptional strength (the kind an investor repeats to a partner, for example a founder who built and sold a company in this field). If there is none, use null. Ordinary good things are not exceptional, and the exceptional one is not repeated among the strengths.
 
 For every flag write, about THIS deck, in plain words:
 - "what": what is wrong, in 12 words or fewer.
 - "where": "Slide N", or "Not in the deck".
 - "why": one sentence on why an investor cares.
 - "fix": one concrete instruction the founder can act on today.
+For every strength write "what" (what is good, 12 words or fewer), "where" and "why" (one sentence on why an investor likes it).
 
 Never say the company will or will not raise money. Never tell the founder to drop the idea. Do not flatter.
 
@@ -111,6 +142,7 @@ Answer with ONE JSON object and nothing else, in exactly this shape:
 {"company":{"name":"","one_line":"","stage":"Pre-seed|Seed|unknown","sector":"one of: ${SECTORS.join(', ')}","ask_usd":0,"based_in":"","slides":0},
 "facts":[{"claim":"","proof":"proven|shown|claimed|assumed","where":"Slide N"}],
 "flags":[{"n":0,"level":"red|yellow","what":"","where":"","why":"","fix":""}],
+"strengths":[{"n":0,"what":"","where":"Slide N","why":""}],
 "lead_with":{"text":"","where":"Slide N"},
 "competitors_named":[""]}
 "n" is the checklist number. Use null for "ask_usd", "based_in" or "lead_with" when not known.

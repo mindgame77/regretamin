@@ -80,8 +80,10 @@
 
   const money = (n) => (n >= 1e6 ? '$' + (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'M' : '$' + Math.round(n / 1e3) + 'K');
   const day = (d) => { const t = new Date(d + 'T00:00:00Z'); return isNaN(t) ? '' : t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); };
-  const rows = (list, cls) => list.map((f) => `<div class="rd-row"><i class="rd-dot ${cls}"></i><b>${esc(f.what)}</b><span class="rd-wh">${esc(f.where)}</span><span class="rd-imp">${f.matters}<i>/10</i></span><span>${esc(f.why)}</span><span>${esc(f.fix)}</span></div>`).join('');
-  const head = (fix) => `<div class="rd-row rd-hd"><span></span><span>What</span><span>Where</span><span>Matters</span><span>Why it matters</span><span>${fix}</span></div>`;
+  const sc = (f) => (f.score != null ? f.score : 11 - f.matters);   // reports saved before the scores were turned round
+  const rows = (list, cls) => list.map((f) => `<div class="rd-row"><i class="rd-dot ${cls}"></i><b>${esc(f.what)}</b><span class="rd-wh">${esc(f.where)}</span><span class="rd-imp ${cls}">${sc(f)}<i>/10</i></span><span>${esc(f.why)}</span><span>${esc(f.fix)}</span></div>`).join('');
+  const head = (fix) => `<div class="rd-row rd-hd"><span></span><span>What</span><span>Where</span><span>Score</span><span>Why it matters</span><span>${fix}</span></div>`;
+  const tile = (label, n) => `<div class="rd-score"><span>${label}</span><b>${n == null ? '–' : n}<i>/10</i></b></div>`;
   const step = (n, body, last) => `<div class="rd-step"><div class="rd-rail"><span>${n}</span>${last ? '' : '<i></i>'}</div><div class="rd-box">${body}</div></div>`;
 
   function firmRow(f, i) {
@@ -98,12 +100,15 @@
     const co = r.company || {};
     const line = [co.name, co.stage ? co.stage.toLowerCase() : '', co.sector && co.sector !== 'Other' ? co.sector : '', co.ask_usd ? 'raising ' + money(co.ask_usd) : '', co.based_in].filter(Boolean).join(' · ');
     const reds = r.reds || [], yel = r.yellows || [], firms = r.firms || [], then = r.then || [];
-    const lead = r.lead ? `<div class="rd-lead"><i></i><div><b>Lead with this.</b> ${esc(r.lead.text)}${r.lead.where ? ' <span class="rd-wh">' + esc(r.lead.where) + '</span>' : ''}</div></div>` : '';
+    const lead = r.lead ? `<div class="rd-lead"><i></i><div><b>Lead with this.</b> ${esc(r.lead.text)}${r.lead.where ? ' <span class="rd-wh">' + esc(r.lead.where) + '</span>' : ''}</div><span class="rd-imp rd-ten">10<i>/10</i></span></div>` : '';
+    const good = r.good || [], scores = r.scores || null;
+    const goodBox = good.length || lead ? `<div class="rd-good"><h2>What's good</h2>${good.length ? `<div class="rd-row rd-g rd-hd"><span></span><span>What</span><span>Where</span><span>Score</span><span>Why investors like it</span></div>` + good.map((g) => `<div class="rd-row rd-g"><i class="rd-dot rd-grn"></i><b>${esc(g.what)}</b><span class="rd-wh">${esc(g.where)}</span><span class="rd-imp rd-grn">${g.score}<i>/10</i></span><span>${esc(g.why)}</span></div>`).join('') : ''}${lead}</div>` : '';
     const blur = '<div class="rd-row"><i class="rd-dot"></i><b>Company name, city</b><span class="rd-wh">Series A</span><span></span><span>$00M · backed by Firm name, Firm name</span><span>2026</span></div>'.repeat(3);
     res.innerHTML = `<div class="rd-bar"><h1>Your raise report</h1><span class="rd-who">${esc(line)}</span><button type="button" class="rd-btn rd-k" id="rd-pdf">Download PDF</button><button type="button" class="rd-btn" id="rd-again">Upload a new version</button></div>`
-      + `<div class="rd-verdict"><div><p class="rd-cap">Verdict</p><h2>${esc(r.verdict)}</h2></div><div class="rd-plan"><span>1 Remove the red flags</span><i>→</i><span>2 Improve</span><i>→</i><span>3 Know your competitors</span><i>→</i><span>4 Pitch</span></div></div>`
+      + `<div class="rd-verdict"><div><p class="rd-cap">Verdict</p><h2>${esc(r.verdict)}</h2></div>${scores ? tile('Deck', scores.deck) + tile('Founders', scores.founders) : ''}<div class="rd-plan"><span>1 Remove the red flags</span><i>→</i><span>2 Improve</span><i>→</i><span>3 Know your competitors</span><i>→</i><span>4 Pitch</span></div></div>`
+      + goodBox
       + step(1, `<h2>Get rid of the red flags <small>${reds.length ? reds.length + ' · most important first' : 'none found'}</small></h2>${reds.length ? head('How to fix it') + rows(reds, 'rd-red') : ''}`)
-      + step(2, `<h2>Improve these <small>${yel.length ? yel.length + ' · not deal-breakers, but investors will notice' : 'nothing stood out'}</small></h2>${yel.length ? head('How to improve it') + rows(yel, 'rd-yel') : ''}${lead}`)
+      + step(2, `<h2>Improve these <small>${yel.length ? yel.length + ' · not deal-breakers, but investors will notice' : 'nothing stood out'}</small></h2>${yel.length ? head('How to improve it') + rows(yel, 'rd-yel') : ''}`)
       + step(3, `<h2>Know your competitors</h2><div class="rd-lock"><div class="rd-blur">${blur}</div><div class="rd-offer"><div><b>Full research</b><p>Your competitors and who funded them. Who tried this before, and the founders to ask. The firms to skip.</p></div><span class="rd-pr">10 credits</span><button type="button" class="rd-buy" disabled>Get the full research</button></div></div>`)
       + step(4, `<h2>Pitch these firms, in this order</h2>${firms.length ? `<div class="rd-sub"><span class="rd-tag">Start here</span><span>They fit your stage and field and are writing cheques now.</span></div><div class="rd-frow rd-hd"><span></span><span></span><span>Firm</span><span>Why it fits</span><span>What to say to this firm</span></div>${firms.map(firmRow).join('')}` : '<p class="rd-none">We found no firm with a recent deal at your stage in your field.</p>'}`
         + (then.length ? `<div class="rd-sub rd-sub2"><span class="rd-tag rd-tag2">Then these</span><span>After the first cheque is in: big firms that later invested where the firms above went first.</span></div><div class="rd-then">${then.map((t) => `<a href="/vc/${encodeURIComponent(t.slug)}/"><b>${esc(t.name)}</b><span>after ${esc(t.after)}${t.n > 1 ? ', ' + t.n + ' startups' : ''}</span></a>`).join('')}</div>` : ''), true);

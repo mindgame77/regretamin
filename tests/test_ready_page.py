@@ -34,6 +34,7 @@ def test_the_page_asks_only_for_the_deck_linkedin_and_a_note():
     js = read('launch', 'js', 'ready.js')
     assert "20 * 1024 * 1024" in js and "from('decks').upload(" in js and "fetch('/api/ready'" in js
     assert "'js/ready.js'" in read('launch', 'build.py')
+    assert "<span>Score</span>" in js and "What's good" in js and "tile('Deck', scores.deck) + tile('Founders', scores.founders)" in js   # 10 is best; good things first
 
 
 def test_the_function_keeps_the_key_on_the_server_and_only_serves_the_owner():
