@@ -329,6 +329,10 @@
     18: [['1953513280594751495', 'AUG 2025 · GPT-5 AND THE CHART CRIME', 'US West', 'Bay Area']],
     19: [['1980350617894941179', 'OCT 2025 · AWS TAKES DOWN THE INTERNET', 'US West', 'Seattle'], ['1990945928619131082', 'NOV 2025 · CLOUDFLARE GOES DOWN TOO', 'US West', 'Bay Area'], ['1990800703007367677', 'NOV 2025 · CLOUDFLARE GOES DOWN TOO', 'US West', 'Bay Area']],
     20: [['2017407995567616058', 'JAN 2026 · MOLTBOOK, A SOCIAL NETWORK FOR BOTS', 'US West', 'Bay Area'], ['2017344281837457414', 'JAN 2026 · MOLTBOOK, A SOCIAL NETWORK FOR BOTS', 'US West', 'Bay Area'], ['2033964654603735185', 'MAR 2026 · ALTMAN THANKS THE CODERS', 'US West', 'Bay Area']],
+    // 2026 Q2 to Q4: the stories the founder named (26 Nov); posts found in news roundups. The SpaceX listing has no post yet.
+    21: [['2046338786666459546', 'APR 2026 · TIM COOK STEPS DOWN', 'US West', 'Bay Area'], ['2046418842201559241', 'APR 2026 · TIM COOK STEPS DOWN', 'US West', 'Bay Area'], ['2046339853076316465', 'APR 2026 · TIM COOK STEPS DOWN', 'US West', 'Bay Area']],
+    22: [['2097712525131280732', 'SEP 2026 · THE FOLDABLE IPHONE DUO', 'US West', 'Bay Area'], ['2097746715721756983', 'SEP 2026 · THE FOLDABLE IPHONE DUO', 'US West', 'Bay Area'], ['2097762661526090004', 'SEP 2026 · THE FOLDABLE IPHONE DUO', 'US West', 'Bay Area']],
+    23: [['2119537810155638957', 'NOV 2026 · JENSEN HUANG RESIGNS', 'US West', 'Bay Area'], ['2119588921554219067', 'NOV 2026 · JENSEN HUANG RESIGNS', 'US West', 'Bay Area'], ['2119554757878571514', 'NOV 2026 · JENSEN HUANG RESIGNS', 'US West', 'Bay Area']],
   };
   let xReady = null, postNow = null, postHold = false;
   const xLoad = () => xReady || (xReady = new Promise((res) => {
