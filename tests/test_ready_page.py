@@ -75,3 +75,11 @@ def test_firm_links_open_in_a_new_page_and_reports_are_listed_in_the_account():
     assert "Page('account/score', my_score.render, nav='account', noindex=True)" in reg   # its own page, "My score", in the account menu
     assert json.load(open(os.path.join(ROOT, "launch", "copy.json")))["site"]["pages"]["account/score"]["nav_label"] == "My score"
     assert "get('pdf')" in js and "window.print()" in js   # Download PDF opens the report and the save-as-PDF box
+
+
+def test_the_pdf_says_it_was_made_with_regretamin():
+    """Founder, 26 Nov: "in PDF, there should be something about Regretamin, like done with Regretamin"."""
+    js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
+    css = open(os.path.join(ROOT, "launch", "style.css")).read()
+    assert "Made with Regretamin · regretamin.com" in js
+    assert ".rd-made{display:none}" in css and "@media print{.rd-made{display:flex!important" in css   # in the PDF only, not on the page
