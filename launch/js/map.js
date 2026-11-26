@@ -356,7 +356,8 @@
     for (const pick of order) {
       const next = document.createElement('div'); next.className = 'vm-post-in';
       const hold = document.createElement('div'); hold.style.cssText = 'position:absolute;left:-9999px;top:0;width:300px'; document.body.appendChild(hold); hold.appendChild(next);
-      try { await window.twttr.widgets.createTweet(pick[0], next, { width: 300, dnt: true, conversation: 'none' }); } catch (e) { hold.remove(); continue; }
+      // X sometimes never answers for a post (deleted, protected): four seconds, then the next one
+      try { await Promise.race([window.twttr.widgets.createTweet(pick[0], next, { width: 300, dnt: true, conversation: 'none' }), new Promise((r) => setTimeout(r, 4000))]); } catch (e) { hold.remove(); continue; }
       if (S.playing !== run) { hold.remove(); return null; }
       const fr = next.querySelector('iframe'), hh = fr ? fr.getBoundingClientRect().height : 0;
       if (!fr || hh < 60 || hh > POST_MAX) { hold.remove(); continue; }  // deleted, or too long
