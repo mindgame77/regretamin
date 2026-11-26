@@ -38,10 +38,11 @@ def test_the_page_asks_only_for_the_deck_linkedin_and_a_note():
 
 def test_the_function_keeps_the_key_on_the_server_and_only_serves_the_owner():
     fn = read('launch', 'functions', 'api', 'ready.js')
-    assert 'env.ANTHROPIC_API_KEY' in fn and "error: 'no_key'" in fn
+    assert 'env.ANTHROPIC_API_KEY' in fn and 'env.GEMINI_API_KEY' in fn and "error: 'no_key'" in fn
+    assert "env.READY_MODEL || 'gemini-4-neon'" in fn and 'x-goog-api-key' in fn   # Gemini is used when its key is there
     assert '/auth/v1/user' in fn and 'startsWith(`${user.id}/`)' in fn
     assert "type: 'document', source: { type: 'url'" in fn and 'expiresIn: 900' in fn
-    assert 'ANTHROPIC_API_KEY' not in read('launch', 'js', 'ready.js')
+    assert 'API_KEY' not in read('launch', 'js', 'ready.js')
 
 
 def test_the_fixed_rules():

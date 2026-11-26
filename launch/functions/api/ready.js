@@ -6,7 +6,8 @@
 //   3. fixed rules turn the model's answers into the verdict and the importance numbers (./_ready/rules.js);
 //   4. firms that fit, from our own database (v2_ready_firms);
 //   5. the report is saved on their row and sent back.
-// Secrets: ANTHROPIC_API_KEY lives in Cloudflare (the founder puts it there). READY_MODEL may name another model.
+// Secrets live in Cloudflare (the founder puts them there): GEMINI_API_KEY (used first; founder, 26 Nov: "let's try Gemini ...
+// Neon") or ANTHROPIC_API_KEY. READY_MODEL may name another model of the same maker.
 import { systemPrompt, parseModelJson, assemble } from './_ready/rules.js';
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -15,7 +16,7 @@ export async function onRequestPost(ctx) {
   const env = ctx.env || {};
   const SB = env.SUPABASE_URL, ANON = env.SUPABASE_ANON_KEY;
   if (!SB || !ANON) return json({ error: 'not_configured' }, 503);
-  if (!env.ANTHROPIC_API_KEY) return json({ error: 'no_key' }, 503);
+  if (!env.GEMINI_API_KEY && !env.ANTHROPIC_API_KEY) return json({ error: 'no_key' }, 503);
   const token = (ctx.request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
   let body = null;
   try { body = await ctx.request.json(); } catch (e) { body = null; }
@@ -45,19 +46,11 @@ export async function onRequestPost(ctx) {
 
   const note = [row.note ? `The founder's note:\n${String(row.note).slice(0, 8000)}` : '', row.linkedin ? `The founder's LinkedIn (cannot be opened): ${String(row.linkedin).slice(0, 200)}` : '']
     .filter(Boolean).join('\n\n') || 'The founder sent the deck only.';
-  const model = env.READY_MODEL || 'claude-opus-5-5'  /* founder, 26 Nov: "let's try Opus 5.5"; about 26 cents a report by estimate */;
-  let ai;
-  try {
-    ai = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model, max_tokens: 6000, temperature: 0, system: systemPrompt(),
-        messages: [{ role: 'user', content: [{ type: 'document', source: { type: 'url', url: `${SB}/storage/v1${link}` } }, { type: 'text', text: `${note}\n\nReview this deck. Answer with the JSON object only.` }] }] }),
-    });
-  } catch (e) { return fail('model_unreachable'); }
-  if (!ai.ok) { const t = await ai.text().catch(() => ''); return fail(`model_${ai.status}: ${t.slice(0, 200)}`); }
-  const out = await ai.json();
-  const text = (out.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
+  const deckUrl = `${SB}/storage/v1${link}`;
+  const ask = `${note}\n\nReview this deck. Answer with the JSON object only.`;
+  const got = env.GEMINI_API_KEY ? await askGemini(env, deckUrl, ask) : await askClaude(env, deckUrl, ask);
+  if (got.error) return fail(got.error);
+  const { model, text, usage } = got;
   const answers = parseModelJson(text);
   if (!answers) return fail('model_answer_unreadable');
 
@@ -69,7 +62,55 @@ export async function onRequestPost(ctx) {
   } catch (e) { firms = null; }
 
   const report = assemble(answers, firms);
-  const usage = out.usage || {};
-  await save({ status: 'done', result: report, model, tokens_in: usage.input_tokens || null, tokens_out: usage.output_tokens || null, finished_at: new Date().toISOString(), error: null });
+  await save({ status: 'done', result: report, model, tokens_in: usage.in || null, tokens_out: usage.out || null, finished_at: new Date().toISOString(), error: null });
   return json({ report, id });
+}
+
+// The model is one replaceable part: each maker's call takes the deck's link and the question, and gives back the text.
+async function askClaude(env, deckUrl, ask) {
+  const model = env.READY_MODEL || 'claude-opus-5-5';
+  let r;
+  try {
+    r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model, max_tokens: 6000, temperature: 0, system: systemPrompt(),
+        messages: [{ role: 'user', content: [{ type: 'document', source: { type: 'url', url: deckUrl } }, { type: 'text', text: ask }] }] }),
+    });
+  } catch (e) { return { error: 'model_unreachable' }; }
+  if (!r.ok) return { error: `model_${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}` };
+  const out = await r.json(), u = out.usage || {};
+  return { model, text: (out.content || []).filter((c) => c.type === 'text').map((c) => c.text).join(''), usage: { in: u.input_tokens, out: u.output_tokens } };
+}
+
+// Gemini: the deck goes by its link (the maker fetches files up to 15 MB itself); if that is refused, the file is sent inside the request.
+async function askGemini(env, deckUrl, ask) {
+  const model = env.READY_MODEL || 'gemini-4-neon';
+  const call = (filePart) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    method: 'POST',
+    headers: { 'x-goog-api-key': env.GEMINI_API_KEY, 'content-type': 'application/json' },
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt() }] },
+      contents: [{ role: 'user', parts: [filePart, { text: ask }] }],
+      generationConfig: { temperature: 0, maxOutputTokens: 16000, responseMimeType: 'application/json' } }),
+  });
+  let r;
+  try {
+    r = await call({ fileData: { mimeType: 'application/pdf', fileUri: deckUrl } });
+    if (!r.ok && r.status !== 401 && r.status !== 429) {
+      const deck = await fetch(deckUrl);
+      if (!deck.ok) return { error: 'deck_missing' };
+      r = await call({ inlineData: { mimeType: 'application/pdf', data: base64(new Uint8Array(await deck.arrayBuffer())) } });
+    }
+  } catch (e) { return { error: 'model_unreachable' }; }
+  if (!r.ok) return { error: `model_${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}` };
+  const out = await r.json(), u = out.usageMetadata || {};
+  const parts = (((out.candidates || [])[0] || {}).content || {}).parts || [];
+  return { model, text: parts.filter((x) => typeof x.text === 'string' && !x.thought).map((x) => x.text).join(''),
+    usage: { in: u.promptTokenCount, out: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0) } };
+}
+
+function base64(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
 }
