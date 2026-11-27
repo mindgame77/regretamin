@@ -33,3 +33,8 @@ def test_the_out_of_credits_popup_uses_the_same_plan_rows_and_offer():
     css = (ROOT / 'style.css').read_text()
     assert '.sgi .orow:has(input:checked){border:2px solid #10201C' in css and '.sgi .btn.y{background:#10201C' in css
     assert "c && c === AUTO ? fmt(P.first.sub" in APP and 'AUTO_READY' in APP
+
+
+def test_preview_link_shows_the_offer_but_blocks_checkout():
+    assert "get('rg_preview') === 'firstmonth'" in APP
+    assert "if (PREVIEW) return msg(" in APP and "if (PREVIEW) { AUTO = {" in APP

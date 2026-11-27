@@ -392,9 +392,10 @@
       + '<p class="ex">' + esc(P.explain) + '</p>'
       + '<button class="btn" data-buy="' + sel.kind + '">' + esc(fmt(P.start, { name: sel.name, now })) + '</button><p class="pnote">' + esc(fmt(note, { now, price: sel.price, p: pct })) + '</p>';
   }
-  const AUTO_KEY = 'rg_first_offer';
+  const AUTO_KEY = 'rg_first_offer', PREVIEW = new URLSearchParams(location.search).get('rg_preview') === 'firstmonth';
   async function autoOffer() { // the standing first-month offer exists only while its promotion code is valid in Stripe; without it nothing changes on the page
     const f = C.copy.site.pricing.first, done = () => { AUTO_READY = true; drawPlans(); };
+    if (PREVIEW) { AUTO = { ok: true, discount: true, percent_off: 50, duration: 'once', code: f.code, kinds: Object.entries(C.copy.plans).filter(([k, p]) => k[0] !== '_' && p.monthly).map(([k]) => k) }; return done(); } // ?rg_preview=firstmonth: shows the offer as designed, display only, checkout is blocked
     if (!sb || !f || !f.code) return done();
     try { const c = JSON.parse(localStorage.getItem(AUTO_KEY) || 'null'); if (c && Date.now() - c.t < 600000) { AUTO = c.d || null; AUTO_READY = true; drawPlans(); } } catch (e) {} // last answer, up to 10 minutes old: the popup opens with the right prices at once
     if (!AUTO_READY) setTimeout(() => { if (!AUTO_READY) done(); }, 1500);
@@ -488,6 +489,7 @@
   }
   async function checkout(kind, extra, out) {
     const msg = (t) => { if (out) out.textContent = t; else if (t && !/…$/.test(t)) alert(t); };
+    if (PREVIEW) return msg('Preview only. Nothing was charged and no checkout opened. The half price goes live once the FIRSTMONTH code exists in Stripe.');
     document.querySelectorAll('[data-buy],#outgo').forEach(b => b.disabled = true); msg(T.opening);
     const { data, error } = await sb.functions.invoke('create-checkout', { body: Object.assign({ kind, return_path: location.pathname }, extra || {}, off(kind) || CODE ? { code: (off(kind) || CODE).code } : {}) });
     if (error || !data || !data.url) {
