@@ -270,3 +270,17 @@ def test_biggest_rounds_tiles_show_a_startup_logo_when_there_is_one():
         assert name == name.strip().lower() and sid.isdigit()
         assert os.path.getsize(os.path.join(root, 's-' + sid + '.png')) > 200, name
     assert "startups: true" in JS and "assets/logos/startups.json" in JS and "assets/logos/s-" in JS
+
+
+def test_charts_are_picked_with_five_sticker_buttons_not_a_drop_down():
+    """Founder, 27 Nov 2026: five emoji buttons replace the drop-down; each button is in its chart's circle colour, has the full name on hover, and the title reads Top 100 · short name."""
+    for gone in ('pickbtn', 'role="menu"', 'menuitemradio', '.menu'):
+        assert gone not in JS
+    assert JS.count('class="stk"') == 1 and 'aria-pressed="${x.key === chart.key}"' in JS
+    assert 'title="${esc(x.label)}"' in JS and 'aria-label="${esc(x.label)}"' in JS   # hover shows the full chart name
+    assert '<h1>Top 100 <span id="h1n"></span></h1>' in JS and "n.style.color = chart.dot" in JS
+    shorts = re.findall(r"short: '([^']+)', emoji: '([^']+)'", JS)
+    assert [s for s, _ in shorts] == ['Most active', 'First in', 'Social reach', 'New funds', 'Big rounds']
+    assert [e for _, e in shorts] == ['🔥', '🥇', '📣', '💰', '🚀']
+    assert all(len(s) <= 12 for s, _ in shorts)   # "Top 100 · " plus the name stays on one line in the 341 px card
+    assert 'aspect-ratio:1' in JS and 'background:var(--ms)' in JS   # square tiles, grey inside

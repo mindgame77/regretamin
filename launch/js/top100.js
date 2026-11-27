@@ -36,13 +36,13 @@
   };
   // The charts that are ready. Each one turns its database answer into rows: [slug, name, value, last year's value or null, last year's rank or null].
   const CHARTS = [
-    { key: 'active', label: 'Most active', rpc: 'v2_top100_active', args: { p_n: 100 }, fx: 'fx_top100', about: 'Firms backing the most startups this year', dot: '#D9483B',
+    { key: 'active', label: 'Most active', rpc: 'v2_top100_active', args: { p_n: 100 }, fx: 'fx_top100', about: 'Firms backing the most startups this year', dot: '#D9483B', short: 'Most active', emoji: '🔥',
       unit: (n) => num(n) + (n === 1 ? ' startup' : ' startups') },
     // First in: startups where the firm held the earliest shown deal (v2_top100_first); same window and row shape as Most active
-    { key: 'first', label: 'First in', rpc: 'v2_top100_first', args: { p_n: 100 }, fx: 'fx_top100_first', about: 'Most startups backed before anyone else', dot: '#3F9E4A',
+    { key: 'first', label: 'First in', rpc: 'v2_top100_first', args: { p_n: 100 }, fx: 'fx_top100_first', about: 'Most startups backed before anyone else', dot: '#3F9E4A', short: 'First in', emoji: '🥇',
       unit: (n) => 'First in on ' + num(n) + (n === 1 ? ' startup' : ' startups') },
     // Most social reach: followers added up over X, LinkedIn, YouTube, Instagram and Substack (v2_top100_social). Only one reading per account so far, so no last year and no moves.
-    { key: 'social', label: 'Most social reach', rpc: 'v2_top100_social', args: { p_n: 100 }, fx: 'fx_top100_social', about: 'Most followers across social media', dot: '#7B5CD6', noPrev: true, stack: true, scale: Math.sqrt,
+    { key: 'social', label: 'Most social reach', rpc: 'v2_top100_social', args: { p_n: 100 }, fx: 'fx_top100_social', about: 'Most followers across social media', dot: '#7B5CD6', short: 'Social reach', emoji: '📣', noPrev: true, stack: true, scale: Math.sqrt,
       unit: (n) => fol(n) + ' followers', bar: null, circle: fol,
       row: (r) => { const t = platsOf(r).sort((a, b) => b.n - a.n)[0]; return { v: fol(r.v), s: t ? 'mostly ' + t.k : '' }; },
       under: (r) => fol(r.v),
@@ -50,7 +50,7 @@
       legend: 'platforms' },
     // Biggest new funds: each firm's biggest fund announced in the last 12 months against the 12 before (v2_top100_funds). The row's seventh item is the announcement date.
     // A firm with no fund in the earlier 12 months has nothing to compare with: grey, no move ("no earlier fund on record").
-    { key: 'funds', label: 'Biggest new funds', rpc: 'v2_top100_funds', args: { p_n: 100 }, fx: 'fx_top100_funds', about: 'Biggest funds of the past 12 months', dot: '#2F6FDB', noPrev: true,
+    { key: 'funds', label: 'Biggest new funds', rpc: 'v2_top100_funds', args: { p_n: 100 }, fx: 'fx_top100_funds', about: 'Biggest funds of the past 12 months', dot: '#2F6FDB', short: 'New funds', emoji: '💰', noPrev: true,
       unit: usd, bar: short, circle: usd,
       row: (r) => ({ v: usd(r.v), s: dayMon(r.dt) }),
       under: (r) => usd(r.v),
@@ -59,7 +59,7 @@
     // Biggest rounds: the 100 biggest rounds of the year so far (v2_top100_rounds). A row is a round, not a firm: no firm page to open, no last year. Its Map places each round by its STARTUP's country / city
     // (founder, 27 Nov: "startup country"); a round whose startup has no place on record is in the list but not on the map.
     // Seventh item: { r: round name, d: date, i: sector, n: investors we hold in it, h: in the last 30 days, g: industry group, c: startup country, p: world region, l: 'us' | 'eu', a: place on that zoom }.
-    { key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds', args: { p_n: 100 }, fx: 'fx_top100_rounds', about: 'The 100 largest rounds this year so far', dot: '#D13C8C', noPrev: true, noLink: true, startups: true, scale: Math.sqrt, noun: 'round',
+    { key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds', args: { p_n: 100 }, fx: 'fx_top100_rounds', about: 'The 100 largest rounds this year so far', dot: '#D13C8C', short: 'Big rounds', emoji: '🚀', noPrev: true, noLink: true, startups: true, scale: Math.sqrt, noun: 'round',
       placeOf: (r, lvl) => { const x = r.parts || {}; return lvl === 'world' ? x.p : x.l === lvl ? x.a : null; },  // the Map: a round sits where its startup is (the function's p / l / a)
       unit: usd, bar: (v) => (v >= 1e9 ? short(v) : ''), under: (r) => usd(r.v), color: gCol, ink: gInk, flame: (r) => !!(r.parts && r.parts.h),
       row: (r) => ({ v: usd(r.v), s: [r.parts && r.parts.r, dayMon(r.parts && r.parts.d)].filter(Boolean).join(' · ') }),
@@ -96,14 +96,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 .head{display:flex;flex-direction:column;gap:12px;flex:none}
 .head h1{margin:0;font-size:27px;font-weight:600;letter-spacing:-.05em;line-height:1.02}
 .based{margin:0;font:13px/1.35 var(--mono);color:var(--mm)}
-.pick{position:relative}
-.pickbtn{display:flex;align-items:center;justify-content:space-between;width:100%;height:44px;padding:0 14px;border:1px solid #8A9893;border-radius:10px;background:#fff;font-size:15px;text-align:left}
-.pickbtn svg{flex:none}
-.menu{position:absolute;left:0;right:0;top:48px;z-index:30;background:#fff;border:1px solid #8A9893;border-radius:10px;padding:6px;box-shadow:0 8px 28px rgba(16,32,28,.12)}
-.menu[hidden]{display:none}
-.menu button{display:block;width:100%;height:38px;padding:0 10px;border:0;border-radius:8px;background:none;text-align:left;font-size:15px}
-.menu button:hover,.menu button[aria-checked="true"]{background:var(--ms)}
-.menu button[aria-checked="true"]{font-weight:600}
+.head h1{white-space:nowrap}
+.pick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.stk{display:flex;align-items:center;justify-content:center;aspect-ratio:1;width:100%;padding:0;border:2px solid var(--c);border-radius:12px;background:var(--ms);cursor:pointer}
+.stk[aria-pressed="true"]{background:var(--c);box-shadow:0 3px 0 rgba(16,32,28,.25)}
+.stk span{display:block;font-size:36px;line-height:1;text-shadow:1.50px 0.00px 0 #fff, 1.39px 0.57px 0 #fff, 1.06px 1.06px 0 #fff, 0.57px 1.39px 0 #fff, 0.00px 1.50px 0 #fff, -0.57px 1.39px 0 #fff, -1.06px 1.06px 0 #fff, -1.39px 0.57px 0 #fff, -1.50px 0.00px 0 #fff, -1.39px -0.57px 0 #fff, -1.06px -1.06px 0 #fff, -0.57px -1.39px 0 #fff, -0.00px -1.50px 0 #fff, 0.57px -1.39px 0 #fff, 1.06px -1.06px 0 #fff, 1.39px -0.57px 0 #fff;filter:drop-shadow(0 2px 2px rgba(16,32,28,.3))}
 .cta{display:flex;align-items:center;justify-content:center;height:44px;padding:0 8px;border-radius:10px;background:var(--ink);color:#fff;font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden}
 .cta .yt{display:inline-flex;align-items:center;justify-content:center;flex:none;width:34px;height:24px;margin-right:14px;border-radius:6px;background:#ff0000}
 .cta:hover{background:#000}
@@ -152,8 +149,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 
   const HTML = `<div class="app">
   <aside class="side">
-    <section class="card head"><h1>The Top 100.</h1>
-      <div class="pick" id="pick"></div>
+    <section class="card head"><h1>Top 100 <span id="h1n"></span></h1>
+      <div class="pick" id="pick" role="group" aria-label="Choose a chart"></div>
       <p class="based" id="about"></p>
       <a class="cta" id="cta" target="_blank" rel="noopener noreferrer" href="#"></a></section>
     <section class="card panel"><div class="lh"><h2 id="ptitle"></h2><span class="unit" role="group" aria-label="Show as"><button type="button" data-v="map" aria-pressed="false">Map</button><button type="button" data-v="sky" aria-pressed="true">Skyline</button></span></div><div class="rows" id="rows"></div></section>
@@ -387,10 +384,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   function drawHead() {
     const v = VIDEOS[chart.key], c = $('#cta');
     $('#ptitle').textContent = chart.label;
-    $('#about').textContent = chart.about || '';  // one line under the drop-down: what this chart is (40 characters or fewer, so it never wraps)
+    $('#about').textContent = chart.about || '';  // one line under the five chart buttons: what this chart is (40 characters or fewer, so it never wraps)
     if (v) { c.hidden = false; c.href = v.url; c.innerHTML = `<span class="yt"><svg width="12" height="13" viewBox="0 0 12 13" aria-hidden="true"><path d="M1 1L11 6.500 1 12Z" fill="#fff"/></svg></span><span>${esc(v.line)}</span>`; } else c.hidden = true;
-    const menu = CHARTS.map((x) => `<button type="button" role="menuitemradio" aria-checked="${x.key === chart.key}" data-k="${x.key}">${esc(x.label)}</button>`).join('');
-    $('#pick').innerHTML = `<button type="button" class="pickbtn" aria-haspopup="true" aria-expanded="false"><span>${esc(chart.label)}</span><svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="${INK}" stroke-width="1.6"/></svg></button><div class="menu" role="menu" hidden>${menu}</div>`;
+    const n = $('#h1n'); n.textContent = '· ' + chart.short; n.style.color = chart.dot;
+    $('#pick').innerHTML = CHARTS.map((x) => `<button type="button" class="stk" style="--c:${x.dot}" data-k="${x.key}" aria-pressed="${x.key === chart.key}" aria-label="${esc(x.label)}" title="${esc(x.label)}"><span aria-hidden="true">${x.emoji}</span></button>`).join('');
   }
   async function show(c) {
     chart = c || chart; drawHead(); hideTip();
@@ -405,15 +402,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 
   function boot() {
     restore(); drawHead();
-    const pick = $('#pick');
-    pick.addEventListener('click', (e) => {
+    $('#pick').addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b) return;
-      const menu = pick.querySelector('.menu');
-      if (b.dataset.k) { menu.hidden = true; const c = CHARTS.find((x) => x.key === b.dataset.k); if (c && c !== chart) show(c); else drawHead(); return; }
-      menu.hidden = !menu.hidden; b.setAttribute('aria-expanded', String(!menu.hidden));
+      const c = CHARTS.find((x) => x.key === b.dataset.k); if (c && c !== chart) show(c);
     });
-    root.addEventListener('click', (e) => { if (!e.target.closest('#pick')) { const m = pick.querySelector('.menu'); if (m) m.hidden = true; } });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const m = pick.querySelector('.menu'); if (m) m.hidden = true; } });
     root.querySelector('.unit').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && b.dataset.v && b.dataset.v !== mode && ROWS.length) { mode = b.dataset.v; draw(); keep(); } });
     root.querySelector('#rows').addEventListener('pointerover', (e) => { const r = e.target.closest('.row'); if (r) mark(+r.dataset.i); });
     root.querySelector('#rows').addEventListener('pointerleave', () => mark(0));
