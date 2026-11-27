@@ -19,6 +19,11 @@
   const fol = (v) => (v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? Math.round(v / 1e3) + 'k' : String(v));  // followers: 2.7M, 789k
   const PLAT = [['X', '#10201C'], ['LinkedIn', '#2F6DB5'], ['YouTube', '#D9483B'], ['Instagram', '#B8509E'], ['Substack', '#8C6A4A']];
   const platsOf = (r) => PLAT.filter(([k]) => r.parts && r.parts[k] > 0).map(([k, c]) => ({ k, c, n: +r.parts[k] }));
+  // Biggest rounds: a bar is coloured by the round's industry group (the function's `g`); the Other group is grey, so its lettering is dark
+  const GROUPS = [['AI', '#5B55D6'], ['Hardware', '#0E8A8A'], ['Defense & security', '#8C5A3C'], ['Climate', '#6BA83B'], ['Bio & health', '#D9507C'], ['Fintech & crypto', '#E0A81C'], ['Software', '#3472C4'], ['Other', '#9AA5A1']];
+  const gCol = (r) => (GROUPS.find(([k]) => r.parts && k === r.parts.g) || GROUPS[7])[1];
+  const gInk = (r) => (r.parts && r.parts.g && r.parts.g !== 'Other' ? '#fff' : INK);
+  const FLAME = 'M0 -9C1 -5 5 -3 5 2C5 6 2.500 8 0 8C-2.500 8 -5 6 -5 2C-5 -1 -3 -2 -2 -5C-1 -3 0 -4 0 -9Z';
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const dayMon = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? (+m[3]) + ' ' + MON[+m[2] - 1] : ''; };
   // One video per chart (founder, 26 Nov 2026). The line is the button's whole text; the link opens in a new tab.
@@ -51,6 +56,13 @@
       under: (r) => usd(r.v),
       tip: (r) => ['<small>' + esc(usd(r.v)) + (r.dt ? ' · announced ' + esc(dayMon(r.dt)) : '') + '</small>', '<small>' + (r.p ? 'was ' + esc(usd(r.p)) + ' last year' : 'no earlier fund on record') + '</small>'],
       legend: ['up', 'dn', 'nu', 'eq', 'na'], counts: false },
+    // Biggest rounds: the 100 biggest rounds of the year so far (v2_top100_rounds). A row is a round, not a firm: no firm page to open, no place for the Map, no last year.
+    // Seventh item: { r: round name, d: date, i: sector, n: investors we hold in it, h: in the last 30 days, g: industry group }.
+    { key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds', args: { p_n: 100 }, fx: 'fx_top100_rounds', noPrev: true, noLink: true, noMap: true, scale: Math.sqrt,
+      unit: usd, bar: (v) => (v >= 1e9 ? short(v) : ''), under: (r) => usd(r.v), color: gCol, ink: gInk, flame: (r) => !!(r.parts && r.parts.h),
+      row: (r) => ({ v: usd(r.v), s: [r.parts && r.parts.r, dayMon(r.parts && r.parts.d)].filter(Boolean).join(' · ') }),
+      tip: (r) => { const x = r.parts || {}; return ['<small>' + [x.g, x.r, dayMon(x.d)].filter(Boolean).map(esc).join(' · ') + '</small>', '<small>' + esc(usd(r.v)) + (x.n ? ' · ' + x.n + (x.n === 1 ? ' investor' : ' investors') + ' we hold' : '') + '</small>']; },
+      legend: 'groups' },
   ];
   const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const QS = new URLSearchParams(location.search);
@@ -94,6 +106,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 .lh{display:flex;justify-content:space-between;align-items:center;gap:10px;flex:none;padding-bottom:10px}
 .lh h2{margin:0;font-size:20px;font-weight:600;min-width:0}
 .unit{display:inline-flex;border:1px solid #8A9893;border-radius:8px;overflow:hidden;flex:none}
+.unit[hidden]{display:none}
 .unit button{height:28px;padding:0 12px;border:0;background:#fff;color:var(--ink);font-size:13px;white-space:nowrap}
 .unit button[aria-pressed="true"]{background:var(--ink);color:#fff;font-weight:600}
 .rows{flex:1;min-height:0;overflow:auto;margin:0 -8px}
@@ -123,6 +136,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 .legend span{display:flex;align-items:center;gap:8px}
 .legend i{width:12px;height:12px;border-radius:4px;display:inline-block}
 .legend span.note{color:var(--mm)}
+.legend .g{gap:18px;padding:0 20px}
 .legend i.d{border:1.4px dashed var(--ink);background:none}
 .tip{position:fixed;z-index:20;pointer-events:none;display:none;background:var(--ink);color:#fff;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.35;box-shadow:0 6px 20px rgba(16,32,28,.28);white-space:nowrap}
 .tip small{display:block;color:#C9D3CF;font-size:12px}
@@ -219,12 +233,17 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   const rowTxt = (r) => { if (chart.row) { const x = chart.row(r); return x.v + '<small>' + esc(x.s) + '</small>'; } return num(r.v) + '<small>' + (r.p ? num(r.p) + ' last year' : 'none last year') + '</small>'; };
   function drawRows() {
     $('#rows').innerHTML = ROWS.map((r) => {
-      const lg = logos && logos.has(r.slug) ? `<img class="lg" alt="" loading="lazy" src="${logoUrl(r.slug)}">` : `<span class="lg">${esc(ini(r.name))}</span>`;
-      return `<a class="row" data-i="${r.i}" href="${firmUrl(r.slug)}"><span class="rk"><b>${r.i}</b><em style="color:${MOVE[r.mv.k][1]}">${esc(r.mv.t)}</em></span>${lg}<span class="nm">${esc(r.name)}</span><span class="vv">${rowTxt(r)}</span></a>`;
+      const lg = !chart.color && logos && logos.has(r.slug) ? `<img class="lg" alt="" loading="lazy" src="${logoUrl(r.slug)}">` : chart.color ? `<span class="lg" style="background:${chart.color(r)};border-color:${chart.color(r)};color:${chart.ink(r)}">${esc(ini(r.name))}</span>` : `<span class="lg">${esc(ini(r.name))}</span>`;
+      const tag = chart.noLink ? 'div' : 'a', href = chart.noLink ? '' : ` href="${firmUrl(r.slug)}"`;
+      return `<${tag} class="row" data-i="${r.i}"${href}><span class="rk"><b>${r.i}</b><em style="color:${MOVE[r.mv.k][1]}">${esc(r.mv.t)}</em></span>${lg}<span class="nm">${esc(r.name)}</span><span class="vv">${rowTxt(r)}</span></${tag}>`;
     }).join('');
   }
   function drawLegend() {
     if (chart.legend === 'platforms') { $('#legend').innerHTML = '<div>' + PLAT.map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join('') + '<span class="note">bar height is scaled, segments = share of followers</span></div>'; return; }
+    if (chart.legend === 'groups') {
+      const hot = ROWS.filter((r) => chart.flame(r)).length;
+      $('#legend').innerHTML = '<div class="g">' + GROUPS.map(([k, c]) => `<span><i style="background:${c}"></i>${esc(k)}</span>`).join('') + `<span><svg width="12" height="16" viewBox="-6 -10 12 19" aria-hidden="true"><path d="${FLAME}" fill="#F0861E"/></svg>last 30 days · ${hot}</span></div>`; return;
+    }
     const c = { up: 0, dn: 0, nu: 0, eq: 0, na: 0 }; ROWS.forEach((r) => { c[r.mv.k]++; });
     const keys = (chart.legend || ['up', 'dn', 'nu', 'eq']).filter((k) => c[k] > 0 || !chart.legend);
     $('#legend').innerHTML = '<div>' + keys.map((k) => `<span><i style="background:${MOVE[k][0]}"></i>${KEY[k]}${chart.counts === false ? '' : ' · ' + c[k]}</span>`).join('') + '<span><i class="d"></i>last year</span></div>';
@@ -252,18 +271,20 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     bases.forEach((b) => { g += `<line x1="0" x2="${W}" y1="${b}" y2="${b}" stroke="${LINE}"/>`; });
     ROWS.forEach((r) => {
       const ri = Math.floor((r.i - 1) / 25), ci = (r.i - 1) % 25, base = bases[ri];
-      const x = ci * SLOT + (SLOT - BW) / 2, h = Math.max(2, sq(r.v) * K), top = base - h, gh = sq(r.p || 0) * K, col = MOVE[r.mv.k][0];
+      const x = ci * SLOT + (SLOT - BW) / 2, h = Math.max(2, sq(r.v) * K), top = base - h, gh = sq(r.p || 0) * K, col = chart.color ? chart.color(r) : MOVE[r.mv.k][0];
       const yt = gh ? Math.min(top, base - gh) : top, ly = yt - L - 5, lx = x + (BW - L) / 2, cx = x + BW / 2;
-      const lg = logos && logos.has(r.slug)
+      const lg = !chart.color && logos && logos.has(r.slug)
         ? `<image href="${logoUrl(r.slug)}" x="${lx}" y="${ly}" width="${L}" height="${L}" clip-path="url(#c${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="none" stroke="rgba(16,32,28,.14)"/>`
+        : chart.color ? `<rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="${col}"/><text x="${cx}" y="${ly + L * 0.66}" font-size="10" font-weight="700" fill="${chart.ink(r)}" text-anchor="middle">${esc(ini(r.name))}</text>`
         : `<rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="#fff" stroke="${LINE}"/><text x="${cx}" y="${ly + L * 0.66}" font-size="10" font-weight="600" fill="${SOFT}" text-anchor="middle">${esc(ini(r.name))}</text>`;
       defs += `<clipPath id="c${r.i}"><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6"/></clipPath>` + (chart.stack ? `<clipPath id="k${r.i}"><rect x="${x}" y="${top}" width="${BW}" height="${h}" rx="5"/></clipPath>` : '') + `<clipPath id="f${r.i}"><rect x="${cx - 8}" y="${base + 32}" width="16" height="12" rx="2"/></clipPath>`;
-      g += `<a class="b" data-i="${r.i}" href="${firmUrl(r.slug)}" aria-label="${esc(r.i + '. ' + r.name + ', ' + chart.unit(r.v) + ', ' + (r.mv.k === 'nu' ? 'new to the Top 100' : r.mv.k === 'eq' ? 'same place as last year' : r.mv.k === 'na' ? KEY.na : 'was ' + ord(r.prev)))}">`
+      g += `<a class="b" data-i="${r.i}"${chart.noLink ? ' tabindex="0" style="cursor:default"' : ` href="${firmUrl(r.slug)}"`} aria-label="${esc(r.i + '. ' + r.name + ', ' + chart.unit(r.v) + ', ' + (r.mv.k === 'nu' ? 'new to the Top 100' : r.mv.k === 'eq' ? 'same place as last year' : r.mv.k === 'na' ? (chart.noLink ? 'biggest rounds of the year' : KEY.na) : 'was ' + ord(r.prev)))}">`
         + `<rect x="${x - 4}" y="${Math.min(ly, top) - 4}" width="${BW + 8}" height="${base - Math.min(ly, top) + 34}" fill="transparent"/>`
         + (gh ? `<rect x="${x - 1.5}" y="${base - gh}" width="${BW + 3}" height="${gh}" rx="5" fill="none" stroke="${INK}" stroke-opacity=".6" stroke-width="1.4" stroke-dasharray="3 2.5"/>` : '')
         + (chart.stack ? stackSvg(r, x, top, h, BW) : `<rect class="hl" x="${x}" y="${top}" width="${BW}" height="${h}" rx="5" fill="${col}"/>`)
-        + (h >= 22 && chart.bar !== null ? `<text x="${cx}" y="${top + 15}" font-size="11" font-weight="700" fill="${INK}" stroke="${col}" stroke-width="4" stroke-linejoin="round" paint-order="stroke" text-anchor="middle">${chart.bar ? chart.bar(r.v) : r.v}</text>` : '')
+        + (h >= 22 && chart.bar !== null && (chart.bar ? chart.bar(r.v) : true) !== '' ? `<text x="${cx}" y="${top + 15}" font-size="11" font-weight="700" fill="${chart.ink ? chart.ink(r) : INK}" stroke="${col}" stroke-width="4" stroke-linejoin="round" paint-order="stroke" text-anchor="middle">${chart.bar ? chart.bar(r.v) : r.v}</text>` : '')
         + lg
+        + (chart.flame && chart.flame(r) ? `<path d="${FLAME}" transform="translate(${lx + L - 1} ${ly + 1})" fill="#F0861E" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/>` : '')
         + `<text x="${cx}" y="${base + 14}" font-size="10" fill="${INK}" text-anchor="middle" font-family="Geist Mono,monospace">${r.i}</text>`
         + `<text x="${cx}" y="${base + 26}" font-size="9" font-weight="700" fill="${MOVE[r.mv.k][1]}" text-anchor="middle">${esc(r.mv.t || (chart.under ? chart.under(r) : ''))}</text>`
         + (r.cc ? `<image href="${flagUrl(r.cc)}" x="${cx - 8}" y="${base + 32}" width="16" height="12" clip-path="url(#f${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${cx - 8}" y="${base + 32}" width="16" height="12" rx="2" fill="none" stroke="rgba(16,32,28,.25)"/>` : '') + `</a>`;
@@ -346,6 +367,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   // the right picture for the mode: the Skyline, or the map at the level the zoom card shows
   function draw() {
     const box = $('#sky');
+    if (chart.noMap) mode = 'sky';  // a round has no firm, so no place on a map
+    root.querySelector('.unit').hidden = !!chart.noMap;
     root.querySelectorAll('.unit button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === mode)));
     if (O.onMode) O.onMode(mode);
     hideTip();
