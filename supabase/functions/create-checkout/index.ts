@@ -9,6 +9,15 @@ import Stripe from "npm:stripe@16";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { type Kind, lookupCode, PRICES } from "../_shared/stripe_plans.ts";
 import { stripeKey } from "../_shared/stripe_env.ts";
+// First month 50% off on the three monthly plans (Alex, 27 Nov 2026); yearly plans and later months pay full price.
+// One Stripe coupon (percent_off 50, duration once) with this fixed id; it is made here the first time if it is missing.
+const FIRST_MONTH_COUPON = "regretamin_first_month_50";
+const MONTHLY: Kind[] = ["preseed", "seed", "incubator"];
+let firstMonth: Promise<string> | null = null;
+const firstMonthCoupon = () => firstMonth ??= stripe.coupons.retrieve(FIRST_MONTH_COUPON).then((c) => c.id).catch((e) => {
+  if ((e as { code?: string }).code !== "resource_missing") throw e;
+  return stripe.coupons.create({ id: FIRST_MONTH_COUPON, percent_off: 50, duration: "once", name: "First month 50% off", metadata: { app: "regretamin" } }).then((c) => c.id);
+}).catch((e) => { firstMonth = null; throw e; });
 import { normalizeEmail, paidAdmin, userIdForEmail } from "../_shared/paid_user.ts";
 const stripe = new Stripe(stripeKey()); // STRIPE_MODE picks the live or test key
 // Credits per month and the name shown on the site. Must match launch/copy.json plans.
@@ -100,12 +109,15 @@ async function handle(req: Request): Promise<Response> {
     who = { customer_email: guest!, ...(sub ? {} : { customer_creation: "always" as const }) };
     ref = undefined; success = site + "?paid=1&session_id={CHECKOUT_SESSION_ID}";
   }
+  // A code's own discount wins; otherwise a monthly plan gets the first-month coupon. Yearly and code-unlocked plans keep promotion codes.
+  const half = !discount && kind !== "code" && MONTHLY.includes(kind as Kind);
+  const discounts = discount ? [{ promotion_code: c!.promo.id }] : half ? [{ coupon: await firstMonthCoupon() }] : null;
   const s = await stripe.checkout.sessions.create({
     mode: sub ? "subscription" : "payment", line_items: [{ price, quantity: 1 }], ...who,
-    ...(ref ? { client_reference_id: ref } : {}), metadata: meta, ...(discount ? { discounts: [{ promotion_code: c!.promo.id }] } : {}),
+    ...(ref ? { client_reference_id: ref } : {}), metadata: meta, ...(discounts ? { discounts } : {}),
     ...(sub ? { subscription_data: { metadata: meta } } : {}),
     success_url: success, cancel_url: cancelUrl(site, return_path),
-    ...(discount ? {} : { allow_promotion_codes: true }), // Stripe rejects allow_promotion_codes together with discounts
+    ...(discounts ? {} : { allow_promotion_codes: true }), // Stripe rejects allow_promotion_codes together with discounts
   });
   return new Response(JSON.stringify({ url: s.url }), { headers: { ...cors, "Content-Type": "application/json" } });
 }
