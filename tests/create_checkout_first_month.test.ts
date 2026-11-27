@@ -63,3 +63,10 @@ Deno.test("yearly plans pay full price and keep promotion codes", async () => {
     assertEquals(form.get("allow_promotion_codes"), "true", kind);
   }
 });
+
+Deno.test("the $1 owner test is refused for anyone else and never discounted", async () => {
+  calls.length = 0;
+  const r = await handler(new Request("https://fake/functions/v1/create-checkout", { method: "POST", body: JSON.stringify({ kind: "test1", email: "probe@example.com" }) }));
+  assertEquals(r.status, 400);
+  assertEquals(calls.some((c) => c.url.endsWith("/v1/checkout/sessions")), false);
+});
