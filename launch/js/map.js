@@ -15,7 +15,7 @@
   // Ignored on any real host.
   const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const FIXTURE = LOCAL ? qs.get('fixture') : null;
-  const FX_FIRMS = FIXTURE && qs.get('fx_firms'), FX_UPDATES = FIXTURE && qs.get('fx_updates'), FX_HOT = FIXTURE && qs.get('fx_hot'), FX_DETAIL = FIXTURE && qs.get('fx_detail'), FX_PLACE = FIXTURE && qs.get('fx_place');
+  const FX_FIRMS = FIXTURE && qs.get('fx_firms'), FX_UPDATES = FIXTURE && qs.get('fx_updates'), FX_HOT = FIXTURE && qs.get('fx_hot'), FX_DETAIL = FIXTURE && qs.get('fx_detail'), FX_MONEY = FIXTURE && qs.get('fx_money'), FX_PLACE = FIXTURE && qs.get('fx_place');
 
   // Layout (founder's choice): a grey rail on the left holds two cards, controls and news; nothing covers the map.
   // ?layout=float brings back the first layout (cards floating over the map) for comparison.
@@ -79,7 +79,7 @@
       if (Array.isArray(m.sectors)) S.sectors = m.sectors.filter((v) => SECTORS.includes(v));
       if (Array.isArray(m.stages)) S.stages = m.stages.filter((v) => STAGES.includes(v));
       if (WHO.some(([k]) => k === whoKey(m.who))) S.who = whoKey(m.who);
-      if (m.unit === 'pct' || m.unit === 'num') S.unit = m.unit;
+      if (m.unit === 'pct' || m.unit === 'num' || m.unit === 'usd') S.unit = m.unit;
       if (Number.isInteger(m.q0) && Number.isInteger(m.q1) && m.q0 >= 0 && m.q0 <= m.q1 && m.q1 < NQ) { S.q0 = m.q0; S.q1 = m.q1; }
       if (m.open && m.open.p != null) BACK = m.open;
     } catch (e) { /* no storage: start from the default view */ }
@@ -187,6 +187,17 @@
     const { data, error } = await sb.rpc('v2_map_hot_detail', a);
     if (error) return null;
     detCache.set(key, data); return data;
+  }
+  // The "$" button on Trends: dollars the rounds raised in each sector, last period and the one before (v2_map_hot_money, same filters as the deal counts).
+  const moneyCache = new Map();
+  async function money() {
+    if (FX_MONEY) return fetch(FX_MONEY).then((r) => r.json());
+    if (FIXTURE || !sb) return null;
+    const a = { p_firms: who(), p_level: S.level, p_place: null, p_days: S.days, p_stages: S.stages.length ? S.stages : null, p_sectors: S.sectors.length ? S.sectors : null }, key = JSON.stringify(a);
+    if (moneyCache.has(key)) return moneyCache.get(key);
+    const { data, error } = await sb.rpc('v2_map_hot_money', a);
+    if (error) return null;
+    moneyCache.set(key, data); return data;
   }
   // "Latest updates" follows what the map shows (founder, 24 Nov): United States or Europe when one of them is open,
   // and the sector and stage filters. The timeline does not move it: it is always the newest rounds.
@@ -546,7 +557,11 @@
     const c = tone === 'up' ? '#177A49' : tone === 'down' ? '#B93A2F' : '#5E6E69', last = pts[pts.length - 1].split(',');
     return `<svg class="vm-spark" aria-hidden="true" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts.join(' ')}" fill="none" stroke="${c}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${last[0]}" cy="${last[1]}" r="2.4" fill="${c}"/></svg>`;
   };
-  const unitSw = () => `<span class="vm-unit" role="group" aria-label="Show change as">${[['pct', '%', 'percent'], ['num', '#', 'number of deals']].map(([k, s, l]) => `<button type="button" data-u="${k}" aria-pressed="${S.unit === k}" aria-label="${l}">${s}</button>`).join('')}</span>`;
+  // dollars exist only on the Trends sector list; everywhere else a chosen "$" reads as "%"
+  const unitSw = (usd) => `<span class="vm-unit" role="group" aria-label="Show change as">${[['pct', '%', 'percent'], ['num', '#', 'number of deals']].concat(usd ? [['usd', '$', 'dollars raised']] : []).map(([k, s, l]) => `<button type="button" data-u="${k}" aria-pressed="${(S.unit === 'usd' && !usd ? 'pct' : S.unit) === k}" aria-label="${l}">${s}</button>`).join('')}</span>`;
+  const moneyHead = () => `<div class="vm-lh"><h2>Sectors</h2>${unitSw(true)}</div><span class="vm-tag">$ raised \u00b7 last ${perText()} vs before</span>`;
+  const usdText = (v) => { const n = Math.abs(v || 0); return '$' + (n >= 1e9 ? (n >= 1e10 ? Math.round(n / 1e9) : Math.round(n / 1e8) / 10) + 'B' : n >= 1e6 ? Math.round(n / 1e6) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'K' : Math.round(n)); };
+  const moneyTone = (now, prev) => { const pct = prev ? Math.round((now - prev) / prev * 100) : null; return { pct, tone: pct == null ? 'up' : pct >= 10 ? 'up' : pct <= -10 ? 'down' : 'flat' }; };
   const sortRows = (rows) => rows.slice().sort((a, b) => a.few !== b.few ? (a.few ? 1 : -1) : S.unit === 'num' ? b.diff - a.diff : (b.pct == null ? 1e9 : b.pct) - (a.pct == null ? 1e9 : a.pct));
   const litPlace = () => { const u = S.updates[0]; return !u || S.view === 'hot' || S.view === 'path' || S.view === 'top' ? null : S.level === 'world' ? u.region : u.level === S.level ? (FOLD[u.area] || u.area) : null; };
   const placesNow = () => {
@@ -868,7 +883,25 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
       }
       const lines = S.linesKey === want ? S.lines : {};
       const line = (r) => `<button type="button" class="vm-sec${S.sectors.includes(r.name) ? ' vm-secon' : ''}" data-s="${esc(r.name)}" title="${num(r.n)} deals, ${num(r.p)} before"><i class="${toneCls(r)}"></i><span>${esc(r.name)}</span>${spark(lines[r.name], r.tone)}<span class="vm-pc ${r.tone === 'up' ? 'vm-tu' : r.tone === 'down' ? 'vm-td' : ''}">${figure(r)}</span></button>`;
-      side.innerHTML = `<div class="vm-lh"><h2>Sectors</h2>${unitSw()}</div><span class="vm-tag">last ${perText()} vs before</span>${chosen.map(line).join('')}${S.sectors.length ? '<button type="button" class="vm-link" id="vm-allsec">Show all sectors</button>' : ''}${rest.map(line).join('')}`;
+      if (S.unit === 'usd') {  // dollars: the biggest sectors first, a bar pair for now (colour, top) and before (grey, below), the growth under the total
+        const mk0 = moneyHead(), mkey = JSON.stringify([S.level, S.days, S.stages, S.sectors, who()]);
+        if (S.moneyKey !== mkey) {
+          side.innerHTML = mk0 + (S.moneyAsked === mkey ? '<p class="vm-note">Loading dollars\u2026</p>' : '');
+          if (S.moneyAsked !== mkey) { S.moneyAsked = mkey; money().then((d) => { if (S.moneyAsked !== mkey) return; S.moneyKey = mkey; S.money = d ? (d.sectors || []) : null; if (S.view === 'hot' && !S.list && S.unit === 'usd') drawSide(); }); }
+        } else if (!S.money) {
+          side.innerHTML = mk0 + '<p class="vm-note">Dollar totals are not available right now.</p>';
+        } else {
+          const ms = S.money.slice(0, S.sectors.length ? S.money.length : 10), top = Math.max.apply(null, ms.map((r) => r[1]).concat([1]));
+          const mline = ([name, now, prev, n]) => { const t = moneyTone(now, prev), w = (v) => Math.max(1.5, v / top * 100).toFixed(1);
+            return `<button type="button" class="vm-sec vm-secm${S.sectors.includes(name) ? ' vm-secon' : ''}" data-s="${esc(name)}" title="${num(n)} round${n === 1 ? '' : 's'} with an amount"><i class="${toneCls({ tone: t.tone, lt: false })}"></i><span>${esc(name)}</span><span class="vm-bars" aria-hidden="true"><b class="vm-bn vm-b${t.tone}" style="width:${w(now)}%"></b><b class="vm-bp" style="width:${w(prev)}%"></b></span><span class="vm-mv"><b>${usdText(now)}</b><em class="${t.tone === 'up' ? 'vm-tu' : t.tone === 'down' ? 'vm-td' : ''}">${t.pct == null ? 'new' : signed(t.pct) + '%'}</em></span></button>`; };
+          side.innerHTML = mk0 + ms.map(mline).join('') + (S.sectors.length ? '<button type="button" class="vm-link" id="vm-allsec">Show all sectors</button>' : '');
+        }
+        units();
+        side.querySelectorAll('.vm-sec').forEach((b) => b.onclick = () => { S.sectors = S.sectors.includes(b.dataset.s) ? S.sectors.filter((x) => x !== b.dataset.s) : [b.dataset.s]; drawPicks(); refresh().then(drawSide); });
+        const allm = $('#vm-allsec'); if (allm) allm.onclick = () => { S.sectors = []; drawPicks(); refresh().then(drawSide); };
+        return;
+      }
+      side.innerHTML = `<div class="vm-lh"><h2>Sectors</h2>${unitSw(true)}</div><span class="vm-tag">last ${perText()} vs before</span>${chosen.map(line).join('')}${S.sectors.length ? '<button type="button" class="vm-link" id="vm-allsec">Show all sectors</button>' : ''}${rest.map(line).join('')}`;
       units();
       side.querySelectorAll('.vm-sec').forEach((b) => b.onclick = () => { S.sectors = S.sectors.includes(b.dataset.s) ? S.sectors.filter((x) => x !== b.dataset.s) : [b.dataset.s]; drawPicks(); refresh().then(drawSide); });
       const all = $('#vm-allsec'); if (all) all.onclick = () => { S.sectors = []; drawPicks(); refresh().then(drawSide); };
