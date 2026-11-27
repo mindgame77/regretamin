@@ -361,7 +361,7 @@
     const old = c ? '<s>' + v.price + '</s>' : '';
     const bill = !c ? v.bill : c.duration === 'forever' || v.kind === 'single' ? fmt(T.disc_bill_forever, { label: codeLabel(c, v.kind) }) : fmt(T.disc_bill, { label: codeLabel(c, v.kind), price: v.price, unit: v.unit });
     const save = v.save ? '<span class="save">' + v.save + '</span>' : '';
-    if (nav) return '<div class="pr' + (v.rec ? ' hl' : '') + (v.hid ? ' hid' : '') + '"><h4>' + esc(v.name) + '</h4><b>' + old + now + (v.short ? '<small>' + v.short + '</small>' : '') + '</b>' + save + '<p>' + esc(c ? bill : v.blurb) + '</p><button class="btn' + (v.rec ? '' : ' o') + '" data-buy="' + v.kind + '">' + esc(v.button) + '</button></div>';
+    if (nav) return '<div class="pr' + (v.rec ? ' hl' : '') + (v.hid ? ' hid' : '') + '"><h4>' + esc(v.name) + '</h4><b>' + old + now + (v.short ? '<small>' + v.short + '</small>' : '') + '</b>' + save + '<p>' + esc(c ? bill : v.blurb) + '</p><p class="ex">' + esc(C.copy.site.pricing.explain) + '</p><button class="btn' + (v.rec ? '' : ' o') + '" data-buy="' + v.kind + '">' + esc(v.button) + '</button></div>';
     return '<div class="pl' + (v.rec ? ' rec' : '') + (v.hid ? ' hid' : '') + '">' + (v.tag ? '<span class="rtag' + (v.hid ? ' g' : '') + '">' + esc(v.tag) + '</span>' : '') + '<h3>' + esc(v.name) + '</h3>'
       + '<div class="pp-price">' + old + '<b>' + now + '</b><span>' + v.unit + '</span><small>' + fmt(PAY.per_check, { price: v.per }) + '</small></div>' + save + '<p class="bill">' + esc(bill) + '</p>'
       + '<button class="pb ' + (v.rec ? 'c' : 'w') + '" data-buy="' + v.kind + '">' + esc(v.button) + '</button><ul>' + v.features.map(f => '<li><i>' + CHK + '</i>' + f + '</li>').join('') + '</ul></div>';
