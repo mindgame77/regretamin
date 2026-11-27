@@ -57,7 +57,7 @@ def test_draws_in_its_own_shadow_root_from_one_database_function():
     # one map for every view (founder, 25 Nov: "why we cannot use the same map?"): the page's land picture stays on
     # screen in the Founders view, which only lays its colours over it; only Money flow's circles and names are hidden
     rule = next(l for l in CSS.splitlines() if l.startswith('.vm.vm-fview .vm-colwrap'))
-    assert '.vm-map' not in rule and '.vm.vm-fview #vm-pls,.vm.vm-fview #vm-labs' in CSS
+    assert '.vm-map' not in rule and '.vm.vm-fview:not(.vm-tmap) #vm-pls,.vm.vm-fview:not(.vm-tmap) #vm-labs' in CSS  # (the Top 100's Map, vm-tmap, shows them again)
     assert '@media (max-width:900px){.vm.vm-fview .vm-map{display:none!important}' in CSS  # on a phone it is a block of its own
     assert 'function land()' in MAP and 'function founders() { land();' in MAP
     assert '<g clip-path="url(#frame)">' in JS  # land outside the picture's frame (the tip of Alaska's islands, Fiji) is cut as the picture cuts it

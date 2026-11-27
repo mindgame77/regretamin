@@ -235,7 +235,7 @@ def test_money_flow_and_trends_can_be_zoomed_like_founders():
     assert '<div class="vm-pm" role="group" aria-label="Zoom the map"><button type="button" data-z="in" aria-label="Zoom in">+</button><button type="button" data-z="out" aria-label="Zoom out">−</button></div>' in js
     assert '.vm-pm{position:absolute;right:24px;bottom:108px;' in css and '.vm .vm-pm{right:10px;bottom:10px}' in css
     assert '.zoom{right:24px;bottom:108px}' in F and '.zoom{right:10px;bottom:10px}' in F  # the same spots as in Founders
-    assert '.vm.vm-fview .vm-pm{display:none}' in css  # Founders has its own
+    assert '.vm.vm-fview:not(.vm-tmap) .vm-pm{display:none}' in css  # Founders has its own; the Top 100's Map uses the page's
     # at rest the map is drawn exactly as before: the zoom only multiplies
     assert "if (z <= 1.001) { S.z = 1;" in js and 'const RZ = () => 1 / Math.sqrt(S.z || 1)' in js
     # zoom goes back to rest with the view and with World / United States / Europe

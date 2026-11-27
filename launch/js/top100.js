@@ -37,10 +37,10 @@
   // The charts that are ready. Each one turns its database answer into rows: [slug, name, value, last year's value or null, last year's rank or null].
   const CHARTS = [
     { key: 'active', label: 'Most active', rpc: 'v2_top100_active', args: { p_n: 100 }, fx: 'fx_top100',
-      unit: (n) => n + (n === 1 ? ' startup' : ' startups') },
+      unit: (n) => num(n) + (n === 1 ? ' startup' : ' startups') },
     // First in: startups where the firm held the earliest shown deal (v2_top100_first); same window and row shape as Most active
     { key: 'first', label: 'First in', rpc: 'v2_top100_first', args: { p_n: 100 }, fx: 'fx_top100_first',
-      unit: (n) => 'First in on ' + n + (n === 1 ? ' startup' : ' startups') },
+      unit: (n) => 'First in on ' + num(n) + (n === 1 ? ' startup' : ' startups') },
     // Most social reach: followers added up over X, LinkedIn, YouTube, Instagram and Substack (v2_top100_social). Only one reading per account so far, so no last year and no moves.
     { key: 'social', label: 'Most social reach', rpc: 'v2_top100_social', args: { p_n: 100 }, fx: 'fx_top100_social', noPrev: true, stack: true, scale: Math.sqrt,
       unit: (n) => fol(n) + ' followers', bar: null, circle: fol, based: (d) => 'Based on ' + num(d.n) + ' firms with a follower count',
@@ -81,6 +81,9 @@
   const CSS = `:host{--ink:${INK};--mm:${SOFT};--ml:${LINE};--ms:#F3F5F4;--sans:'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   display:block;position:absolute;inset:0;background:#fff;color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.35}
 :host([hidden]){display:none}
+:host(.map){background:transparent;pointer-events:none}  /* Map mode: the page's own map is underneath; only the left side takes the pointer */
+:host(.map) .side{pointer-events:auto}
+:host(.map) .main{display:none}
 *{box-sizing:border-box}
 button{font:inherit;color:inherit;cursor:pointer}
 a{color:inherit;text-decoration:none}
@@ -123,12 +126,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 .main{position:relative;min-width:0;min-height:0;overflow:hidden}
 .sky{position:absolute;left:24px;right:24px;top:96px;bottom:104px}
 .sky svg{display:block;width:100%;height:100%;overflow:visible}
-.sky.map{bottom:24px}
-.pl{cursor:default}
-.pl circle{fill:var(--ink);fill-opacity:.86;stroke:#fff;stroke-width:2}
-.pl:hover circle{fill-opacity:1}
-.pl .n{font-weight:700;fill:#fff;text-anchor:middle;pointer-events:none}
-.pl-name{font-size:12px;fill:var(--ink);stroke:#fff;stroke-width:3.5px;paint-order:stroke;text-anchor:middle;pointer-events:none}
 .b{cursor:pointer}
 .b:focus{outline:none}
 .legend{position:absolute;left:0;right:0;bottom:24px;display:flex;justify-content:center;pointer-events:none}
@@ -224,7 +221,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   }
   let ROWS = [], hov = 0;
   // The map mode: which level is showing, where each firm sits, and the page's own place positions.
-  let mode = 'sky', level = 'world', PL = null, GEO = null;
+  let mode = 'sky', level = 'world', PL = null;
   const FOLD = { GG: 'GB', JE: 'GB', IM: 'GB' };  // the same islands the map folds into the United Kingdom
   function mark(i) {
     hov = i;
@@ -335,12 +332,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     const by = {}; (Array.isArray(d) ? d : []).forEach(([slug, lv, region, area]) => { by[slug] = { lv, region, area }; });
     PL = { key: slugs, by }; return by;
   }
-  async function loadGeo() {
-    if (GEO) return GEO;
-    const v = O.mapv || '';
-    try { GEO = await fetch(O.root + 'assets/map/places.json' + v).then((r) => r.json()); } catch (e) { GEO = {}; }
-    return GEO;
-  }
   // One circle per place: the chart's number added up over the firms of that place. World: the region; United States: the
   // city; Europe: the country. A firm outside the zoom shown is left out of it.
   function placesFor(lvl, by) {
@@ -353,37 +344,15 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     });
     return Object.values(out).filter((o) => o.v > 0).sort((a, b) => b.v - a.v);
   }
+  // The Map is drawn by the page itself (js/map.js: the same circles, names, hover card, zoom card and + / - as Pathfinders). This view only hands over one row
+  // per place, for all three zoom levels: { p: place, l: 'world' | 'us' | 'eu', d: the chart's number added up, f: firms, v: that number as text }.
   async function drawMap() {
-    const box = $('#sky'), lvl = level, by = await loadPlaces(), geo = (await loadGeo())[lvl];
-    if (mode !== 'map' || lvl !== level) return;
-    box.classList.add('map'); $('#legend').innerHTML = '';
-    if (!geo) { box.innerHTML = '<div class="msg">The map is not available right now. Try again in a moment.</div>'; return; }
-    const W = box.clientWidth, H = box.clientHeight; if (!W || !H) return;
-    const sc = Math.min(W / geo.w, H / geo.h), rows = placesFor(lvl, by).filter((o) => geo.places[o.k]), mx = Math.max(1, ...rows.map((o) => o.v));
-    const R = (v) => ((lvl === 'world' ? 16 : 11) + (lvl === 'world' ? 38 : 34) * Math.sqrt(v / mx)) / sc;
-    // circles first, then a name under (or else over) each one where it touches no other circle and no other name; a place with no room keeps its name for the hover
-    const cs = rows.map((o) => ({ o, p: geo.places[o.k], r: R(o.v) })), boxes = [];
-    const clash = (x, y, w, self) => boxes.some((b) => Math.abs(b.x - x) < (b.w + w) / 2 && Math.abs(b.y - y) < 15 / sc) || cs.some((c) => c !== self && Math.abs(c.p.x - x) < c.r + w / 2 && Math.abs(c.p.y - y) < c.r + 8 / sc);
-    let g = '';
-    cs.forEach((c) => {
-      const { o, p, r } = c, nm = p.n || o.k, w = (nm.length * 6.6 + 8) / sc;
-      const ly = [p.y + r + 14 / sc, p.y - r - 6 / sc].find((y) => !clash(p.x, y, w, c));
-      if (ly != null) boxes.push({ x: p.x, y: ly, w });
-      const lab = chart.circle ? chart.circle(o.v) : num(o.v), fs = Math.max(8.5, Math.min(r * sc > 17 ? 13 : 11, (2 * r * sc - 6) / (lab.length * 0.62)));  // a long label ($650M) shrinks to stay inside its circle
-      g += `<g class="pl" data-k="${esc(o.k)}"><circle cx="${p.x}" cy="${p.y}" r="${r}" style="stroke-width:${2 / sc}px"/><text class="n" x="${p.x}" y="${p.y + fs * 0.4 / sc}" style="font-size:${fs / sc}px">${lab}</text>`
-        + (ly == null ? '' : `<text class="pl-name" x="${p.x}" y="${ly}" style="font-size:${12 / sc}px;stroke-width:${3.5 / sc}px">${esc(nm)}</text>`) + '</g>';
-    });
-    box.innerHTML = `<svg viewBox="0 0 ${geo.w} ${geo.h}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet" role="group" aria-label="${esc(chart.label)}: the Top 100 by place"><image href="${O.root}assets/map/${lvl}-land.svg${O.mapv || ''}" width="${geo.w}" height="${geo.h}"/>${g}</svg>`;
-    const info = Object.fromEntries(rows.map((o) => [o.k, o]));
-    box.querySelectorAll('.pl').forEach((e) => {
-      const o = info[e.dataset.k], p = geo.places[o.k], nm = p.n || o.k;
-      e.setAttribute('role', 'img'); e.setAttribute('aria-label', `${nm}: ${chart.unit(o.v)}, ${o.firms} ${o.firms === 1 ? 'firm' : 'firms'}`);
-      e.addEventListener('pointerenter', () => {
-        const tip = $('#tip'); tip.innerHTML = `<b>${esc(nm)}</b><small>${esc(chart.unit(o.v))} · ${o.firms} ${o.firms === 1 ? 'firm' : 'firms'}</small>`; tip.style.display = 'block';
-        placeTip(tip, e.querySelector('circle').getBoundingClientRect(), 8);
-      });
-      e.addEventListener('pointerleave', hideTip);
-    });
+    const by = await loadPlaces();
+    if (mode !== 'map') return;
+    $('#legend').innerHTML = ''; $('#sky').innerHTML = '';
+    const rows = [];
+    ['world', 'us', 'eu'].forEach((l) => placesFor(l, by).forEach((o) => rows.push({ p: o.k, l, d: o.v, f: o.firms, v: chart.unit(o.v) })));
+    if (O.places) O.places(rows);
   }
   // the right picture for the mode: the Skyline, or the map at the level the zoom card shows
   function draw() {
@@ -393,8 +362,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     root.querySelectorAll('.unit button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === mode)));
     if (O.onMode) O.onMode(mode);
     hideTip();
+    host.classList.toggle('map', mode === 'map');  // in Map mode this view is see-through on the right: the page's own map shows there
     if (mode === 'map') { drawMap(); return; }
-    box.classList.remove('map'); box.style.right = '';
     drawLegend(); drawSky();
   }
   function drawHead() {
@@ -445,7 +414,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
       } else { host.hidden = false; if (ROWS.length) draw(); }
     },
     // the page's zoom card changed the level (World, United States, Europe)
-    setLevel(l) { if (l === level) return; level = l; if (host && !host.hidden && mode === 'map') draw(); },
+    setLevel(l) { level = l; },  // the page redraws its own map when the zoom card is pressed
     hide() { if (host) { host.hidden = true; if (root) hideTip(); if (O && O.onMode) O.onMode('sky'); } },
   };
 })();

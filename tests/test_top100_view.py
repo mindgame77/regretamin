@@ -81,8 +81,13 @@ def test_the_skyline_shows_a_flag_under_the_rank_from_the_firms_headquarters_cou
 def test_the_map_button_draws_one_circle_per_place_and_uses_the_pages_zoom_card():
     """Founder, 27 Nov: the Map button shows a map inside the Top 100 view; World / United States / Europe sit where they are on the other maps."""
     assert "onMode: (m) => el.classList.toggle('vm-tmap', m === 'map')" in MAP  # the page shows its own zoom card while the map is on
-    assert "if (S.view === 'top') { S.level = l; marks(); if (window.REGRET_TOP) window.REGRET_TOP.setLevel(l); return; }" in MAP  # its level goes to the view, nothing under it is redrawn
-    assert 'setLevel(l)' in JS and 'v2_top100_places' in JS and "assets/map/places.json" in JS
+    assert "if (S.view === 'top') { marks(); remember(); if (window.REGRET_TOP) window.REGRET_TOP.setLevel(l); return; }" in MAP  # the page zooms itself (circles fly out); the view is only told the level
+    assert 'setLevel(l)' in JS and 'v2_top100_places' in JS
+    # the Map is the page's own engine (founder, 27 Nov, "use assets from the old maps"): rows go to the page; no second land, circles, names or card in top100.js
+    assert "places: (rows) => { S.topRows = rows;" in MAP and 'O.places(rows)' in JS
+    assert "p.kind = p.d > 0 ? 'top' : null;" in MAP and '.vm-pl.vm-top{background:#D9483B' in CSS
+    assert "if (S.view === 'top') return;  // the Top 100 map: pressing a circle does nothing" in MAP
+    assert 'async function loadGeo' not in JS and 'class="pl"' not in JS and 'pl-name' not in JS
     assert "lvl === 'world' ? f.region : f.lv === lvl" in JS  # world: the region; United States / Europe: the city or country of that zoom
     assert 'GG: \'GB\'' in JS  # the same islands the map folds into the United Kingdom
     mig = (ROOT / 'supabase/migrations/20261127155459_v2_top100_places.sql').read_text()
@@ -215,7 +220,7 @@ def test_saved_rounds_answer_has_the_shape_the_page_reads():
 def test_hover_card_stays_below_the_view_tabs():
     """Founder screenshot 27 Nov 9:14: the card of the tallest bar slid under the Money flow / Trends tabs. It now keeps to the chart area and goes beside a tall bar."""
     assert 'function placeTip(tip, a, gap)' in JS and "$('#sky').getBoundingClientRect().top" in JS
-    assert JS.count('placeTip(tip,') >= 3  # bars, map circles and the definition itself
+    assert JS.count('placeTip(tip,') >= 2  # the bars' card and the definition itself (the map's card is the page's own)
 
 
 def test_back_from_a_firm_page_returns_to_the_same_chart_mode_and_scroll():
