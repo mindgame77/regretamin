@@ -27,6 +27,7 @@ def render(c):
 <label class="rd-lab" for="rd-note">Anything the deck doesn't say</label>
 <div class="rd-ta"><textarea id="rd-note" rows="4" placeholder="Your strategy, what investors told you, what worries you."></textarea><span id="rd-count">0 / 1,000 words</span></div>
 <button type="submit" class="rd-go" id="rd-go">Get my report</button><p class="rd-msg" id="rd-msg" aria-live="polite"></p>
+<p class="rd-fine">By uploading, you agree we can store and use your deck as described in our <a href="/privacy/" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/terms/" target="_blank" rel="noopener">Terms</a>.</p>
 <button type="button" id="rd-signin" data-open="signup" hidden></button></form></section>
 <section class="rd-wait" id="rd-wait" hidden><h1>We're reading your deck.</h1>
 <p>Your report will be ready in a few minutes.<br>Keep this page open.</p><ol class="rd-prog" id="rd-prog">{steps}</ol></section>
