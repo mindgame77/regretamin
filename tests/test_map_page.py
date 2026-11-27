@@ -371,9 +371,9 @@ def test_trends_sectors_have_a_dollar_button_with_bars_totals_and_growth():
     assert JS.count('${unitSw()}') == 2 and '${unitSw(true)}' in JS
     # one read-only database call, with the same filters as the deal counts
     assert "sb.rpc('v2_map_hot_money', a)" in JS and "p_firms: who(), p_level: S.level" in JS
-    # rows: colour bar (now) first, grey bar (before) under it, the total, the growth under the total, strongest rise first and biggest fall last like the % view
+    # rows: colour bar (now) first, grey bar (before) under it, the total, the growth under the total, biggest first, ten rows when nothing is chosen
     assert JS.index('class="vm-bn vm-b${t.tone}"') < JS.index('class="vm-bp"')
-    assert "grown.slice(0, 6).concat(grown.slice(-6))" in JS and "(pb == null ? 1e9 : pb) - (pa == null ? 1e9 : pa)" in JS  # same order as the % view: rise first, fall last, six and six when there are more than 12
+    assert "S.money.slice(0, S.sectors.length ? S.money.length : 10)" in JS
     assert "usdText(now)" in JS and "signed(t.pct) + '%'" in JS
     assert re.search(r'\.vm-secm \.vm-bp\{background:#C9D1CE\}', css)
     # a saved "$" never leaves another list without a pressed button

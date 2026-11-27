@@ -891,9 +891,7 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
         } else if (!S.money) {
           side.innerHTML = mk0 + '<p class="vm-note">Dollar totals are not available right now.</p>';
         } else {
-          // same order as the % view: biggest rise first, steady in the middle, biggest fall last; more than 12 sectors show the six strongest and the six weakest
-          const grown = S.money.slice().sort((a, b) => { const pa = moneyTone(a[1], a[2]).pct, pb = moneyTone(b[1], b[2]).pct; return (pb == null ? 1e9 : pb) - (pa == null ? 1e9 : pa); });
-          const ms = !S.sectors.length && grown.length > 12 ? grown.slice(0, 6).concat(grown.slice(-6)) : grown, top = Math.max.apply(null, ms.map((r) => r[1]).concat([1]));
+          const ms = S.money.slice(0, S.sectors.length ? S.money.length : 10), top = Math.max.apply(null, ms.map((r) => r[1]).concat([1]));
           const mline = ([name, now, prev, n]) => { const t = moneyTone(now, prev), w = (v) => Math.max(1.5, v / top * 100).toFixed(1);
             return `<button type="button" class="vm-sec vm-secm${S.sectors.includes(name) ? ' vm-secon' : ''}" data-s="${esc(name)}" title="${num(n)} round${n === 1 ? '' : 's'} with an amount"><i class="${toneCls({ tone: t.tone, lt: false })}"></i><span>${esc(name)}</span><span class="vm-bars" aria-hidden="true"><b class="vm-bn vm-b${t.tone}" style="width:${w(now)}%"></b><b class="vm-bp" style="width:${w(prev)}%"></b></span><span class="vm-mv"><b>${usdText(now)}</b><em class="${t.tone === 'up' ? 'vm-tu' : t.tone === 'down' ? 'vm-td' : ''}">${t.pct == null ? 'new' : signed(t.pct) + '%'}</em></span></button>`; };
           side.innerHTML = mk0 + ms.map(mline).join('') + (S.sectors.length ? '<button type="button" class="vm-link" id="vm-allsec">Show all sectors</button>' : '');
