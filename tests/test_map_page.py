@@ -355,8 +355,9 @@ def test_play_shows_a_post_from_x_and_a_second_press_doubles_the_speed():
 
 
 
-def test_pathfinders_rows_have_no_minimum_height_so_firm_rows_and_locked_rows_are_equally_tall():
+def test_pathfinders_rows_never_shrink_and_firm_rows_and_locked_rows_are_equally_tall():
     """Founder, 27 Nov 2026: the distance between the divider lines was too big. The list rows inherited min-height:76px from .vm-rows a, while the blurred locked rows were 53 px;
     the approved design (pathfinders-map.html) has rows of just 9 px padding around the content."""
     css = (ROOT / 'launch/style.css').read_text()
-    assert re.search(r'\.vm-side \.vm-pfs a\.vm-pf\{[^}]*min-height:0', css)
+    assert re.search(r'\.vm-side \.vm-pfs a\.vm-pf\{[^}]*flex:none;min-height:0', css)   # the list scrolls inside a flex column: without flex:none the rows shrink and overlap
+    assert re.search(r'\.vm-side \.vm-pfs button\.vm-pfb\{[^}]*flex:none', css)
