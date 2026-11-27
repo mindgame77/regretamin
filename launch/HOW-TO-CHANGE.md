@@ -100,7 +100,7 @@ To stop a code: open the promotion code → **Archive** (or make it inactive). L
 Change only `site.how_we_check.video` in `copy.json`: use `{"src":"https://youtu.be/VIDEO_ID"}` for a privacy-enhanced YouTube embed, or `{"src":"/assets/video/alex.mp4","poster":"/assets/video/alex.jpg","type":"video/mp4"}` for a hosted file. Put hosted media in `launch/assets/video/`; rebuild the preview. Stock source/license: `launch/assets/video/SOURCE.md`.
 
 ## Credits for reports and research ("Am I ready to pitch?")
-- A report costs 10 credits and the full research 25. The amounts are in the database functions `ready_credits_ok` and `ready_charge` (migration `20261127030000_ready_credits.sql`); the page only labels them (`COST` in `launch/js/ready.js`). Change both together.
+- A report costs 10 credits and the full research 25. The amounts are in the database functions `ready_credits_ok` and `ready_charge` (migration `20261127013452_ready_credits.sql`); the page only labels them (`COST` in `launch/js/ready.js`). Change both together.
 - Credits are checked before the model is asked and taken after the result is made, once per report and kind. A failed run costs nothing. Reopening a finished report or research is free. At most 30 charges per account in 24 hours. Paid (plan) credits are used first, then free ones.
 - The sign-up gift is 10 free credits (`_balance`). Every charge and gift is a row in `credit_log`.
 - **Add credits to an account** (run in the Supabase SQL editor, or ask Claude): `select grant_credits_admin('their@email.com', 50, 'why');` adds free credits; a minus number takes them back. Visitors cannot call it.

@@ -36,7 +36,7 @@ def test_checkout_matches_copy_json():
 
 
 def test_the_migration_charges_once_and_is_closed_to_visitors():
-    sql = read('supabase', 'migrations', '20261127030000_ready_credits.sql')
+    sql = read('supabase', 'migrations', '20261127013452_ready_credits.sql')
     assert "case p_kind when 'report' then 10 else 25 end" in sql
     assert sql.count("case p_kind when 'report' then 10 else 25 end") == 2
     assert 'free_left + 10' in sql and "'grant_signup', 10" in sql
