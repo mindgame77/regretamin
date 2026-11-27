@@ -23,7 +23,6 @@ def test_the_header_link_is_on_every_page_and_orange():
 
 
 def test_the_page_asks_only_for_the_deck_linkedin_and_a_note():
-    from pages import ready
     html = ready.render(None)
     assert 'May save years<br>of your life.' in html and 'The #1 feedback on your pitch deck' in html
     assert html.count('<input') == 2 and html.count('<textarea') == 1          # the file, LinkedIn, the note
@@ -181,3 +180,14 @@ def test_the_deck_is_uploaded_from_a_copy_in_memory_and_a_dropped_connection_get
     assert js.count("sb.storage.from('decks').upload(") == 2 and 'upsert: false' in js            # one quiet second go
     assert '413' in js and 'That file is too large' in js                                          # too big is not retried and is said as it is
     assert 'Check your connection and try again.' in js
+
+
+def test_a_file_that_is_not_a_pdf_is_told_what_we_accept_and_how_to_make_a_pdf():
+    """Founder, 27 Nov 2026: say which formats we do not take (pictures, PowerPoint, Keynote) and that PDF is the one."""
+    js = open(os.path.join(ROOT, 'launch/js/ready.js')).read()
+    assert 'We cannot open PowerPoint files yet' in js and 'File, then Save As, then PDF' in js
+    assert 'We cannot open Keynote files yet' in js and 'File, then Export To, then PDF' in js
+    assert 'We cannot read pictures' in js and 'in Google Slides: File, Download, PDF' in js
+    assert 'notPdf(f)' in js
+    html = open(os.path.join(ROOT, 'launch/pages/ready.py')).read()
+    assert 'PDF only, up to 20 MB. From PowerPoint or Keynote? Export as PDF.' in html
