@@ -492,6 +492,7 @@
     }
     location.href = data.url;
   }
+  let TEST1 = new URLSearchParams(location.search).get('rg_test') === '1';
   async function buy(kind) {
     if (!sb) return alert(T.no_checkout);
     const { data: s } = await sb.auth.getSession();
@@ -556,6 +557,8 @@
     if (ev === 'SIGNED_IN') setTimeout(() => { PAINT_TRY = 0; paint(); }, 0); // nothing transfers at sign-in: the account has its own 4
     else if ((ev === 'INITIAL_SESSION' || ev === 'TOKEN_REFRESHED') && session && !ACCT && !PAINT_TRY) setTimeout(() => { paint(); }, 0); // session became usable after the first paint
     if (ev === 'SIGNED_OUT') setTimeout(() => { PAINT_TRY = 0; ACCT = null; BAL_OK = null; paint(); }, 0);
+    // Owner-only $1 test sale: /account/?rg_test=1 opens Stripe Checkout for create-checkout kind "test1". The function refuses every account but Alex's (400), so the link does nothing for anyone else.
+    if (TEST1 && (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION')) { TEST1 = false; setTimeout(() => { if (session) checkout('test1'); else alert('Sign in with your own account first, then open this link again.'); }, 0); }
     if ((ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION') && session) { const p = takePend(); if (p) setTimeout(async () => { if ($('#paycase')) open('paycase'); YEARLY = /_y$/.test(p.k); drawPlans(); if (p.code) await applyCode(p.code); if (p.k !== 'code' || CODE) buy(p.k); }, 0); }
   });
   const main = document.querySelector('main[data-firm]');
