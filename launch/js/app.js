@@ -61,13 +61,14 @@
     if (error || !data || !data.url) return (out.textContent = T.portal_fail);
     location.href = data.url;
   }
-  // Subscription plans by kind (m10, m30 and their yearly y10, y30) for the account menu, Account and My checks.
+  // Subscription plans by kind (preseed, seed, incubator and their yearly preseed_y, seed_y, incubator_y) for the account menu, Account and My checks.
   const PLANS = {};
   Object.entries(C.copy.plans).filter(([, p]) => p.monthly).forEach(([k, p]) => {
     PLANS[k] = { name: p.name, checks: p.checks, price: p.price + B.per_month };
     if (p.yearly) PLANS[p.yearly.kind] = { name: p.name, checks: p.checks, price: p.yearly.price + B.per_year, yearly: true };
   });
-  const planOf = (a) => a.plan === 'custom' ? { name: a.plan_name || '', checks: a.monthly_checks || 0, price: '', yearly: !!a.next_refill } : a.plan && PLANS[a.plan];
+  // Plans bought now are stored as 'custom' with their name; the price is looked up by that name and billing period.
+  const planOf = (a) => a.plan === 'custom' ? { name: a.plan_name || '', checks: a.monthly_checks || 0, price: (Object.values(PLANS).find((p) => p.name === a.plan_name && !!p.yearly === !!a.next_refill) || {}).price || '', yearly: !!a.next_refill } : a.plan && PLANS[a.plan];
   const fmt = (t, o) => t.replace(/\{(\w+)\}/g, (_, k) => o[k]), pl = (n, t, o) => fmt(t[n === 1 ? 0 : 1], o);
   const fmtDate = (d) => window.RegretDate ? window.RegretDate.format(d) : '';
   const leftOf = (a) => { const P = planOf(a); return P && a.left <= P.checks ? fmt(T.left_of, { left: a.left, n: P.checks }) : String(a.left); };
@@ -304,7 +305,7 @@
   const offOf = (c) => c.percent_off ? fmt(T.off_pct, { p: c.percent_off }) : fmt(T.off_amt, { a: money(c.amount_off) });
   // How long a code's discount lasts on this kind, from the coupon's real duration (validate-code) and the plan's billing interval.
   // Stripe discounts every invoice inside a repeating coupon's N months, so on a yearly plan N months = the first ceil(N/12) yearly payments.
-  const yearlyKind = (kind) => /^y/.test(kind) || (kind === 'code' && !!CODE && !!CODE.hidden && CODE.hidden.interval === 'year');
+  const yearlyKind = (kind) => /_y$/.test(kind) || (kind === 'code' && !!CODE && !!CODE.hidden && CODE.hidden.interval === 'year');
   const codeLabel = (c, kind) => {
     const o = { off: offOf(c) };
     if (kind === 'single') return fmt(T.dur_now, o);
@@ -314,7 +315,7 @@
     return yr ? pl(Math.ceil(c.months / 12), T.dur_years, Object.assign(o, { n: Math.ceil(c.months / 12) })) : pl(c.months, T.dur_repeating, Object.assign(o, { n: c.months }));
   };
   // The plan kind the "Code applied" note describes: the unlocked plan, else a discounted plan on the shown Monthly/Yearly tab, else Single check
-  const noteKind = (c) => c.hidden ? 'code' : c.kinds.find(k => k !== 'single' && /^y/.test(k) === YEARLY) || 'single';
+  const noteKind = (c) => c.hidden ? 'code' : c.kinds.find(k => /_y$/.test(k) === YEARLY) || (YEARLY ? 'seed_y' : 'seed');
   const after = (amt, c) => Math.max(0, c.percent_off ? amt * (1 - c.percent_off / 100) : amt - c.amount_off);
   const off = (kind) => CODE && (kind === 'code' ? CODE.hidden && CODE.hidden.discount : CODE.discount && CODE.kinds.includes(kind)) ? CODE : null; // code discount for this kind, if any
   // One plan card: v = {kind, name, amount, price, unit, per, bill, blurb, button, features, tag, save, rec, hid}
@@ -385,11 +386,11 @@
   document.addEventListener('submit', (e) => { const f = e.target.closest('[data-code]'); if (!f) return; e.preventDefault(); if (!f.code.readOnly) applyCode(f.code.value); });
   const O = C.copy.site.outcredits;
   let OUT_KIND = '';
-  const highlighted = () => { const hit = Object.entries(C.copy.plans).find(([k, p]) => k[0] !== '_' && p.highlight); return hit ? hit[0] : 'm10'; };
+  const highlighted = () => { const hit = Object.entries(C.copy.plans).find(([k, p]) => k[0] !== '_' && p.highlight); return hit ? hit[0] : 'seed'; };
   function outKind() { const r = document.querySelector('#outplans input:checked'); return (r && r.value) || OUT_KIND || highlighted(); }
   function drawOut() {
     const box = $('#outplans'); if (!box || !O) return;
-    box.innerHTML = ['single', 'm10', 'm30'].map((k) => {
+    box.innerHTML = ['preseed', 'seed', 'incubator'].map((k) => {
       const p = C.copy.plans[k]; if (!p) return '';
       const y = p.yearly && OUT_KIND === p.yearly.kind ? p.yearly : null;
       const kind = y ? y.kind : k, on = kind === (OUT_KIND || highlighted());
@@ -482,7 +483,7 @@
     if (ev === 'SIGNED_IN') setTimeout(() => { PAINT_TRY = 0; paint(); }, 0); // nothing transfers at sign-in: the account has its own 4
     else if ((ev === 'INITIAL_SESSION' || ev === 'TOKEN_REFRESHED') && session && !ACCT && !PAINT_TRY) setTimeout(() => { paint(); }, 0); // session became usable after the first paint
     if (ev === 'SIGNED_OUT') setTimeout(() => { PAINT_TRY = 0; ACCT = null; BAL_OK = null; paint(); }, 0);
-    if ((ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION') && session) { const p = takePend(); if (p) setTimeout(async () => { if ($('#paycase')) open('paycase'); YEARLY = /^y/.test(p.k); drawPlans(); if (p.code) await applyCode(p.code); if (p.k !== 'code' || CODE) buy(p.k); }, 0); }
+    if ((ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION') && session) { const p = takePend(); if (p) setTimeout(async () => { if ($('#paycase')) open('paycase'); YEARLY = /_y$/.test(p.k); drawPlans(); if (p.code) await applyCode(p.code); if (p.k !== 'code' || CODE) buy(p.k); }, 0); }
   });
   const main = document.querySelector('main[data-firm]');
   // Search is launch/js/search.js, loaded on every page. This file does not bind a second box.
@@ -659,7 +660,7 @@
     if (data.status === 'out') {
       const ub = $('#usecheck'); if (ub) ub.disabled = false;
       const { data: ss } = await sb.auth.getSession().catch(() => ({ data: {} }));
-      if (ss && ss.session) buy('single'); else openOut();
+      if (ss && ss.session) { const m = $('#pmsg2'); if (m) m.textContent = T.out; if ($('#paycase') && $('#paycase').hidden) openPay(''); } else openOut();
     }
   }
   window.RegretActList = async (slug, kind) => { if (!sb) return null; const { data, error } = await Promise.resolve(sb.rpc('firm_activity_list', { p_slug: slug, p_anon: anonId(), p_kind: kind })).catch(e => ({ error: e })); return error ? null : data; };
@@ -724,7 +725,7 @@
       }
       showReady();
       const { data: ss } = await sb.auth.getSession().catch(() => ({ data: {} }));
-      if (ss && ss.session) buy('single'); else openOut();
+      if (ss && ss.session) { const m = $('#pmsg2'); if (m) m.textContent = T.out; if ($('#paycase') && $('#paycase').hidden) openPay(''); } else openOut();
     };
     if (!sb) loadFail(); // no Supabase client (config or CDN script missing): never leave the skeleton up
     if (sb) {
