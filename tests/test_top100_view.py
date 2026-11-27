@@ -12,6 +12,8 @@ FX = json.loads((ROOT / 'tests/fixtures/top100_active.json').read_text())
 FIRST = json.loads((ROOT / 'tests/fixtures/top100_first.json').read_text())
 FUNDS = json.loads((ROOT / 'tests/fixtures/top100_funds.json').read_text())
 FUNDS_MIG = (ROOT / 'supabase/migrations/20261127165158_v2_top100_funds.sql').read_text()
+SOCIAL = json.loads((ROOT / 'tests/fixtures/top100_social.json').read_text())
+SOCIAL_MIG = (ROOT / 'supabase/migrations/20261127170027_v2_top100_social.sql').read_text()
 FIRST_MIG = (ROOT / 'supabase/migrations/20261127164530_v2_top100_first.sql').read_text()
 
 
@@ -87,7 +89,7 @@ def test_the_map_button_draws_one_circle_per_place_and_uses_the_pages_zoom_card(
     assert 'limit 300' in mig  # no more than 300 slugs
     assert not re.search(r'\b(insert|update|delete|drop|alter)\b\s+(into|table|from|function)?', mig.split('$fn$')[1].lower().replace('create or replace', ''))  # read-only
     places = json.loads((ROOT / 'tests/fixtures/top100_places.json').read_text())
-    assert {p[0] for p in places} >= {f[0] for f in FX['firms']} | {f[0] for f in FIRST['firms']} | ({f[0] for f in FUNDS['firms']} - {'lockheed-martin-ventures'})  # the fixture places every firm of every saved chart (Lockheed Martin Ventures has no map place)
+    assert {p[0] for p in places} >= {f[0] for f in FX['firms']} | {f[0] for f in FIRST['firms']} | ({f[0] for f in FUNDS['firms']} - {'lockheed-martin-ventures'}) | {f[0] for f in SOCIAL['firms']}  # the fixture places every firm of every saved chart (Lockheed Martin Ventures has no map place)
     for slug, lv, region, area in places:
         assert lv in ('us', 'eu', None) and region and area
 
@@ -150,3 +152,30 @@ def test_saved_funds_answer_has_the_shape_the_page_reads():
         assert (prev_amt is None) == (prev_rank is None)  # no fund a year ago, no rank a year ago
     amts = [f[2] for f in FUNDS['firms']]
     assert amts == sorted(amts, reverse=True)
+
+
+def test_most_social_reach_chart_stacks_each_bar_by_platform_and_draws_no_moves():
+    """Most social reach (built 27 Nov), from the founder's picture ui-20-top100-social.png."""
+    assert "key: 'social', label: 'Most social reach', rpc: 'v2_top100_social'" in JS and "fx: 'fx_top100_social'" in JS
+    assert "const PLAT = [['X', '#10201C'], ['LinkedIn', '#2F6DB5'], ['YouTube', '#D9483B'], ['Instagram', '#B8509E'], ['Substack', '#8C6A4A']]" in JS  # X at the bottom
+    assert 'function stackSvg' in JS and 'noPrev: true, stack: true, scale: Math.sqrt' in JS  # segments are shares; heights on a square-root scale
+    assert "'Based on ' + num(d.n) + ' firms with a follower count'" in JS and "'mostly '" in JS
+    assert 'bar height is scaled, segments = share of followers' in JS
+
+
+def test_most_social_reach_function_adds_up_followers_per_firm_and_platform():
+    assert 'create or replace function public.v2_top100_social(' in SOCIAL_MIG and 'to anon, authenticated' in SOCIAL_MIG
+    assert 'security definer' in SOCIAL_MIG and 'stable' in SOCIAL_MIG and 'drop function if exists public.v2_top100_social(integer)' in SOCIAL_MIG
+    assert 'from v2_social_accounts a' in SOCIAL_MIG and 'a.is_current and not a.archived and a.follower_count > 0' in SOCIAL_MIG
+    assert 'v2_map_counted_places' in SOCIAL_MIG and 'least(coalesce(p_n, 100), 200)' in SOCIAL_MIG
+    assert 'social_count_history' not in SOCIAL_MIG  # that table's firm_id is a different kind of id
+    assert not re.search(r'\b(insert|update|delete|alter)\b\s+(into|table|from)', SOCIAL_MIG.split('$fn$')[1].lower())  # read-only
+
+
+def test_saved_social_answer_has_the_shape_the_page_reads():
+    assert len(SOCIAL['firms']) == 100 and SOCIAL['n'] > 100
+    for slug, name, total, p, prev, cc, parts in SOCIAL['firms']:
+        assert slug and name and total > 0 and p is None and prev is None  # one reading per account: no last year
+        assert sum(parts.values()) == total and set(parts) <= {'X', 'LinkedIn', 'YouTube', 'Instagram', 'Substack'}
+    totals = [f[2] for f in SOCIAL['firms']]
+    assert totals == sorted(totals, reverse=True)
