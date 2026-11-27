@@ -26,4 +26,12 @@ def test_only_phones_see_the_burger_and_the_links_are_hidden_there():
     m = re.search(r'/\* Burger menu.*', CSS, re.S).group(0)
     assert '@media (max-width:640px)' in m
     assert 'body>nav .r>a:not(#zz):not(#zy),body>nav .r>#acct:not(#zz){display:none!important}' in m
-    assert 'html.au-in .mpn .mac{display:block}' in m
+    assert 'html.au-in .mpn .mac,html.is-in .mpn .mac{display:block}' in m
+
+
+def test_the_panel_keeps_showing_the_signed_in_links_after_the_first_frame():
+    # hdr() removes the first-frame classes (au-in / au-out / au-wait) once the real state is known; the phone panel
+    # must not depend on them alone, or a signed-in visitor sees "Sign in" and no account links (27 Nov bug).
+    assert "root.toggle('is-in', !!signedIn)" in APP
+    m = re.search(r'/\* Burger menu.*', CSS, re.S).group(0)
+    assert 'html.is-in .mpn a.mso' in m and 'html.is-in .mpn .mac' in m

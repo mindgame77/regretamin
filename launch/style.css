@@ -2203,8 +2203,8 @@ body>nav .bg,.mpn{display:none}
   .mpn a.mso{margin-top:10px;padding:15px;border:1px solid #10201C;border-radius:12px;text-align:center;font-weight:600}
   .mpn .mac{display:none}
   .mpn a.mout{color:#586964}
-  html.au-in .mpn .mac{display:block}
-  html.au-in .mpn a.mso,html.au-wait .mpn a.mso{display:none}
+  html.au-in .mpn .mac,html.is-in .mpn .mac{display:block}
+  html.au-in .mpn a.mso,html.au-wait .mpn a.mso,html.is-in .mpn a.mso{display:none}
   .mpn a.on{font-weight:600}
   .mpn .mac a:last-child{border-bottom:0}
 }
