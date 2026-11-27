@@ -368,12 +368,12 @@ def test_trends_sectors_have_a_dollar_button_with_bars_totals_and_growth():
     css = (ROOT / 'launch/style.css').read_text()
     # the switch has $ only on the Trends sector list; the other two switches (money flow place lists) stay % / #
     assert "const unitSw = (usd) =>" in JS and "['usd', '$', 'dollars raised']" in JS
-    assert JS.count('${unitSw()}') == 2 and '${unitSw(true)}' in JS
+    assert JS.count('${unitSw()}') == 1 and '${unitSw(true)}' in JS  # only the Money flow place list keeps % / #
     # one read-only database call, with the same filters as the deal counts
     assert "sb.rpc('v2_map_hot_money', a)" in JS and "p_firms: who(), p_level: S.level" in JS
-    # rows: colour bar (now) first, grey bar (before) under it, the total, the growth under the total, strongest rise first and biggest fall last like the % view
+    # rows: colour bar (now) first, grey bar (before) under it, the total, the growth under the total, biggest first, ten rows when nothing is chosen
     assert JS.index('class="vm-bn vm-b${t.tone}"') < JS.index('class="vm-bp"')
-    assert "grown.slice(0, 6).concat(grown.slice(-6))" in JS and "(pb == null ? 1e9 : pb) - (pa == null ? 1e9 : pa)" in JS  # same order as the % view: rise first, fall last, six and six when there are more than 12
+    assert "S.money.slice(0, S.sectors.length ? S.money.length : 10)" in JS
     assert "usdText(now)" in JS and "signed(t.pct) + '%'" in JS
     assert re.search(r'\.vm-secm \.vm-bp\{background:#C9D1CE\}', css)
     # a saved "$" never leaves another list without a pressed button
@@ -383,3 +383,11 @@ def test_trends_sectors_have_a_dollar_button_with_bars_totals_and_growth():
     assert "coalesce(e.round, '') <> 'IPO'" in sql and 'group by d.event_id, d.startup_id' in sql
     assert re.search(r'grant execute on function public\.v2_map_hot_money\(text, text, text, integer, text\[\], text\[\]\) to anon, authenticated', sql)
     assert not re.search(r'\b(insert|update|delete|drop table|alter table)\b', sql.split('create or replace')[1].lower().split('$body$')[1])
+
+
+def test_a_pressed_place_in_trends_has_the_dollar_button_too():
+    """Founder, 27 Nov 2026 (screenshot of the US East card with only % and #): "when I press on a circle, it opens up the old thing without a $ sign ... the logic should be the same as on percentage and number sign"."""
+    assert JS.count('${unitSw(true)}') == 3  # the Trends sector list (dollar head and % head) and the sectors of a pressed place
+    assert "money(L.place)" in JS and "p_place: place ? place.p : null" in JS
+    assert JS.count('moneyRow(') >= 2 and 'const moneyRow = ' in JS  # the sector list and the place list share one row
+    assert "$ raised \\u00b7 ' : ''}last ${perText()} vs before" in JS

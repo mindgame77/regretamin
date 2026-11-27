@@ -190,10 +190,10 @@
   }
   // The "$" button on Trends: dollars the rounds raised in each sector, last period and the one before (v2_map_hot_money, same filters as the deal counts).
   const moneyCache = new Map();
-  async function money() {
+  async function money(place) {
     if (FX_MONEY) return fetch(FX_MONEY).then((r) => r.json());
     if (FIXTURE || !sb) return null;
-    const a = { p_firms: who(), p_level: S.level, p_place: null, p_days: S.days, p_stages: S.stages.length ? S.stages : null, p_sectors: S.sectors.length ? S.sectors : null }, key = JSON.stringify(a);
+    const a = { p_firms: who(), p_level: S.level, p_place: place ? place.p : null, p_days: S.days, p_stages: S.stages.length ? S.stages : null, p_sectors: S.sectors.length ? S.sectors : null }, key = JSON.stringify(a);
     if (moneyCache.has(key)) return moneyCache.get(key);
     const { data, error } = await sb.rpc('v2_map_hot_money', a);
     if (error) return null;
@@ -560,6 +560,9 @@
   // dollars exist only on the Trends sector list; everywhere else a chosen "$" reads as "%"
   const unitSw = (usd) => `<span class="vm-unit" role="group" aria-label="Show change as">${[['pct', '%', 'percent'], ['num', '#', 'number of deals']].concat(usd ? [['usd', '$', 'dollars raised']] : []).map(([k, s, l]) => `<button type="button" data-u="${k}" aria-pressed="${(S.unit === 'usd' && !usd ? 'pct' : S.unit) === k}" aria-label="${l}">${s}</button>`).join('')}</span>`;
   const moneyHead = () => `<div class="vm-lh"><h2>Sectors</h2>${unitSw(true)}</div><span class="vm-tag">$ raised \u00b7 last ${perText()} vs before</span>`;
+  // one row of the dollar list (Trends sectors, and the sectors of a pressed place): dot, name, bar pair, total and growth
+  const moneyRow = ([name, now, prev, n], top, on, cls) => { const t = moneyTone(now, prev), w = (v) => Math.max(1.5, v / top * 100).toFixed(1);
+    return `<button type="button" class="vm-sec vm-secm${cls || ''}${on ? ' vm-secon' : ''}" data-s="${esc(name)}" title="${num(n)} round${n === 1 ? '' : 's'} with an amount"><i class="${toneCls({ tone: t.tone, lt: false })}"></i><span>${esc(name)}</span><span class="vm-bars" aria-hidden="true"><b class="vm-bn vm-b${t.tone}" style="width:${w(now)}%"></b><b class="vm-bp" style="width:${w(prev)}%"></b></span><span class="vm-mv"><b>${usdText(now)}</b><em class="${t.tone === 'up' ? 'vm-tu' : t.tone === 'down' ? 'vm-td' : ''}">${t.pct == null ? 'new' : signed(t.pct) + '%'}</em></span></button>`; };
   const usdText = (v) => { const n = Math.abs(v || 0); return '$' + (n >= 1e9 ? (n >= 1e10 ? Math.round(n / 1e9) : Math.round(n / 1e8) / 10) + 'B' : n >= 1e6 ? Math.round(n / 1e6) + 'M' : n >= 1e3 ? Math.round(n / 1e3) + 'K' : Math.round(n)); };
   const moneyTone = (now, prev) => { const pct = prev ? Math.round((now - prev) / prev * 100) : null; return { pct, tone: pct == null ? 'up' : pct >= 10 ? 'up' : pct <= -10 ? 'down' : 'flat' }; };
   const sortRows = (rows) => rows.slice().sort((a, b) => a.few !== b.few ? (a.few ? 1 : -1) : S.unit === 'num' ? b.diff - a.diff : (b.pct == null ? 1e9 : b.pct) - (a.pct == null ? 1e9 : a.pct));
@@ -845,10 +848,14 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
     if (S.view === 'path') return drawPathSide(side);
     if (hotList) {  // a clicked place opens on its sectors; its firms open in their own panel beside the rail
       const L = S.list, rows = sortRows(((L.det || {}).sectors || []).map(([name, n, p, f, line]) => Object.assign({ name, n, p, f, line }, toneOf(n, p))));
+      // the "$" choice reads the place's dollars the same way as the sector list does (v2_map_hot_money with this place)
+      const mkey = JSON.stringify([S.days, S.stages, S.sectors, who()]);
+      if (S.unit === 'usd' && L.moneyKey !== mkey) { L.moneyKey = mkey; L.money = null; money(L.place).then((d) => { if (S.list === L && L.moneyKey === mkey) { L.money = d ? (d.sectors || []) : false; if (S.unit === 'usd') drawSide(); } }); }
+      const mrows = () => !Array.isArray(L.money) ? `<p class="vm-mu">${L.money === false ? 'Dollar totals are not available right now.' : 'Loading'}</p>` : L.money.length ? (() => { const top = Math.max.apply(null, L.money.map((r) => r[1]).concat([1])); return L.money.map((r) => moneyRow(r, top, L.step === 'firms' && L.sector === r[0], ' vm-secp')).join(''); })() : '<p class="vm-mu">No rounds with an amount here in this period.</p>';
       side.className = 'vm-card vm-side vm-list';
       side.innerHTML = `<div class="vm-lh"><div class="vm-chips"><button type="button" class="vm-chip" id="vm-unplace" aria-label="Remove filter ${esc(L.place.n)}">${esc(L.place.n)}<span aria-hidden="true">×</span></button></div><button type="button" class="vm-x" id="vm-close" aria-label="Close"></button></div>
-${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}</div><span class="vm-tag">last ${perText()} vs before</span>
-<div class="vm-rows vm-srows">${!L.det ? '<p class="vm-mu">Loading</p>' : rows.length ? rows.map((r) => `<button type="button" class="vm-sec vm-secp${L.step === 'firms' && L.sector === r.name ? ' vm-secon' : ''}" data-s="${esc(r.name)}" title="${num(r.n)} deals, ${num(r.p)} before"><i class="${toneCls(r)}"></i><span>${esc(r.name)}</span>${spark(r.line, r.tone)}<span class="vm-pc ${r.tone === 'up' ? 'vm-tu' : r.tone === 'down' ? 'vm-td' : ''}">${figure(r)}</span><span class="vm-fl">${num(r.f)} firm${r.f === 1 ? '' : 's'}</span></button>`).join('') : '<p class="vm-mu">No deals here in this period.</p>'}</div>`;
+${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw(true)}</div><span class="vm-tag">${S.unit === 'usd' ? '$ raised \u00b7 ' : ''}last ${perText()} vs before</span>
+<div class="vm-rows vm-srows">${S.unit === 'usd' ? mrows() : !L.det ? '<p class="vm-mu">Loading</p>' : rows.length ? rows.map((r) => `<button type="button" class="vm-sec vm-secp${L.step === 'firms' && L.sector === r.name ? ' vm-secon' : ''}" data-s="${esc(r.name)}" title="${num(r.n)} deals, ${num(r.p)} before"><i class="${toneCls(r)}"></i><span>${esc(r.name)}</span>${spark(r.line, r.tone)}<span class="vm-pc ${r.tone === 'up' ? 'vm-tu' : r.tone === 'down' ? 'vm-td' : ''}">${figure(r)}</span><span class="vm-fl">${num(r.f)} firm${r.f === 1 ? '' : 's'}</span></button>`).join('') : '<p class="vm-mu">No deals here in this period.</p>'}</div>`;
       $('#vm-close').onclick = closeList; $('#vm-unplace').onclick = closeList; units();
       side.querySelectorAll('.vm-secp').forEach((b) => b.onclick = () => showFirms(b.dataset.s));
       return;
@@ -891,11 +898,8 @@ ${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw()}
         } else if (!S.money) {
           side.innerHTML = mk0 + '<p class="vm-note">Dollar totals are not available right now.</p>';
         } else {
-          // same order as the % view: biggest rise first, steady in the middle, biggest fall last; more than 12 sectors show the six strongest and the six weakest
-          const grown = S.money.slice().sort((a, b) => { const pa = moneyTone(a[1], a[2]).pct, pb = moneyTone(b[1], b[2]).pct; return (pb == null ? 1e9 : pb) - (pa == null ? 1e9 : pa); });
-          const ms = !S.sectors.length && grown.length > 12 ? grown.slice(0, 6).concat(grown.slice(-6)) : grown, top = Math.max.apply(null, ms.map((r) => r[1]).concat([1]));
-          const mline = ([name, now, prev, n]) => { const t = moneyTone(now, prev), w = (v) => Math.max(1.5, v / top * 100).toFixed(1);
-            return `<button type="button" class="vm-sec vm-secm${S.sectors.includes(name) ? ' vm-secon' : ''}" data-s="${esc(name)}" title="${num(n)} round${n === 1 ? '' : 's'} with an amount"><i class="${toneCls({ tone: t.tone, lt: false })}"></i><span>${esc(name)}</span><span class="vm-bars" aria-hidden="true"><b class="vm-bn vm-b${t.tone}" style="width:${w(now)}%"></b><b class="vm-bp" style="width:${w(prev)}%"></b></span><span class="vm-mv"><b>${usdText(now)}</b><em class="${t.tone === 'up' ? 'vm-tu' : t.tone === 'down' ? 'vm-td' : ''}">${t.pct == null ? 'new' : signed(t.pct) + '%'}</em></span></button>`; };
+          const ms = S.money.slice(0, S.sectors.length ? S.money.length : 10), top = Math.max.apply(null, ms.map((r) => r[1]).concat([1]));
+          const mline = (r) => moneyRow(r, top, S.sectors.includes(r[0]), '');
           side.innerHTML = mk0 + ms.map(mline).join('') + (S.sectors.length ? '<button type="button" class="vm-link" id="vm-allsec">Show all sectors</button>' : '');
         }
         units();
