@@ -12,7 +12,11 @@
   let file = null, timer = 0, REPORT = null;   // REPORT: the id of the report on screen (the full research is asked for by it)
 
   const show = (el) => { for (const s of [up, wait, res]) s.hidden = s !== el; window.scrollTo(0, 0); };
-  const say = (t, link) => { const m = $('rd-msg'); m.textContent = t || ''; if (link) { m.append(' '); const a = document.createElement('a'); a.href = '/pricing/'; a.textContent = 'See plans'; m.append(a); } };
+  // Out of credits: open the plans popup (app.js) right here, so a signed-in founder can buy without leaving the report.
+  // Before 27 Nov the page only said "You need N credits ... Nothing was charged" with a link off the page, and a buyer read that as denied.
+  const plans = () => { if (window.RegretOpen && $('paywall')) window.RegretOpen('paywall'); };
+  const seePlans = (m) => { m.append(' '); const a = document.createElement('a'); a.href = '/plans/'; a.dataset.open = 'paywall'; a.textContent = 'See plans'; m.append(a); };
+  const say = (t, link) => { const m = $('rd-msg'); m.textContent = t || ''; if (link) { seePlans(m); plans(); } };
   // Costs in credits (the database decides what is really charged; these only label it).
   const COST = { report: 10, research: 25 };
   const words = (t) => (String(t).trim().match(/\S+/g) || []).length;
@@ -287,7 +291,7 @@
     if (!res2 || !res2.ok || !j || !j.research) {
       b.disabled = false; b.textContent = 'Get the full research';
       msg.textContent = j && j.error === 'out_of_credits' ? needMsg(j, 'research') : WHYR[j && j.error] || 'The research did not go through. Nothing was charged. Try again.';
-      if (j && j.error === 'out_of_credits') { msg.append(' '); const a = document.createElement('a'); a.href = '/pricing/'; a.textContent = 'See plans'; msg.append(a); }
+      if (j && j.error === 'out_of_credits') { seePlans(msg); plans(); }
       return;
     }
     r.research = j.research;
