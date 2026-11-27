@@ -441,8 +441,9 @@
     return { from: ymd(a), to: ymd(b), text: all ? 'since 2021' : `from ${MONTHS[a.getMonth()]} ${a.getFullYear()} to ${S.q1 === NQ - 1 ? 'today' : MONTHS[b.getMonth()] + ' ' + b.getFullYear()}` };
   }
   function founders() { land(); const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, span: span(), kind: qs.get('fk'), mode: qs.get('fm') }); }
-  // Top 100 (js/top100.js) covers the map with its own view. Its Map button goes back to Money flow.
-  function topview() { const T = window.REGRET_TOP; if (T) T.show({ el, sb, root: ROOT, onMap: () => setView('flow') }); }
+  // Top 100 (js/top100.js) covers the map with its own view. Its list's Map button draws a map of its own inside that view and asks
+  // for the zoom card (World / United States / Europe) to be shown, where it is on the other maps; the card's level goes back to it.
+  function topview() { const T = window.REGRET_TOP; if (T) T.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, onMode: (m) => el.classList.toggle('vm-tmap', m === 'map') }); }
   function setView(v) {
     if (v === S.view) return;
     stop(); S.view = v; S.list = null; S.pinned = null; zoomReset(); marks();
@@ -454,6 +455,7 @@
   }
   function setLevel(l) {
     if (l === S.level) return;
+    if (S.view === 'top') { S.level = l; marks(); if (window.REGRET_TOP) window.REGRET_TOP.setLevel(l); return; }  // the Top 100 draws its own map; nothing under it is redrawn
     // Zooming in from the world: remember where the parent regions sit on the page, so their places can fly out of them.
     let from = null;
     if (S.level === 'world' && stage._rows) {

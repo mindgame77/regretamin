@@ -5,6 +5,8 @@
 // The black button in the head card opens one YouTube video per chart, as an icebreaker (the lines are the founder's words).
 // Data: one read-only database function per chart. Only "Most active" (v2_top100_active) exists so far; the other four
 // charts plug into CHARTS below when their functions do. No number is made up here: if the answer is missing, the view says so.
+// The list's "Map" button swaps the Skyline for a map: one circle per place, sized by the chart's number added up over the Top 100 firms based there
+// (founder, 27 Nov). The World / United States / Europe buttons are the page's own zoom card (js/map.js), which tells this view the level.
 // Everything is drawn inside its own shadow root, like js/founders.js, so its styles and the rest of the site never meet.
 (function () {
   const INK = '#10201C', SOFT = '#586964', LINE = '#E2E7E5';
@@ -81,6 +83,12 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 .main{position:relative;min-width:0;min-height:0;overflow:hidden}
 .sky{position:absolute;left:24px;right:24px;top:96px;bottom:104px}
 .sky svg{display:block;width:100%;height:100%;overflow:visible}
+.sky.map{bottom:24px}
+.pl{cursor:default}
+.pl circle{fill:var(--ink);fill-opacity:.86;stroke:#fff;stroke-width:2}
+.pl:hover circle{fill-opacity:1}
+.pl .n{font-weight:700;fill:#fff;text-anchor:middle;pointer-events:none}
+.pl-name{font-size:12px;fill:var(--ink);stroke:#fff;stroke-width:3.5px;paint-order:stroke;text-anchor:middle;pointer-events:none}
 .b{cursor:pointer}
 .b:focus{outline:none}
 .legend{position:absolute;left:0;right:0;bottom:24px;display:flex;justify-content:center;pointer-events:none}
@@ -153,6 +161,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     return lines.join('');
   }
   let ROWS = [], hov = 0;
+  // The map mode: which level is showing, where each firm sits, and the page's own place positions.
+  let mode = 'sky', level = 'world', PL = null, GEO = null;
+  const FOLD = { GG: 'GB', JE: 'GB', IM: 'GB' };  // the same islands the map folds into the United Kingdom
   function mark(i) {
     hov = i;
     root.querySelectorAll('.row.on').forEach((e) => e.classList.remove('on'));
@@ -224,6 +235,80 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     });
     if (hov) mark(hov);
   }
+
+  async function loadPlaces() {
+    const slugs = ROWS.map((r) => r.slug).join(',');
+    if (PL && PL.key === slugs) return PL.by;
+    let d = null;
+    const fx = LOCAL && QS.get('fx_top100_places');
+    try {
+      if (fx) d = await fetch(fx).then((r) => r.json());
+      else if (O.sb) { const r = await O.sb.rpc('v2_top100_places', { p_slugs: ROWS.map((x) => x.slug) }); if (!r.error) d = r.data; }
+    } catch (e) { d = null; }
+    const by = {}; (Array.isArray(d) ? d : []).forEach(([slug, lv, region, area]) => { by[slug] = { lv, region, area }; });
+    PL = { key: slugs, by }; return by;
+  }
+  async function loadGeo() {
+    if (GEO) return GEO;
+    const v = O.mapv || '';
+    try { GEO = await fetch(O.root + 'assets/map/places.json' + v).then((r) => r.json()); } catch (e) { GEO = {}; }
+    return GEO;
+  }
+  // One circle per place: the chart's number added up over the firms of that place. World: the region; United States: the
+  // city; Europe: the country. A firm outside the zoom shown is left out of it.
+  function placesFor(lvl, by) {
+    const out = {};
+    ROWS.forEach((r) => {
+      const f = by[r.slug]; if (!f) return;
+      const k = lvl === 'world' ? f.region : f.lv === lvl ? (FOLD[f.area] || f.area) : null;
+      if (!k) return;
+      const o = out[k] || (out[k] = { k, v: 0, firms: 0 }); o.v += r.v; o.firms++;
+    });
+    return Object.values(out).filter((o) => o.v > 0).sort((a, b) => b.v - a.v);
+  }
+  async function drawMap() {
+    const box = $('#sky'), lvl = level, by = await loadPlaces(), geo = (await loadGeo())[lvl];
+    if (mode !== 'map' || lvl !== level) return;
+    box.classList.add('map'); $('#legend').innerHTML = '';
+    if (!geo) { box.innerHTML = '<div class="msg">The map is not available right now. Try again in a moment.</div>'; return; }
+    const W = box.clientWidth, H = box.clientHeight; if (!W || !H) return;
+    const sc = Math.min(W / geo.w, H / geo.h), rows = placesFor(lvl, by).filter((o) => geo.places[o.k]), mx = Math.max(1, ...rows.map((o) => o.v));
+    const R = (v) => ((lvl === 'world' ? 16 : 11) + (lvl === 'world' ? 38 : 34) * Math.sqrt(v / mx)) / sc;
+    // circles first, then a name under (or else over) each one where it touches no other circle and no other name; a place with no room keeps its name for the hover
+    const cs = rows.map((o) => ({ o, p: geo.places[o.k], r: R(o.v) })), boxes = [];
+    const clash = (x, y, w, self) => boxes.some((b) => Math.abs(b.x - x) < (b.w + w) / 2 && Math.abs(b.y - y) < 15 / sc) || cs.some((c) => c !== self && Math.abs(c.p.x - x) < c.r + w / 2 && Math.abs(c.p.y - y) < c.r + 8 / sc);
+    let g = '';
+    cs.forEach((c) => {
+      const { o, p, r } = c, nm = p.n || o.k, w = (nm.length * 6.6 + 8) / sc;
+      const ly = [p.y + r + 14 / sc, p.y - r - 6 / sc].find((y) => !clash(p.x, y, w, c));
+      if (ly != null) boxes.push({ x: p.x, y: ly, w });
+      g += `<g class="pl" data-k="${esc(o.k)}"><circle cx="${p.x}" cy="${p.y}" r="${r}" style="stroke-width:${2 / sc}px"/><text class="n" x="${p.x}" y="${p.y + 4.5 / sc}" style="font-size:${(r * sc > 17 ? 13 : 11) / sc}px">${num(o.v)}</text>`
+        + (ly == null ? '' : `<text class="pl-name" x="${p.x}" y="${ly}" style="font-size:${12 / sc}px;stroke-width:${3.5 / sc}px">${esc(nm)}</text>`) + '</g>';
+    });
+    box.innerHTML = `<svg viewBox="0 0 ${geo.w} ${geo.h}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet" role="group" aria-label="${esc(chart.label)}: the Top 100 by place"><image href="${O.root}assets/map/${lvl}-land.svg${O.mapv || ''}" width="${geo.w}" height="${geo.h}"/>${g}</svg>`;
+    const info = Object.fromEntries(rows.map((o) => [o.k, o]));
+    box.querySelectorAll('.pl').forEach((e) => {
+      const o = info[e.dataset.k], p = geo.places[o.k], nm = p.n || o.k;
+      e.setAttribute('role', 'img'); e.setAttribute('aria-label', `${nm}: ${chart.unit(o.v)}, ${o.firms} ${o.firms === 1 ? 'firm' : 'firms'}`);
+      e.addEventListener('pointerenter', () => {
+        const tip = $('#tip'); tip.innerHTML = `<b>${esc(nm)}</b><small>${esc(chart.unit(o.v))} · ${o.firms} ${o.firms === 1 ? 'firm' : 'firms'}</small>`; tip.style.display = 'block';
+        const a = e.querySelector('circle').getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+        let y = a.top - h - 8; if (y < 8) y = a.bottom + 8;
+        tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, a.left + a.width / 2 - w / 2)) + 'px'; tip.style.top = y + 'px';
+      });
+      e.addEventListener('pointerleave', hideTip);
+    });
+  }
+  // the right picture for the mode: the Skyline, or the map at the level the zoom card shows
+  function draw() {
+    const box = $('#sky');
+    root.querySelectorAll('.unit button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === mode)));
+    if (O.onMode) O.onMode(mode);
+    hideTip();
+    if (mode === 'map') { drawMap(); return; }
+    box.classList.remove('map'); box.style.right = '';
+    drawLegend(); drawSky();
+  }
   function drawHead() {
     const v = VIDEOS[chart.key], c = $('#cta');
     $('#ptitle').textContent = chart.label;
@@ -238,7 +323,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     if (!d) { $('#based').textContent = ''; $('#sky').innerHTML = '<div class="msg">The Top 100 is not available right now. Try again in a moment.</div>'; return; }
     ROWS = shape(d);
     $('#based').textContent = 'Based on ' + num(d.rounds) + ' rounds';
-    drawRows(); drawLegend(); drawSky();
+    drawRows(); draw();
   }
 
   function boot() {
@@ -252,23 +337,25 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     });
     root.addEventListener('click', (e) => { if (!e.target.closest('#pick')) { const m = pick.querySelector('.menu'); if (m) m.hidden = true; } });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const m = pick.querySelector('.menu'); if (m) m.hidden = true; } });
-    root.querySelector('.unit').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && b.dataset.v === 'map' && O.onMap) O.onMap(); });
+    root.querySelector('.unit').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && b.dataset.v && b.dataset.v !== mode && ROWS.length) { mode = b.dataset.v; draw(); } });
     root.querySelector('#rows').addEventListener('pointerover', (e) => { const r = e.target.closest('.row'); if (r) mark(+r.dataset.i); });
     root.querySelector('#rows').addEventListener('pointerleave', () => mark(0));
-    let rz = 0; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (!host.hidden) drawSky(); }, 150); });
+    let rz = 0; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (!host.hidden) draw(); }, 150); });
     show(chart);
   }
 
   window.REGRET_TOP = {
-    // o: { el: the map's <main>, sb: the database client, root: the site root, onMap: called when "Map" is pressed }
+    // o: { el: the map's <main>, sb: the database client, root: the site root, mapv: '?v=…' for the map files, level: the zoom level now, onMode: called with 'map' or 'sky' so the page can show its zoom card }
     show(o) {
-      O = o;
+      O = o; if (o.level) level = o.level;
       if (!host) {
         host = document.createElement('div'); host.id = 'vt'; o.el.appendChild(host);
         root = host.attachShadow({ mode: 'open' }); root.innerHTML = '<style>' + CSS + '</style>' + HTML;
         boot();
-      } else { host.hidden = false; drawSky(); }
+      } else { host.hidden = false; if (ROWS.length) draw(); }
     },
-    hide() { if (host) { host.hidden = true; if (root) hideTip(); } },
+    // the page's zoom card changed the level (World, United States, Europe)
+    setLevel(l) { if (l === level) return; level = l; if (host && !host.hidden && mode === 'map') draw(); },
+    hide() { if (host) { host.hidden = true; if (root) hideTip(); if (O && O.onMode) O.onMode('sky'); } },
   };
 })();

@@ -15,8 +15,8 @@ def test_the_fifth_view_button_and_its_hooks_are_in_the_map():
     assert '<button type="button" data-view="top">Top 100</button>' in MAP
     assert "qs.get('view') === 'top'" in MAP and "m.view === 'top'" in MAP  # a link can open it and a tab remembers it
     assert "if (S.view === 'top') return;" in MAP  # the map asks for nothing while the Top 100 is on screen
-    assert "window.REGRET_TOP.hide()" in MAP and 'onMap: () => setView(' in MAP  # leaving it hides it; its Map button goes back to the map
-    assert "'vm-tview'" in MAP and '.vm.vm-tview .vm-zoom,.vm.vm-tview .vm-dock{display:none!important}' in CSS  # no zoom buttons and no timeline
+    assert "window.REGRET_TOP.hide()" in MAP  # leaving it hides it
+    assert "'vm-tview'" in MAP and '.vm.vm-tview:not(.vm-tmap) .vm-zoom,.vm.vm-tview .vm-dock{display:none!important}' in CSS  # no timeline; the zoom card only while the map shows
     assert 'top100.js' in (ROOT / 'launch/pages/map.py').read_text() and 'top100.js' in (ROOT / 'launch/build.py').read_text()
 
 
@@ -68,3 +68,21 @@ def test_the_skyline_shows_a_flag_under_the_rank_from_the_firms_headquarters_cou
         assert (ROOT / 'launch/assets/flags' / (c + '.png')).exists(), c  # every flag the saved answer needs is shipped
     assert (ROOT / 'launch/assets/flags/NOTICE.md').exists()  # the open-source licence note
     assert "assets', 'flags'" in (ROOT / 'launch/build.py').read_text()  # and the build copies them
+
+
+def test_the_map_button_draws_one_circle_per_place_and_uses_the_pages_zoom_card():
+    """Founder, 27 Nov: the Map button shows a map inside the Top 100 view; World / United States / Europe sit where they are on the other maps."""
+    assert "onMode: (m) => el.classList.toggle('vm-tmap', m === 'map')" in MAP  # the page shows its own zoom card while the map is on
+    assert "if (S.view === 'top') { S.level = l; marks(); if (window.REGRET_TOP) window.REGRET_TOP.setLevel(l); return; }" in MAP  # its level goes to the view, nothing under it is redrawn
+    assert 'setLevel(l)' in JS and 'v2_top100_places' in JS and "assets/map/places.json" in JS
+    assert "lvl === 'world' ? f.region : f.lv === lvl" in JS  # world: the region; United States / Europe: the city or country of that zoom
+    assert 'GG: \'GB\'' in JS  # the same islands the map folds into the United Kingdom
+    mig = (ROOT / 'supabase/migrations/20261127155459_v2_top100_places.sql').read_text()
+    assert 'create or replace function public.v2_top100_places(p_slugs text[])' in mig and 'security definer' in mig and 'stable' in mig
+    assert 'revoke all on function public.v2_top100_places(text[]) from public' in mig and 'to anon, authenticated' in mig
+    assert 'limit 300' in mig  # no more than 300 slugs
+    assert not re.search(r'\b(insert|update|delete|drop|alter)\b\s+(into|table|from|function)?', mig.split('$fn$')[1].lower().replace('create or replace', ''))  # read-only
+    places = json.loads((ROOT / 'tests/fixtures/top100_places.json').read_text())
+    assert {p[0] for p in places} == {f[0] for f in FX['firms']}  # the fixture places every firm of the fixture
+    for slug, lv, region, area in places:
+        assert lv in ('us', 'eu', None) and region and area
