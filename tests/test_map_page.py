@@ -393,7 +393,10 @@ def test_a_pressed_place_in_trends_has_the_dollar_button_too():
     assert "$ raised \\u00b7 ' : ''}last ${perText()} vs before" in JS
 
 
-def test_trends_place_card_names_the_place_in_a_title_like_the_other_cards_not_in_a_label():
-    """Founder, 27 Nov 2026: "this thing should not be here" (the "US East x" label at the top of the Trends place card); Money flow and Pathfinders name the place in a title and have no label."""
-    assert 'id="vm-unplace"' not in JS and "vm-unplace" not in JS
-    assert "<h2>${esc(L.place.n)} · ${num(L.place.f)} firm${L.place.f === 1 ? '' : 's'}</h2>" in JS
+def test_trends_place_card_has_no_top_row():
+    """Founder, 27 Nov 2026: "this thing should not be here" (the "US East x" label and the X at the top of the Trends place card), then "why you didn't just remove it?" after a title was put in its place."""
+    assert "vm-unplace" not in JS
+    assert "<h2>${esc(L.place.n)} \u00b7 ${num(L.place.f)}" not in JS
+    card = JS[JS.index("if (hotList) {  // a clicked place opens on its sectors"):JS.index("if (S.list) {  // Money flow works the same way")]
+    assert "vm-chips" not in card and "vm-x" not in card and "vm-close" not in card
+    assert "if (S.list && S.list.place.p === p.p) closeList(); else openList(p)" in JS  # the same circle closes it
