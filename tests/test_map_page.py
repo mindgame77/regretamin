@@ -353,3 +353,10 @@ def test_play_shows_a_post_from_x_and_a_second_press_doubles_the_speed():
     posts = re.findall(r"\['(\d{19})', '([A-Z]{3} 2021 · [^']+)', '([^']+)', '([^']+)'\]", js)
     assert len(posts) == 12 and len({p[0] for p in posts}) == 12  # three per quarter of 2021, no repeats
 
+
+
+def test_pathfinders_rows_have_no_minimum_height_so_firm_rows_and_locked_rows_are_equally_tall():
+    """Founder, 27 Nov 2026: the distance between the divider lines was too big. The list rows inherited min-height:76px from .vm-rows a, while the blurred locked rows were 53 px;
+    the approved design (pathfinders-map.html) has rows of just 9 px padding around the content."""
+    css = (ROOT / 'launch/style.css').read_text()
+    assert re.search(r'\.vm-side \.vm-pfs a\.vm-pf\{[^}]*min-height:0', css)

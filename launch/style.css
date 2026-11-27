@@ -1218,7 +1218,7 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-pl.vm-path{background:#F0861E;border:1.5px solid #10201C;opacity:.92}
 .vm-pl.vm-top{background:#D9483B;border:1.5px solid #10201C;opacity:.92}  /* Top 100 Map: Pathfinders' circle in red (founder, 27 Nov) */
 .vm.vm-pview #vm-cta{display:none}
-.vm-side .vm-pfs a.vm-pf{display:flex;align-items:center;gap:10px;padding:9px 0;margin:0;border:0;border-top:1px solid #E9EDEB;border-radius:0;background:none;color:inherit;text-decoration:none}
+.vm-side .vm-pfs a.vm-pf{display:flex;align-items:center;gap:10px;min-height:0;padding:9px 0;margin:0;border:0;border-top:1px solid #E9EDEB;border-radius:0;background:none;color:inherit;text-decoration:none}
 .vm-pfk{flex:none;width:18px;font:400 12px 'Geist Mono',monospace;color:#5B6B66}
 .vm-pfl{flex:none;width:28px;height:28px;border-radius:7px;border:1px solid #E3E8E6;object-fit:cover;background:#fff}
 .vm-pfi{display:flex;align-items:center;justify-content:center;background:#E2E7E5;color:#586964;font:600 11px 'Geist',sans-serif}
