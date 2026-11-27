@@ -14,6 +14,8 @@ FUNDS = json.loads((ROOT / 'tests/fixtures/top100_funds.json').read_text())
 FUNDS_MIG = (ROOT / 'supabase/migrations/20261127165158_v2_top100_funds.sql').read_text()
 SOCIAL = json.loads((ROOT / 'tests/fixtures/top100_social.json').read_text())
 SOCIAL_MIG = (ROOT / 'supabase/migrations/20261127170027_v2_top100_social.sql').read_text()
+ROUNDS = json.loads((ROOT / 'tests/fixtures/top100_rounds.json').read_text())
+ROUNDS_MIG = (ROOT / 'supabase/migrations/20261127170632_v2_top100_rounds.sql').read_text()
 FIRST_MIG = (ROOT / 'supabase/migrations/20261127164530_v2_top100_first.sql').read_text()
 
 
@@ -179,3 +181,32 @@ def test_saved_social_answer_has_the_shape_the_page_reads():
         assert sum(parts.values()) == total and set(parts) <= {'X', 'LinkedIn', 'YouTube', 'Instagram', 'Substack'}
     totals = [f[2] for f in SOCIAL['firms']]
     assert totals == sorted(totals, reverse=True)
+
+
+def test_biggest_rounds_chart_colours_bars_by_industry_and_has_no_map_or_firm_links():
+    """Biggest rounds (built 27 Nov), from the founder's picture ui-20-top100-rounds.png."""
+    assert "key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds'" in JS and "fx: 'fx_top100_rounds'" in JS
+    assert "noPrev: true, noLink: true, noMap: true, scale: Math.sqrt" in JS  # a round has no firm: no page to open, no place on the map
+    for g in ['AI', 'Hardware', 'Defense & security', 'Climate', 'Bio & health', 'Fintech & crypto', 'Software', 'Other']:
+        assert "['" + g + "', '#" in JS
+    assert "legend: 'groups'" in JS and 'last 30 days · ' in JS and 'const FLAME' in JS  # the flame marks a round from the last 30 days
+    assert "root.querySelector('.unit').hidden = !!chart.noMap" in JS and '.unit[hidden]{display:none}' in JS  # no Map button for this chart
+
+
+def test_biggest_rounds_function_ranks_this_years_rounds_in_dollars_and_counts_a_round_once():
+    assert 'create or replace function public.v2_top100_rounds(' in ROUNDS_MIG and 'to anon, authenticated' in ROUNDS_MIG
+    assert 'security definer' in ROUNDS_MIG and 'stable' in ROUNDS_MIG and 'drop function if exists public.v2_top100_rounds(integer)' in ROUNDS_MIG
+    assert "coalesce(e.round, '') <> 'IPO'" in ROUNDS_MIG and 'v2_fx_rates' in ROUNDS_MIG
+    assert 'distinct on (startup_id, event_date, usd)' in ROUNDS_MIG and 'least(coalesce(p_n, 100), 200)' in ROUNDS_MIG
+    assert not re.search(r'\b(insert|update|delete|alter)\b\s+(into|table|from)', ROUNDS_MIG.split('$fn$')[1].lower())  # read-only
+
+
+def test_saved_rounds_answer_has_the_shape_the_page_reads():
+    assert len(ROUNDS['firms']) == 100 and ROUNDS['hot'] == sum(1 for f in ROUNDS['firms'] if f[6]['h'])
+    groups = {'AI', 'Hardware', 'Defense & security', 'Climate', 'Bio & health', 'Fintech & crypto', 'Software', 'Other'}
+    for key, name, usd, p, prev, cc, x in ROUNDS['firms']:
+        assert re.fullmatch(r'e\d+', key) and name and usd > 0 and p is None and prev is None and cc is None
+        assert x['g'] in groups and re.fullmatch(r'\d{4}-\d{2}-\d{2}', x['d']) and x['n'] >= 0
+    amts = [f[2] for f in ROUNDS['firms']]
+    assert amts == sorted(amts, reverse=True)
+    assert len({f[0] for f in ROUNDS['firms']}) == 100
