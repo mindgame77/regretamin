@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 JS = (ROOT / 'launch/js/top100.js').read_text()
 MAP = (ROOT / 'launch/js/map.js').read_text()
 CSS = (ROOT / 'launch/style.css').read_text()
-MIG = (ROOT / 'supabase/migrations/20261127073000_v2_top100_active.sql').read_text()
+MIG = (ROOT / 'supabase/migrations/20261127145100_v2_top100_active.sql').read_text()
 FX = json.loads((ROOT / 'tests/fixtures/top100_active.json').read_text())
 
 
