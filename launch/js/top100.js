@@ -36,10 +36,10 @@
   };
   // The charts that are ready. Each one turns its database answer into rows: [slug, name, value, last year's value or null, last year's rank or null].
   const CHARTS = [
-    { key: 'active', label: 'Most active', rpc: 'v2_top100_active', args: { p_n: 100 }, fx: 'fx_top100', about: 'Firms backing the most startups this year', dot: '#D9483B', short: 'Most active', emoji: '🔥',
+    { key: 'active', label: 'Most active', rpc: 'v2_top100_active', args: { p_n: 100 }, fx: 'fx_top100', about: 'Firms backing the most startups this year', dot: '#D9483B', short: 'Most active', emoji: '⚡',
       unit: (n) => num(n) + (n === 1 ? ' startup' : ' startups') },
     // First in: startups where the firm held the earliest shown deal (v2_top100_first); same window and row shape as Most active
-    { key: 'first', label: 'First in', rpc: 'v2_top100_first', args: { p_n: 100 }, fx: 'fx_top100_first', about: 'Most startups backed before anyone else', dot: '#3F9E4A', short: 'First in', emoji: '🥇',
+    { key: 'first', label: 'First in', rpc: 'v2_top100_first', args: { p_n: 100 }, fx: 'fx_top100_first', about: 'Most startups backed before anyone else', dot: '#3F9E4A', short: 'First in', emoji: '🏁',
       unit: (n) => 'First in on ' + num(n) + (n === 1 ? ' startup' : ' startups') },
     // Most social reach: followers added up over X, LinkedIn, YouTube, Instagram and Substack (v2_top100_social). Only one reading per account so far, so no last year and no moves.
     { key: 'social', label: 'Most social reach', rpc: 'v2_top100_social', args: { p_n: 100 }, fx: 'fx_top100_social', about: 'Most followers across social media', dot: '#7B5CD6', short: 'Social reach', emoji: '📣', noPrev: true, stack: true, scale: Math.sqrt,
@@ -59,7 +59,7 @@
     // Biggest rounds: the 100 biggest rounds of the year so far (v2_top100_rounds). A row is a round, not a firm: no firm page to open, no last year. Its Map places each round by its STARTUP's country / city
     // (founder, 27 Nov: "startup country"); a round whose startup has no place on record is in the list but not on the map.
     // Seventh item: { r: round name, d: date, i: sector, n: investors we hold in it, h: in the last 30 days, g: industry group, c: startup country, p: world region, l: 'us' | 'eu', a: place on that zoom }.
-    { key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds', args: { p_n: 100 }, fx: 'fx_top100_rounds', about: 'The 100 largest rounds this year so far', dot: '#D13C8C', short: 'Big rounds', emoji: '🚀', noPrev: true, noLink: true, startups: true, scale: Math.sqrt, noun: 'round',
+    { key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds', args: { p_n: 100 }, fx: 'fx_top100_rounds', about: 'The 100 largest rounds this year so far', dot: '#D13C8C', short: 'Big rounds', emoji: '🦄', noPrev: true, noLink: true, startups: true, scale: Math.sqrt, noun: 'round',
       placeOf: (r, lvl) => { const x = r.parts || {}; return lvl === 'world' ? x.p : x.l === lvl ? x.a : null; },  // the Map: a round sits where its startup is (the function's p / l / a)
       unit: usd, bar: (v) => (v >= 1e9 ? short(v) : ''), under: (r) => usd(r.v), color: gCol, ink: gInk, flame: (r) => !!(r.parts && r.parts.h),
       row: (r) => ({ v: usd(r.v), s: [r.parts && r.parts.r, dayMon(r.parts && r.parts.d)].filter(Boolean).join(' · ') }),

@@ -281,6 +281,6 @@ def test_charts_are_picked_with_five_sticker_buttons_not_a_drop_down():
     assert '<h1>Top 100 <span id="h1n"></span></h1>' in JS and "n.style.color = chart.dot" in JS
     shorts = re.findall(r"short: '([^']+)', emoji: '([^']+)'", JS)
     assert [s for s, _ in shorts] == ['Most active', 'First in', 'Social reach', 'New funds', 'Big rounds']
-    assert [e for _, e in shorts] == ['🔥', '🥇', '📣', '💰', '🚀']
+    assert [e for _, e in shorts] == ['⚡', '🏁', '📣', '💰', '🦄']
     assert all(len(s) <= 12 for s, _ in shorts)   # "Top 100 · " plus the name stays on one line in the 341 px card
     assert 'aspect-ratio:1' in JS and 'background:var(--ms)' in JS   # square tiles, grey inside
