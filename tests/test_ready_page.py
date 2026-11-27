@@ -153,3 +153,10 @@ def test_firms_where_you_are_peers_feedback_and_copy_for_ai():
     css = open(os.path.join(ROOT, "launch", "style.css")).read()
     assert ".rd-step[hidden]{display:none}" in css and ".rd-good .rd-box{background:#EAF4EC}" in css
     assert "probe.error" in js   # the feedback box stays hidden until its table exists
+
+
+def test_the_upload_form_points_to_the_privacy_policy_and_terms():
+    """Founder, 26 Nov: the Terms and the upload form must say that uploading lets us use the deck."""
+    src = open(os.path.join(ROOT, "launch", "pages", "ready.py")).read()
+    assert 'By uploading, you agree we can store and use your deck as described in our' in src
+    assert 'href="/privacy/" target="_blank"' in src and 'href="/terms/" target="_blank"' in src

@@ -1,7 +1,7 @@
 # Terms of Service
 
 The rules for using Regretamin, in plain English.
-Effective October 25, 2026 · See also [Privacy Policy](../privacy/)
+Effective November 26, 2026 · See also [Privacy Policy](../privacy/)
 
 ## 1. Agreement
 These terms are an agreement between you and **Know Your Group INC.**, a Delaware corporation that operates Regretamin at regretamin.com ("we", "us"). By using the site you accept these terms and our Privacy Policy. You must be at least 18.
@@ -65,6 +65,9 @@ We may decide in our discretion whether a submission meets these standards. Revi
 
 ## 7b. Anonymity of contributors
 We try to keep contributors' identities private, but we cannot guarantee anonymity: details in a submission can sometimes identify the person who sent it. Please consider that before you submit. You may expose yourself to legal liability if your submission is false or breaks the law.
+
+## 7c. Pitch decks you upload
+If you use "Am I ready to pitch?", you let us store and use your deck, your LinkedIn link, your note and the report we make from them, as the Privacy Policy describes: to read your deck and write your report, and for our own purposes, to analyze them and to improve our checklist, reports and tools. You confirm that you have the right to upload the deck and that doing so doesn't break a confidentiality agreement or the law. We don't sell your deck, and we don't show it to an investor or anyone outside Regretamin and the providers named in the Privacy Policy unless you say yes. The report reviews your deck. It is not investment advice, and it does not promise that you will or won't raise money.
 
 ## 8. Credits
 1 firm = 1 credit. Using a credit unlocks one firm's full page. Reopening a firm you already unlocked is free. Without an account you get 2 free credits on your device; creating a free account adds 4 more. We may change free amounts with notice on the site. A single credit costs {{plan.single.price}}. Credits have no cash value and can't be transferred.

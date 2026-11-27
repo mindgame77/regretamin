@@ -1971,6 +1971,7 @@ nav a#readynav:hover{background:#E07810}
 .rd-go{width:100%;margin-top:18px;height:52px;border:0;border-radius:14px;background:#10201C;color:#fff;font:600 16px Geist,sans-serif;cursor:pointer}
 .rd-go:disabled{opacity:.6;cursor:default}
 .rd-msg{min-height:20px;margin-top:10px!important;font-weight:600;font-size:14px}
+.rd-fine{margin-top:12px;font-size:13px;line-height:1.5;color:#6B7772}.rd-fine a{color:inherit;text-decoration:underline}
 .rd-wait{max-width:640px;margin:34px auto 0;text-align:center}
 .rd-wait h1{font-size:42px;line-height:1.08;font-weight:600;letter-spacing:-.02em;margin-bottom:16px}
 .rd-wait p{font-size:18px;color:#33413D;line-height:1.5}
