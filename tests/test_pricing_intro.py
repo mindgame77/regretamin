@@ -27,3 +27,9 @@ def test_first_month_offer_is_only_shown_when_the_promotion_code_is_valid_and_on
 def test_the_popup_is_one_narrow_column_that_fits_a_phone():
     css = (ROOT / 'style.css').read_text()
     assert re.search(r'\.md\.w\{width:600px;max-width:calc\(100vw - 24px\)', css)
+
+
+def test_the_out_of_credits_popup_uses_the_same_plan_rows_and_offer():
+    css = (ROOT / 'style.css').read_text()
+    assert '.sgi .orow:has(input:checked){border:2px solid #10201C' in css and '.sgi .btn.y{background:#10201C' in css
+    assert "c && c === AUTO ? fmt(P.first.sub" in APP and 'AUTO_READY' in APP

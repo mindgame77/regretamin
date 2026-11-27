@@ -32,7 +32,7 @@ nav .r{display:flex;gap:22px;align-items:center;font-weight:500;color:var(--ink2
 .fnote{display:flex;gap:18px;align-items:flex-start;margin:20px 0 4px}.fnote img{width:72px;height:72px;border-radius:50%;object-fit:cover;flex:none}.fnote p{font-size:16px;line-height:1.5;color:var(--ink2);margin:0 0 8px}.fnote b{font-size:14px;font-weight:700}
 .pr p.ex{font-size:13px;line-height:1.45;color:var(--mute);margin-top:8px}
 .md.w{width:600px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto;padding:32px;box-sizing:border-box;border-radius:20px}
-.md.w .price.plist{display:block;margin:0}
+.md.w .price.plist{display:block;margin:0}.md.w .price.plist.wait{visibility:hidden;min-height:440px}.sgi .orow em s{opacity:.6;margin-right:4px}
 .phd{display:flex;align-items:center;justify-content:space-between;gap:12px}.phd .bt{margin:0}.phd h2{font-size:30px;letter-spacing:-.045em;line-height:1.05}
 .phd .bt>div{border-radius:12px;background:#EDF1EF}.phd .bt button{height:36px;padding:0 16px;border-radius:9px}.phd .bt em{display:none}
 .pband{display:flex;align-items:center;gap:12px;margin:22px 0 0;background:#10201C;border-radius:12px;padding:14px 18px;font:600 13px 'Geist Mono',ui-monospace,monospace;letter-spacing:.04em;text-transform:uppercase;color:#F0861E}.pband i{width:10px;height:10px;border-radius:50%;background:#F0861E;flex:none}
@@ -2228,3 +2228,16 @@ body>nav .bg,.mpn{display:none}
   .mpn a.on{font-weight:600}
   .mpn .mac a:last-child{border-bottom:0}
 }
+
+/* ---------- Out-of-credits popup (signed out): its plan rows and button match the Pricing popup. */
+.sgi .orows{gap:10px}
+.sgi .orow{border:1px solid #DDE6E2;background:#fff;border-radius:12px;padding:14px 16px}
+.sgi .orow:has(input:checked){border:2px solid #10201C;padding:13px 15px}
+.sgi .orow input{width:22px;height:22px;border:2px solid #B9C6C1}
+.sgi .orow input:checked{border-color:#10201C}
+.sgi .orow input:checked:before{width:10px;height:10px;background:#10201C}
+.sgi .orow b{font-size:17px;font-weight:600;letter-spacing:-.02em}
+.sgi .orow small{font-size:13px;font-weight:400}
+.sgi .orow em{font:600 20px 'Geist',system-ui,sans-serif;letter-spacing:-.03em}
+.sgi .orow em s{font-weight:500;text-decoration-color:#F0861E;text-decoration-thickness:2px;margin-right:6px}
+.sgi .btn.y{background:#10201C;color:#fff;border:0;font-weight:600}
