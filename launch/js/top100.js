@@ -59,7 +59,7 @@
     // Biggest rounds: the 100 biggest rounds of the year so far (v2_top100_rounds). A row is a round, not a firm: no firm page to open, no last year. Its Map places each round by its STARTUP's country / city
     // (founder, 27 Nov: "startup country"); a round whose startup has no place on record is in the list but not on the map.
     // Seventh item: { r: round name, d: date, i: sector, n: investors we hold in it, h: in the last 30 days, g: industry group, c: startup country, p: world region, l: 'us' | 'eu', a: place on that zoom }.
-    { key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds', args: { p_n: 100 }, fx: 'fx_top100_rounds', about: 'The 100 largest rounds this year so far', dot: '#D13C8C', noPrev: true, noLink: true, scale: Math.sqrt, noun: 'round',
+    { key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds', args: { p_n: 100 }, fx: 'fx_top100_rounds', about: 'The 100 largest rounds this year so far', dot: '#D13C8C', noPrev: true, noLink: true, startups: true, scale: Math.sqrt, noun: 'round',
       placeOf: (r, lvl) => { const x = r.parts || {}; return lvl === 'world' ? x.p : x.l === lvl ? x.a : null; },  // the Map: a round sits where its startup is (the function's p / l / a)
       unit: usd, bar: (v) => (v >= 1e9 ? short(v) : ''), under: (r) => usd(r.v), color: gCol, ink: gInk, flame: (r) => !!(r.parts && r.parts.h),
       row: (r) => ({ v: usd(r.v), s: [r.parts && r.parts.r, dayMon(r.parts && r.parts.d)].filter(Boolean).join(' · ') }),
@@ -162,7 +162,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 </div>
 <div class="tip" id="tip"></div>`;
 
-  let host = null, root = null, O = null, chart = CHARTS[0], logos = null;
+  let host = null, root = null, O = null, chart = CHARTS[0], logos = null, slogos = {};
   const cache = new Map();
   const $ = (s) => root.querySelector(s);
   // Back from a firm page (founder, 27 Nov): the view comes back as it was left, in this tab: the same chart, Map or Skyline, and the list where it was scrolled.
@@ -197,8 +197,14 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     if (logos) return Promise.resolve();
     logos = new Set();
     const v = (window.REGRET && window.REGRET.flv) ? '?v=' + window.REGRET.flv : '';
-    return fetch(O.root + 'assets/logos/firms.json' + v).then((r) => r.json()).then((a) => { logos = new Set(a); }).catch(() => {});
+    // startup logos (the Biggest rounds chart): assets/logos/startups.json = { startup name in lower case: startup id }, pictures assets/logos/s-<id>.png
+    const st = fetch(O.root + 'assets/logos/startups.json' + v).then((r) => r.json()).then((o) => { slogos = o; }).catch(() => {});
+    return Promise.all([fetch(O.root + 'assets/logos/firms.json' + v).then((r) => r.json()).then((a) => { logos = new Set(a); }).catch(() => {}), st]);
   }
+  const logoSrc = (r) => {  // the picture of a firm, or of a startup on the rounds chart; null when there is none
+    if (chart.startups) { const id = slogos[String(r.name || '').trim().toLowerCase()]; return id ? O.root + 'assets/logos/s-' + encodeURIComponent(id) + '.png' : null; }
+    return !chart.color && logos && logos.has(r.slug) ? logoUrl(r.slug) : null;
+  };
   const logoUrl = (slug) => O.root + 'assets/logos/f-' + encodeURIComponent(slug) + '.png';
   const firmUrl = (slug) => O.root + 'vc/' + encodeURIComponent(slug) + '/';
   // a firm's headquarters country as a small flag picture (assets/flags/<code>.png); no picture when the country is not known
@@ -255,7 +261,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   const rowTxt = (r) => { if (chart.row) { const x = chart.row(r); return x.v + '<small>' + esc(x.s) + '</small>'; } return num(r.v) + '<small>' + (r.p ? num(r.p) + ' last year' : 'none last year') + '</small>'; };
   function drawRows() {
     $('#rows').innerHTML = ROWS.map((r) => {
-      const lg = !chart.color && logos && logos.has(r.slug) ? `<img class="lg" alt="" loading="lazy" src="${logoUrl(r.slug)}">` : chart.color ? `<span class="lg" style="background:${chart.color(r)};border-color:${chart.color(r)};color:${chart.ink(r)}">${esc(ini(r.name))}</span>` : `<span class="lg">${esc(ini(r.name))}</span>`;
+      const src = logoSrc(r);
+      const lg = src ? `<img class="lg" alt="" loading="lazy" src="${src}">` : chart.color ? `<span class="lg" style="background:${chart.color(r)};border-color:${chart.color(r)};color:${chart.ink(r)}">${esc(ini(r.name))}</span>` : `<span class="lg">${esc(ini(r.name))}</span>`;
       const tag = chart.noLink ? 'div' : 'a', href = chart.noLink ? '' : ` href="${firmUrl(r.slug)}"`;
       return `<${tag} class="row" data-i="${r.i}"${href}><span class="rk"><b>${r.i}</b><em style="color:${MOVE[r.mv.k][1]}">${esc(r.mv.t)}</em></span>${lg}<span class="nm">${esc(r.name)}</span><span class="vv">${rowTxt(r)}</span></${tag}>`;
     }).join('');
@@ -295,8 +302,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
       const ri = Math.floor((r.i - 1) / 25), ci = (r.i - 1) % 25, base = bases[ri];
       const x = ci * SLOT + (SLOT - BW) / 2, h = Math.max(2, sq(r.v) * K), top = base - h, gh = sq(r.p || 0) * K, col = chart.color ? chart.color(r) : MOVE[r.mv.k][0];
       const yt = gh ? Math.min(top, base - gh) : top, ly = yt - L - 5, lx = x + (BW - L) / 2, cx = x + BW / 2;
-      const lg = !chart.color && logos && logos.has(r.slug)
-        ? `<image href="${logoUrl(r.slug)}" x="${lx}" y="${ly}" width="${L}" height="${L}" clip-path="url(#c${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="none" stroke="rgba(16,32,28,.14)"/>`
+      const src = logoSrc(r);
+      const lg = src
+        ? `<image href="${src}" x="${lx}" y="${ly}" width="${L}" height="${L}" clip-path="url(#c${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="none" stroke="rgba(16,32,28,.14)"/>`
         : chart.color ? `<rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="${col}"/><text x="${cx}" y="${ly + L * 0.66}" font-size="10" font-weight="700" fill="${chart.ink(r)}" text-anchor="middle">${esc(ini(r.name))}</text>`
         : `<rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="#fff" stroke="${LINE}"/><text x="${cx}" y="${ly + L * 0.66}" font-size="10" font-weight="600" fill="${SOFT}" text-anchor="middle">${esc(ini(r.name))}</text>`;
       defs += `<clipPath id="c${r.i}"><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6"/></clipPath>` + (chart.stack ? `<clipPath id="k${r.i}"><rect x="${x}" y="${top}" width="${BW}" height="${h}" rx="5"/></clipPath>` : '') + `<clipPath id="f${r.i}"><rect x="${cx - 8}" y="${base + 32}" width="16" height="12" rx="2"/></clipPath>`;
