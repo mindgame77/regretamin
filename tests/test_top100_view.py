@@ -210,3 +210,9 @@ def test_saved_rounds_answer_has_the_shape_the_page_reads():
     amts = [f[2] for f in ROUNDS['firms']]
     assert amts == sorted(amts, reverse=True)
     assert len({f[0] for f in ROUNDS['firms']}) == 100
+
+
+def test_hover_card_stays_below_the_view_tabs():
+    """Founder screenshot 27 Nov 9:14: the card of the tallest bar slid under the Money flow / Trends tabs. It now keeps to the chart area and goes beside a tall bar."""
+    assert 'function placeTip(tip, a, gap)' in JS and "$('#sky').getBoundingClientRect().top" in JS
+    assert JS.count('placeTip(tip,') >= 3  # bars, map circles and the definition itself
