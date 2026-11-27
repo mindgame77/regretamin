@@ -433,6 +433,7 @@ def main():
     shutil.copytree(os.path.join(HERE, 'assets', 'founders'), os.path.join(OUT, 'assets', 'founders'))  # the Founders view: shapes and where each university and company sits (tools/map/gen_founders.cjs)
     shutil.copytree(os.path.join(HERE, 'assets', 'logos'), os.path.join(OUT, 'assets', 'logos'))  # university and company logos for the Founders view; firm logos (f-<slug>.png)
     open(os.path.join(OUT, 'assets', 'logos', 'firms.json'), 'w').write(json.dumps(FLOGOS, separators=(',', ':')))  # which firms have a logo
+    shutil.copytree(os.path.join(HERE, 'assets', 'flags'), os.path.join(OUT, 'assets', 'flags'))  # small country flags for the Top 100 view
     shutil.copytree(os.path.join(HERE, 'assets', 'map'), os.path.join(OUT, 'assets', 'map'))  # backgrounds and coordinates for /map/ (tools/map/gen_assets.cjs)
     # The "Where they invest" card on a firm page shows the same maps as smooth grey land, not dots (founder, 23 Nov:
     # the dots did not show at that size, and square blocks looked ugly). Made here from the dotted files: each dot

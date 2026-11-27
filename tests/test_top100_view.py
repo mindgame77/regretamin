@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 JS = (ROOT / 'launch/js/top100.js').read_text()
 MAP = (ROOT / 'launch/js/map.js').read_text()
 CSS = (ROOT / 'launch/style.css').read_text()
-MIG = (ROOT / 'supabase/migrations/20261127145100_v2_top100_active.sql').read_text()
+MIG = (ROOT / 'supabase/migrations/20261127150843_v2_top100_active_country.sql').read_text()  # the current version of the function
 FX = json.loads((ROOT / 'tests/fixtures/top100_active.json').read_text())
 
 
@@ -53,8 +53,18 @@ def test_most_active_function_counts_startups_once_per_firm_against_the_same_day
 
 def test_saved_answer_has_the_shape_the_page_reads():
     assert len(FX['firms']) == 100 and FX['rounds'] > 0
-    for slug, name, n, p, prev in FX['firms']:
+    for slug, name, n, p, prev, cc in FX['firms']:
         assert slug and name and n > 0 and p >= 0
         assert (prev is None) == (p == 0)  # a firm with nothing last year has no rank last year
     ns = [f[2] for f in FX['firms']]
     assert ns == sorted(ns, reverse=True)  # in rank order
+
+
+def test_the_skyline_shows_a_flag_under_the_rank_from_the_firms_headquarters_country():
+    assert 'assets/flags/' in JS and "cleanCC" in JS  # a small flag picture, only for a two-letter country
+    assert "f.cc" in MIG and 'hq_country' in MIG  # the country comes with each firm, from the database
+    assert all(c is None or re.fullmatch(r'[A-Z]{2}', c) for *_, c in FX['firms'])
+    for c in {c.lower() for *_, c in FX['firms'] if c}:
+        assert (ROOT / 'launch/assets/flags' / (c + '.png')).exists(), c  # every flag the saved answer needs is shipped
+    assert (ROOT / 'launch/assets/flags/NOTICE.md').exists()  # the open-source licence note
+    assert "assets', 'flags'" in (ROOT / 'launch/build.py').read_text()  # and the build copies them
