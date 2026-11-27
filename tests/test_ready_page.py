@@ -23,6 +23,7 @@ def test_the_header_link_is_on_every_page_and_orange():
 
 
 def test_the_page_asks_only_for_the_deck_linkedin_and_a_note():
+    from pages import ready
     html = ready.render(None)
     assert 'May save years<br>of your life.' in html and 'The #1 feedback on your pitch deck' in html
     assert html.count('<input') == 2 and html.count('<textarea') == 1          # the file, LinkedIn, the note
