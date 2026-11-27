@@ -361,3 +361,25 @@ def test_pathfinders_rows_never_shrink_and_firm_rows_and_locked_rows_are_equally
     css = (ROOT / 'launch/style.css').read_text()
     assert re.search(r'\.vm-side \.vm-pfs a\.vm-pf\{[^}]*flex:none;min-height:0', css)   # the list scrolls inside a flex column: without flex:none the rows shrink and overlap
     assert re.search(r'\.vm-side \.vm-pfs button\.vm-pfb\{[^}]*flex:none', css)
+
+
+def test_trends_sectors_have_a_dollar_button_with_bars_totals_and_growth():
+    """Founder, 27 Nov 2026: a third "$" segment on the Trends Sectors card (dollars rounds raised per sector), approved as a picture first."""
+    css = (ROOT / 'launch/style.css').read_text()
+    # the switch has $ only on the Trends sector list; the other two switches (money flow place lists) stay % / #
+    assert "const unitSw = (usd) =>" in JS and "['usd', '$', 'dollars raised']" in JS
+    assert JS.count('${unitSw()}') == 2 and '${unitSw(true)}' in JS
+    # one read-only database call, with the same filters as the deal counts
+    assert "sb.rpc('v2_map_hot_money', a)" in JS and "p_firms: who(), p_level: S.level" in JS
+    # rows: colour bar (now) first, grey bar (before) under it, the total, the growth under the total, biggest first, ten rows when nothing is chosen
+    assert JS.index('class="vm-bn vm-b${t.tone}"') < JS.index('class="vm-bp"')
+    assert "S.money.slice(0, S.sectors.length ? S.money.length : 10)" in JS
+    assert "usdText(now)" in JS and "signed(t.pct) + '%'" in JS
+    assert re.search(r'\.vm-secm \.vm-bp\{background:#C9D1CE\}', css)
+    # a saved "$" never leaves another list without a pressed button
+    assert "(S.unit === 'usd' && !usd ? 'pct' : S.unit) === k" in JS
+    # the function exists, is read-only, leaves out IPOs, counts a round once and is open to the site's visitors
+    sql = (ROOT / 'supabase/migrations/20261127203000_v2_map_hot_money.sql').read_text()
+    assert "coalesce(e.round, '') <> 'IPO'" in sql and 'group by d.event_id, d.startup_id' in sql
+    assert re.search(r'grant execute on function public\.v2_map_hot_money\(text, text, text, integer, text\[\], text\[\]\) to anon, authenticated', sql)
+    assert not re.search(r'\b(insert|update|delete|drop table|alter table)\b', sql.split('create or replace')[1].lower().split('$body$')[1])

@@ -1332,6 +1332,16 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-sec i{margin:0;flex:none}
 .vm-sec span:nth-child(2){flex:1}
 .vm-sec:hover,.vm-sec.vm-secon{background:var(--ms)}
+.vm-secm{min-height:44px}
+.vm-secm .vm-bars{flex:none;width:76px;display:flex;flex-direction:column;gap:3px}
+.vm-secm .vm-bars b{display:block;height:5px;border-radius:3px}
+.vm-secm .vm-bp{background:#C9D1CE}
+.vm-secm .vm-bup{background:#177A49}.vm-secm .vm-bdown{background:#B93A2F}.vm-secm .vm-bflat{background:#586964}
+.vm-secm .vm-mv{flex:none;width:62px;display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+.vm-secm .vm-mv b{font-size:15px;font-weight:600;color:var(--mi)}
+.vm-secm .vm-mv em{font-style:normal;font-family:'Geist Mono',ui-monospace,monospace;font-size:12px;font-weight:500;color:var(--mm)}
+.vm-secm .vm-mv em.vm-tu{color:#177A49}.vm-secm .vm-mv em.vm-td{color:#B93A2F}
+.vm-note{margin:12px 0 0;font-size:14px;color:var(--mm)}
 .vm-sec.vm-secon span:nth-child(2){font-weight:600}
 .vm-sub{font-size:12px;margin:10px 0 2px}
 .vm-pc{font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;white-space:nowrap}
