@@ -56,9 +56,11 @@
       under: (r) => usd(r.v),
       tip: (r) => ['<small>' + esc(usd(r.v)) + (r.dt ? ' · announced ' + esc(dayMon(r.dt)) : '') + '</small>', '<small>' + (r.p ? 'was ' + esc(usd(r.p)) + ' last year' : 'no earlier fund on record') + '</small>'],
       legend: ['up', 'dn', 'nu', 'eq', 'na'], counts: false },
-    // Biggest rounds: the 100 biggest rounds of the year so far (v2_top100_rounds). A row is a round, not a firm: no firm page to open, no place for the Map, no last year.
-    // Seventh item: { r: round name, d: date, i: sector, n: investors we hold in it, h: in the last 30 days, g: industry group }.
-    { key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds', args: { p_n: 100 }, fx: 'fx_top100_rounds', noPrev: true, noLink: true, noMap: true, scale: Math.sqrt,
+    // Biggest rounds: the 100 biggest rounds of the year so far (v2_top100_rounds). A row is a round, not a firm: no firm page to open, no last year. Its Map places each round by its STARTUP's country / city
+    // (founder, 27 Nov: "startup country"); a round whose startup has no place on record is in the list but not on the map.
+    // Seventh item: { r: round name, d: date, i: sector, n: investors we hold in it, h: in the last 30 days, g: industry group, c: startup country, p: world region, l: 'us' | 'eu', a: place on that zoom }.
+    { key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds', args: { p_n: 100 }, fx: 'fx_top100_rounds', noPrev: true, noLink: true, scale: Math.sqrt, noun: 'round',
+      placeOf: (r, lvl) => { const x = r.parts || {}; return lvl === 'world' ? x.p : x.l === lvl ? x.a : null; },  // the Map: a round sits where its startup is (the function's p / l / a)
       unit: usd, bar: (v) => (v >= 1e9 ? short(v) : ''), under: (r) => usd(r.v), color: gCol, ink: gInk, flame: (r) => !!(r.parts && r.parts.h),
       row: (r) => ({ v: usd(r.v), s: [r.parts && r.parts.r, dayMon(r.parts && r.parts.d)].filter(Boolean).join(' · ') }),
       tip: (r) => { const x = r.parts || {}; return ['<small>' + [x.g, x.r, dayMon(x.d)].filter(Boolean).map(esc).join(' · ') + '</small>', '<small>' + esc(usd(r.v)) + (x.n ? ' · ' + x.n + (x.n === 1 ? ' investor' : ' investors') + ' we hold' : '') + '</small>']; },
@@ -166,7 +168,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   // Back from a firm page (founder, 27 Nov): the view comes back as it was left, in this tab: the same chart, Map or Skyline, and the list where it was scrolled.
   // The page (js/map.js) already brings back the Top 100 itself; this is what is inside it. Kept in sessionStorage, so a shared link never carries it to someone else.
   const KEEP = 'regretamin.top100';
-  let scrollTo = 0;
+  let scrollTo = 0, BASED = '';
   function keep() {
     try { sessionStorage.setItem(KEEP, JSON.stringify({ k: chart.key, m: mode, s: root && $('#rows') ? Math.round($('#rows').scrollTop) : 0 })); } catch (e) { /* private mode */ }
   }
@@ -347,11 +349,21 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   // The Map is drawn by the page itself (js/map.js: the same circles, names, hover card, zoom card and + / - as Pathfinders). This view only hands over one row
   // per place, for all three zoom levels: { p: place, l: 'world' | 'us' | 'eu', d: the chart's number added up, f: firms, v: that number as text }.
   async function drawMap() {
-    const by = await loadPlaces();
+    const by = chart.placeOf ? null : await loadPlaces();
     if (mode !== 'map') return;
     $('#legend').innerHTML = ''; $('#sky').innerHTML = '';
     const rows = [];
-    ['world', 'us', 'eu'].forEach((l) => placesFor(l, by).forEach((o) => rows.push({ p: o.k, l, d: o.v, f: o.firms, v: chart.unit(o.v) })));
+    if (chart.placeOf) {  // a chart of rounds: each round sits where its startup is; the circle adds up the rounds there
+      let placed = 0;
+      ['world', 'us', 'eu'].forEach((l) => {
+        const at = {};
+        ROWS.forEach((r) => { const k = chart.placeOf(r, l); if (!k) return; const o = at[k] || (at[k] = { v: 0, f: 0 }); o.v += r.v; o.f++; if (l === 'world') placed++; });
+        Object.entries(at).forEach(([k, o]) => rows.push({ p: k, l, d: o.v, f: o.f, v: chart.unit(o.v), u: chart.noun }));
+      });
+      $('#based').textContent = placed + ' of ' + ROWS.length + ' ' + chart.noun + 's have a place on the map';
+    } else {
+      ['world', 'us', 'eu'].forEach((l) => placesFor(l, by).forEach((o) => rows.push({ p: o.k, l, d: o.v, f: o.firms, v: chart.unit(o.v) })));
+    }
     if (O.places) O.places(rows);
   }
   // the right picture for the mode: the Skyline, or the map at the level the zoom card shows
@@ -362,6 +374,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     root.querySelectorAll('.unit button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === mode)));
     if (O.onMode) O.onMode(mode);
     hideTip();
+    if (mode !== 'map' && BASED) $('#based').textContent = BASED;
     host.classList.toggle('map', mode === 'map');  // in Map mode this view is see-through on the right: the page's own map shows there
     if (mode === 'map') { drawMap(); return; }
     drawLegend(); drawSky();
@@ -379,7 +392,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     const d = await load(chart); await loadLogos();
     if (!d) { $('#based').textContent = ''; $('#sky').innerHTML = '<div class="msg">The Top 100 is not available right now. Try again in a moment.</div>'; return; }
     ROWS = shape(d);
-    $('#based').textContent = chart.based ? chart.based(d) : 'Based on ' + num(d.rounds) + ' rounds';
+    BASED = chart.based ? chart.based(d) : 'Based on ' + num(d.rounds) + ' rounds'; $('#based').textContent = BASED;
     drawRows(); draw();
     if (scrollTo) { $('#rows').scrollTop = scrollTo; scrollTo = 0; }
     keep();
