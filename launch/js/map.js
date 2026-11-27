@@ -637,7 +637,7 @@
         b.className = 'vm-pl vm-in'; pls.appendChild(b); els.set(key, b); fresh.push([b, p]);
       }
       b.className = `vm-pl vm-${p.kind}${p.kind === 'hot' ? ' ' + toneCls(p) : ''}${lit === p.p ? ' vm-lit' : ''}${S.pinned === p.p ? ' vm-sel' : ''}${b.classList.contains('vm-in') ? ' vm-in' : ''}`;
-      b.dataset.i = i; b.setAttribute('aria-label', S.view === 'top' ? `${p.n}: ${p.v}, ${num(p.f)} firm${p.f === 1 ? '' : 's'}` : S.view === 'path' ? `${p.n}: ${num(p.f)} firms` : `${p.n}: ${num(p.d)} deals, ${num(p.f)} firms`);
+      b.dataset.i = i; b.setAttribute('aria-label', S.view === 'top' ? `${p.n}: ${p.v}, ${num(p.f)} ${p.u || 'firm'}${p.f === 1 ? '' : 's'}` : S.view === 'path' ? `${p.n}: ${num(p.f)} firms` : `${p.n}: ${num(p.d)} deals, ${num(p.f)} firms`);
       b.style.left = p.x - p.r + 'px'; b.style.top = p.y - p.r + 'px'; b.style.width = b.style.height = p.r * 2 + 'px';
       if (p.kind === 'ring') { b.style.backgroundColor = ''; setSlices(b, p); }
       else if (p.kind === 'hot' || p.kind === 'path' || p.kind === 'top') b.style.backgroundColor = '';
@@ -685,7 +685,7 @@
     const t = $('#vm-tip'); if (!t) return;
     if (!p) { t.hidden = true; return; }
     if (S.view === 'top') {
-      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${esc(p.v)} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>`;
+      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${esc(p.v)} · ${num(p.f)} ${esc(p.u || 'firm')}${p.f === 1 ? '' : 's'}</span>`;
     } else if (S.view === 'path') {
       t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>`;
     } else if (S.view === 'hot') {

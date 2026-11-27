@@ -16,6 +16,7 @@ SOCIAL = json.loads((ROOT / 'tests/fixtures/top100_social.json').read_text())
 SOCIAL_MIG = (ROOT / 'supabase/migrations/20261127170027_v2_top100_social.sql').read_text()
 ROUNDS = json.loads((ROOT / 'tests/fixtures/top100_rounds.json').read_text())
 ROUNDS_MIG = (ROOT / 'supabase/migrations/20261127170632_v2_top100_rounds.sql').read_text()
+ROUNDS_PLACE_MIG = (ROOT / 'supabase/migrations/20261127174230_v2_top100_rounds_place.sql').read_text()
 FIRST_MIG = (ROOT / 'supabase/migrations/20261127164530_v2_top100_first.sql').read_text()
 
 
@@ -188,14 +189,14 @@ def test_saved_social_answer_has_the_shape_the_page_reads():
     assert totals == sorted(totals, reverse=True)
 
 
-def test_biggest_rounds_chart_colours_bars_by_industry_and_has_no_map_or_firm_links():
+def test_biggest_rounds_chart_colours_bars_by_industry__and_has_no_firm_links():
     """Biggest rounds (built 27 Nov), from the founder's picture ui-20-top100-rounds.png."""
     assert "key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds'" in JS and "fx: 'fx_top100_rounds'" in JS
-    assert "noPrev: true, noLink: true, noMap: true, scale: Math.sqrt" in JS  # a round has no firm: no page to open, no place on the map
+    assert "noPrev: true, noLink: true, scale: Math.sqrt, noun: 'round'" in JS and 'placeOf: (r, lvl)' in JS  # a round has no firm page to open; on the Map it sits where its startup is
     for g in ['AI', 'Hardware', 'Defense & security', 'Climate', 'Bio & health', 'Fintech & crypto', 'Software', 'Other']:
         assert "['" + g + "', '#" in JS
     assert "legend: 'groups'" in JS and 'last 30 days · ' in JS and 'const FLAME' in JS  # the flame marks a round from the last 30 days
-    assert "root.querySelector('.unit').hidden = !!chart.noMap" in JS and '.unit[hidden]{display:none}' in JS  # no Map button for this chart
+    assert "have a place on the map'" in JS and "u: chart.noun" in JS  # the card says how many rounds the map shows (the others have no startup place on record)
 
 
 def test_biggest_rounds_function_ranks_this_years_rounds_in_dollars_and_counts_a_round_once():
@@ -229,3 +230,18 @@ def test_back_from_a_firm_page_returns_to_the_same_chart_mode_and_scroll():
     assert "addEventListener('pagehide'" in JS and 'function restore()' in JS and 'restore(); drawHead();' in JS  # read before the first draw
     assert "m.m === 'map' && !chart.noMap" in JS and '$(\'#rows\').scrollTop = scrollTo' in JS
     assert JS.count('keep();') >= 3  # after a chart change, a Map / Skyline change, and on leaving
+
+
+def test_biggest_rounds_map_places_each_round_by_its_startup_and_the_function_gives_the_place():
+    """Founder, 27 Nov: Biggest rounds on the Map by startup country."""
+    m = ROUNDS_PLACE_MIG
+    assert 'create or replace function public.v2_top100_rounds(' in m and 'to anon, authenticated' in m and 'security definer' in m and 'stable' in m
+    assert 'st.st_country' in m and 'st.st_city' in m and 'v2_map_firm_places' in m  # the startup's own country and city; US cities placed like the firms' cities
+    assert "'p', pick.wreg, 'l', pick.zl, 'a'" in m and not re.search(r'\b(insert|update|delete|alter)\b\s+(into|table|from)', m.split('$fn$')[1].lower())
+    geo = json.loads((ROOT / 'launch/assets/map/places.json').read_text())
+    for key, name, usd, p, prev, cc, x in ROUNDS['firms']:
+        assert set(x) >= {'c', 'p', 'l', 'a'}
+        assert x['p'] is None or x['p'] in geo['world']['places']  # a world region the map has a position for
+        assert x['l'] in (None, 'us', 'eu') and (x['l'] is None) == (x['a'] is None)
+        assert x['a'] is None or x['a'] in geo[x['l']]['places']  # a place the zoom has a position for
+    assert sum(1 for f in ROUNDS['firms'] if f[6]['p']) >= 50  # 57 of the 100 have a place today; the rest have no startup country or city on record
