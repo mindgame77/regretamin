@@ -201,7 +201,20 @@
    "note": "We built this because we want your raise to go well. The investor you pick will be part of your life for years, so make it a good match and make it last. Go build a great company, with or without us.",
    "name": "Olexi Masky",
    "photo_alt": "Olexi Masky",
-   "explain": "10 credits to find out what's wrong with your pitch. 25 to find out who to pitch and who to skip."
+   "explain": "10 credits to find out what's wrong with your pitch. 25 to find out who to pitch and who to skip.",
+   "title_pick": "Choose your plan",
+   "first": {
+    "code": "FIRSTMONTH",
+    "band": "{p}% off your first month",
+    "tag": "{p}% off",
+    "sub": "first month · then {price}/mo"
+   },
+   "yearly_band": "2 months free when you pay yearly",
+   "yearly_tag": "2 months free",
+   "start": "Start {name} · pay {now} today",
+   "note_month": "You pay {now} today. After that, {price} is charged every month on the same date until you cancel. Cancel any time in Account. Credits refill each month.",
+   "note_month_off": "You pay {now} today, {p}% off the first month. After that, {price} is charged every month on the same date until you cancel. Cancel any time in Account. Credits refill each month.",
+   "note_year": "You pay {now} today for the year. It renews every year on the same date until you cancel. Cancel any time in Account. Credits still refill every month."
   },
   "landing": {
    "h1": "Check your VC",

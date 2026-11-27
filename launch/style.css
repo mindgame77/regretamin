@@ -31,7 +31,24 @@ nav .r{display:flex;gap:22px;align-items:center;font-weight:500;color:var(--ink2
 .md .btn{width:100%}.md .price{margin:24px 0 0;grid-template-columns:repeat(3,1fr)}.md .pr .btn{margin-top:16px}
 .fnote{display:flex;gap:18px;align-items:flex-start;margin:20px 0 4px}.fnote img{width:72px;height:72px;border-radius:50%;object-fit:cover;flex:none}.fnote p{font-size:16px;line-height:1.5;color:var(--ink2);margin:0 0 8px}.fnote b{font-size:14px;font-weight:700}
 .pr p.ex{font-size:13px;line-height:1.45;color:var(--mute);margin-top:8px}
-@media (max-width:820px){.md.w{width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto;padding:26px 20px}.md.w .price{grid-template-columns:1fr}.fnote{gap:14px}.fnote img{width:56px;height:56px}.fnote p{font-size:15px}}
+.md.w{width:600px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto;padding:32px;box-sizing:border-box;border-radius:20px}
+.md.w .price.plist{display:block;margin:0}
+.phd{display:flex;align-items:center;justify-content:space-between;gap:12px}.phd .bt{margin:0}.phd h2{font-size:30px;letter-spacing:-.045em;line-height:1.05}
+.phd .bt>div{border-radius:12px;background:#EDF1EF}.phd .bt button{height:36px;padding:0 16px;border-radius:9px}.phd .bt em{display:none}
+.pband{display:flex;align-items:center;gap:12px;margin:22px 0 0;background:#10201C;border-radius:12px;padding:14px 18px;font:600 13px 'Geist Mono',ui-monospace,monospace;letter-spacing:.04em;text-transform:uppercase;color:#F0861E}.pband i{width:10px;height:10px;border-radius:50%;background:#F0861E;flex:none}
+.plrs{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.plr{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:1px solid #DDE6E2;border-radius:12px;padding:16px 18px;background:#fff;cursor:pointer;font:inherit;color:inherit}
+.plr.on{border:2px solid #10201C;padding:15px 17px}.plr.hid{border-style:dashed}
+.plr .pld{width:22px;height:22px;border-radius:50%;border:2px solid #B9C6C1;flex:none;display:grid;place-items:center}.plr.on .pld{border-color:#10201C}.plr.on .pld:after{content:'';width:10px;height:10px;border-radius:50%;background:#10201C}
+.plr .pln{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.plr .pln b{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:17px;font-weight:600;letter-spacing:-.02em}.plr .pln>span{font-size:14px;color:#44544F}
+.plr .pln em{font:600 12px 'Geist Mono',ui-monospace,monospace;font-style:normal;letter-spacing:.04em;text-transform:uppercase;background:#F0861E;color:#10201C;border-radius:6px;padding:3px 8px;line-height:1.2}
+.plr .plx{text-align:right;display:flex;flex-direction:column;align-items:flex-end}.plr .plx b{display:flex;align-items:center;justify-content:flex-end;gap:12px;font-size:24px;font-weight:600;letter-spacing:-.03em}.plr .plx b small{font-size:14px;font-weight:400;color:#5F6F6A}
+.plr .plx>span{font-size:13px;color:#5F6F6A}
+.plr .plw{position:relative;display:inline-block;font-size:20px;font-weight:500;color:#44544F;line-height:1.1}.plr .plw:after{content:'';position:absolute;left:-4px;right:-4px;top:50%;height:2px;background:#F0861E;transform:rotate(-16deg)}
+.md.w .ex{font-size:13px;line-height:1.45;color:#5F6F6A;margin:14px 0 0}
+.md.w>.price>.btn{margin-top:14px;height:52px;font-size:16px;font-weight:600;border-radius:12px}
+.pnote{font-size:13px;line-height:1.5;color:#5F6F6A;margin:14px 0 0}
+@media (max-width:640px){.md.w{padding:22px 18px}.phd h2{font-size:24px}.phd .bt button{padding:0 12px}.plr{padding:14px;gap:10px}.plr.on{padding:13px}.plr .plx b{font-size:21px;gap:8px}.plr .plw{font-size:17px}.fnote{gap:14px}.fnote img{width:56px;height:56px}.fnote p{font-size:15px}}
 .pend{max-width:640px;margin:80px auto 120px;text-align:center}.pend h1{font:800 46px/1.05 'Bricolage Grotesque';margin:20px 0 12px}.pend .sp{width:64px;height:64px;margin:0 auto;border-radius:50%;border:6px solid var(--viobg);border-top-color:var(--vio)}
 .pend form{display:flex;gap:10px;margin:28px auto 0;max-width:480px}.pend .in{margin:0}
 .pend form{flex-wrap:wrap}.pend .in[name=email]{flex:1}.pend .in[name=website]{order:3;flex-basis:100%}
