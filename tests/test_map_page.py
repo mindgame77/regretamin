@@ -297,7 +297,7 @@ def test_pathfinders_view_shows_the_small_firms_the_top_100_follow():
     view; same head card, timeline and buttons as the others; circles per place, and a ranked list of firms."""
     js = (ROOT / 'launch/js/map.js').read_text(); css = (ROOT / 'launch/style.css').read_text()
     mig = (ROOT / 'supabase/migrations/20261126030945_v2_map_pathfinders.sql').read_text()
-    assert '<button type="button" data-view="founders">Founders</button><button type="button" data-view="path">Pathfinders</button></div>' in js
+    assert '<button type="button" data-view="founders">Founders</button><button type="button" data-view="path">Pathfinders</button><button type="button" data-view="top">Top 100</button></div>' in js  # the fifth view comes after it (26 Nov)
     assert "sb.rpc('v2_map_pathfinders', a)" in js and "$('#vm-h1').textContent = 'Who the top firms follow.';" in js
     assert "<h2>Most followed</h2></div>" in js and "startups followed" not in js  # he had the small label removed (26 Nov)
     assert "if (S.view === 'path' && !S.list) drawSide();" in js  # the list follows the timeline
