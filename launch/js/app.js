@@ -78,7 +78,9 @@
   const hdr = (signedIn, email) => {
     $('#signin').hidden = signedIn; $('#acct').hidden = !signedIn;
     if (signedIn && email && !$('#av').textContent) $('#av').textContent = email[0].toUpperCase();
-    document.documentElement.classList.remove('au-in', 'au-out', 'au-wait');
+    const root = document.documentElement.classList;
+    root.remove('au-in', 'au-out', 'au-wait');
+    root.toggle('is-in', !!signedIn); // the phone menu panel reads this one (au-* only covers the first frame)
   };
   if (window.REGRET_AU && window.REGRET_AU.email) { $('#av').textContent = window.REGRET_AU.email[0].toUpperCase(); $('#ddem').textContent = window.REGRET_AU.email; }
   const session = async (ms = 8000) => { // null when signed out or when the auth client stalls past ms
