@@ -121,6 +121,26 @@
     return `<div class="rd-frow rd-f2"><span class="rd-ord">${i + 1}</span><span class="rd-lg"><img src="/assets/logos/f-${encodeURIComponent(f.slug)}.png" alt="" onerror="this.parentNode.textContent='${ini}'"></span>`
       + `<div><a class="rd-nm" target="_blank" rel="noopener" href="/vc/${encodeURIComponent(f.slug)}/">${esc(f.name)}</a><div class="rd-pl">${esc(place)}</div></div><div class="rd-why">${f.n12} deal${f.n12 === 1 ? '' : 's'} in the last 12 months</div></div>`;
   }
+  // The deck did not say where the company is based: the founder is asked, and the firms are picked again for that country
+  // (founder, 26 Nov: "If he doesn't have a location, we can ask him or her"). Country names come from the browser.
+  const CODES = 'US GB CA DE FR NL SE NO DK FI IE ES PT IT CH AT BE PL CZ EE LV LT UA RO BG GR TR IL AE SA IN PK SG ID VN TH MY PH JP KR CN HK TW AU NZ BR MX AR CL CO NG KE ZA EG GH'.split(' ');
+  function whereBox(r) {
+    if (r.research || !REPORT || (r.company && r.company.country)) return '';
+    let names; try { names = new Intl.DisplayNames(['en'], { type: 'region' }); } catch (e) { names = null; }
+    const opts = CODES.map((c) => [c, names ? names.of(c) : c]).sort((a, b) => a[1].localeCompare(b[1])).map(([c, n]) => `<option value="${c}">${esc(n)}</option>`).join('');
+    return `<div class="rd-where"><span>Your deck does not say where you are based. Where are you based?</span><select id="rd-cty" aria-label="Where are you based?"><option value="">Choose a country</option>${opts}</select><button type="button" class="rd-btn" id="rd-ctygo">Update the firms</button><span id="rd-ctymsg"></span></div>`;
+  }
+  async function setCountry(r) {
+    const c = $('rd-cty') && $('rd-cty').value, msg = $('rd-ctymsg');
+    if (!c || !sb || !REPORT) return;
+    const { data } = await sb.auth.getSession();
+    if (!data || !data.session) return $('rd-signin').click();
+    $('rd-ctygo').disabled = true; msg.textContent = 'Looking…';
+    let out = null;
+    try { const q = await fetch('/api/ready', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + data.session.access_token }, body: JSON.stringify({ id: REPORT, country: c }) }); out = q.ok ? await q.json() : null; } catch (e) { out = null; }
+    if (!out || !out.report) { $('rd-ctygo').disabled = false; msg.textContent = 'That did not go through. Try again.'; return; }
+    const y = window.scrollY; draw(out.report); window.scrollTo(0, y);
+  }
   function moreFirms(r) {
     const n = (r.firms || []).length, rest = n - FREE_FIRMS;
     if (rest <= 0) return '';
@@ -193,12 +213,15 @@
         Number(f.fit) ? fact('spec', `${f.fit} ${stageW} deal${Number(f.fit) === 1 ? '' : 's'} in your field`, 'In the last 12 months', true) : '',
         f.n12 != null ? fact('up', `${f.n12} deal${Number(f.n12) === 1 ? '' : 's'} in the last 12 months`, [Number(f.n90) ? f.n90 + ' in the last 90 days' : '', f.last_deal ? 'last deal ' + day(f.last_deal) : ''].filter(Boolean).join(' · '), true) : '',
         f.stage_pct != null ? fact('built', `${f.stage_pct}% of its deals are at your stage`, Number(f.sector_pct) ? f.sector_pct + '% are in your field' : '', true) : '',
+        f.geo === 'country' ? fact('chain', Number(f.n_country) ? `Backed ${f.n_country} startup${Number(f.n_country) === 1 ? '' : 's'} from your country` : 'Based in your country', Number(f.n_country) && f.hq_same ? 'and it is based there' : 'It invests where you are', true)
+          : f.geo === 'region' ? fact('chain', 'Based in your region', 'No firm tie to your country on record', true) : '',
       ].join('');
+      const size = f.rounds && f.rounds.n >= 5 ? fact('chq', `Usually joins rounds of ${usd(f.rounds.lo)} to ${usd(f.rounds.hi)}`, `The middle half of its ${f.rounds.n} ${stageW} rounds in the last 3 years`, true) : '';
       const sum = f.summary && f.summary.text ? `<div class="rd-sum"><span>Summary:</span> ${esc(f.summary.text)} <em>${esc([f.summary.who, f.summary.title, f.summary.year].filter(Boolean).join(' · '))}</em></div>` : '';
       const pill = bs.filter((b) => AWARDED.includes(b.v)).map((b) => bdg(b.k, b.v, b.n, true)).join('');
       const way = bs.filter((b) => !AWARDED.includes(b.v)).map((b) => fact(b.k, b.v, b.n, true)).join('');
       return `<div class="rd-cc"><div class="rd-cch"><span class="rd-ord">${i + 1}</span>${logo(f)}<div>${firmA(f)}<p>${esc(place)}</p>${(f.marks || []).map((m) => `<span class="rd-mark">${CUP}${esc(m)}</span>`).join('')}</div>${pill}${t.apply ? `<a class="rd-pb" target="_blank" rel="noopener nofollow" href="${esc(t.apply)}">Pitch<span aria-hidden="true"> ↗</span></a>` : ''}</div>`
-        + `<div class="rd-ccb"><div><p class="rd-cap">Why we suggest it</p><div class="rd-fts">${why}</div>${sum}</div><div><p class="rd-cap">How to get in</p><div class="rd-fts rd-col">${way || '<span class="rd-pl">Nothing on record yet.</span>'}</div></div></div>`
+        + `<div class="rd-ccb"><div><p class="rd-cap">Why we suggest it</p><div class="rd-fts">${why}</div>${sum}</div><div><p class="rd-cap">How to get in</p><div class="rd-fts rd-col">${way + size || '<span class="rd-pl">Nothing on record yet.</span>'}</div></div></div>`
         + (f.say ? `<div class="rd-move"><i>${ico('move', 16)}</i><span class="rd-cap">What to say</span><b>${esc(ready ? f.say : String(f.say).replace(/\s*Go now\.$/, ' Fix your red flags first, then go.'))}</b></div>` : '') + '</div>';
     };
     if (picks.length || skip.length) parts.push(['Your investors', OURS, now.firms,
@@ -215,7 +238,12 @@
       parts.push(['Your ask against similar rounds', OURS, `${rr.n.toLocaleString('en-US')} ${rr.sector ? rr.sector.toLowerCase() + ' ' : ''}${String(rr.stage).toLowerCase()} rounds in the last 24 months with a known amount.`,
         `<div class="rd-cc"><div class="rd-track"><i class="rd-band" style="left:${at(rr.p25)};width:calc(${at(rr.p75)} - ${at(rr.p25)})"></i><i class="rd-mid" style="left:${at(rr.p50)}"></i><i class="rd-p90" style="left:${at(rr.p90)}"></i>${rr.ask ? `<span class="rd-you" style="left:${at(rr.ask)}">You: ${usd(rr.ask)}</span>` : ''}</div>`
         + `<div class="rd-qs"><div><b>${usd(rr.p25)}</b><span>a quarter raised less</span></div><div><b>${usd(rr.p50)}</b><span>the middle</span></div><div><b>${usd(rr.p75)}</b><span>a quarter raised more</span></div><div><b>${usd(rr.p90)}</b><span>top tenth</span></div></div>`
-        + (rr.line ? `<p class="rd-rl">${esc(rr.line)}</p>` : '') + '</div>', todo.ask]);
+        + (rr.line ? `<p class="rd-rl">${esc(rr.line)}</p>` : '') + '</div>'
+        + (rr.peers ? `<div class="rd-cc"><p class="rd-cap">What the founders who raised ${usd(rr.ask)} or more had</p><div class="rd-fts">`
+          + fact('study', `${rr.peers.uni}% had a founder from a top university`, rr.peers.unis && rr.peers.unis.length ? 'Most often ' + rr.peers.unis.join(', ') : '', true)
+          + fact('work', `${rr.peers.co}% had a founder from a known company`, rr.peers.cos && rr.peers.cos.length ? 'Most often ' + rr.peers.cos.join(', ') : '', true)
+          + fact('built', `${rr.peers.built}% had a founder who built a company before`, `Of the ${rr.peers.known} such rounds where we know the founders`, true)
+          + `</div>${rr.peers.line ? `<div class="rd-move"><i>${ico('move', 16)}</i><b>${esc(rr.peers.line)}</b></div>` : ''}</div>` : ''), todo.ask]);
     }
     return parts.map((p, n) => part(letters[n] || '', p[0], p[1], p[2], p[3], p[4])).join('');
   }
@@ -244,6 +272,38 @@
     if (st4) st4.remove();
   }
 
+  // The report as plain text with an instruction on top, for the founder to hand to an AI together with the deck
+  // (founder, 26 Nov: "everyone should give it to AI. They will not change their pitch deck").
+  const AI_ASK = 'Here is my pitch deck and its review from Regretamin. Rewrite my slides to fix every point marked REWRITE, slide by slide. Do not invent numbers, customers or facts. For the points marked EARN IT, do not rewrite anything: list them as things I still have to do, each with a first step.';
+  function forAI(r) {
+    const co = r.company || {}, L = [AI_ASK, '', `REVIEW OF: ${[co.name, co.stage, co.sector].filter(Boolean).join(', ')}`, `VERDICT: ${r.verdict || ''}${r.scores && r.scores.deck != null ? ' Deck score: ' + r.scores.deck + '/10.' : ''}`];
+    const tag = (f) => (f.by === 'proof' ? 'EARN IT' : 'REWRITE');
+    const flags = (title, list) => { if (!list.length) return; L.push('', title); list.forEach((f, i) => L.push(`${i + 1}. [${tag(f)}] ${f.what}${f.where ? ' (' + f.where + ')' : ''}. Why it matters: ${f.why} Fix: ${f.fix}`)); };
+    if (r.lead) L.push('', `LEAD WITH THIS: ${r.lead.text}${r.lead.where ? ' (' + r.lead.where + ')' : ''}`);
+    if ((r.special || []).length) { L.push('', 'SPECIAL IN MY FIELD (keep and move up):'); r.special.forEach((x) => L.push(`- ${x.what}${x.where ? ' (' + x.where + ')' : ''}`)); }
+    if ((r.good || []).length) { L.push('', 'WHAT IS GOOD (keep):'); r.good.forEach((g) => L.push(`- ${g.what}${g.where ? ' (' + g.where + ')' : ''}`)); }
+    flags('RED FLAGS (fix first):', r.reds || []); flags('IMPROVE:', r.yellows || []);
+    const x = r.research;
+    if (x && (x.competitors || []).length) { L.push('', 'COMPETITORS AND WHAT TO SAY ABOUT EACH:'); x.competitors.forEach((c) => L.push(`- ${c.name}: ${c.what}${c.move ? ' My answer: ' + c.move : ''}`)); }
+    if (x && x.rounds && x.rounds.line) L.push('', `MY ASK: ${x.rounds.line}`);
+    return L.join('\n');
+  }
+  const FEEDBACK = '<div class="rd-fb" id="rd-fb" hidden><h2>Feedback</h2><div class="rd-fbg"><label>What\'s good?<textarea id="rd-fb1" maxlength="4000"></textarea></label><label>What\'s missing?<textarea id="rd-fb2" maxlength="4000"></textarea></label><label>What\'s wrong?<textarea id="rd-fb3" maxlength="4000"></textarea></label></div><button type="button" class="rd-btn rd-k" id="rd-fbgo">Send feedback</button><span id="rd-fbmsg"></span></div>';
+  async function feedback() {
+    const box = $('rd-fb'); if (!box || !sb) return;
+    const probe = await sb.from('ready_feedback').select('id').limit(1);   // the box shows only once its table is there
+    if (probe.error) return;
+    box.hidden = false;
+    $('rd-fbgo').addEventListener('click', async () => {
+      const v = (id) => $(id).value.trim().slice(0, 4000) || null, row = { report_id: REPORT, good: v('rd-fb1'), missing: v('rd-fb2'), wrong: v('rd-fb3') };
+      if (!row.good && !row.missing && !row.wrong) return;
+      $('rd-fbgo').disabled = true;
+      const ins = await sb.from('ready_feedback').insert(row);
+      if (ins.error) { $('rd-fbgo').disabled = false; $('rd-fbmsg').textContent = 'That did not go through. Try again.'; return; }
+      box.innerHTML = '<h2>Feedback</h2><p>Thank you. We read every one.</p>';
+    });
+  }
+
   function draw(r, same) {
     const co = r.company || {};
     const line = [co.name, co.stage ? co.stage.toLowerCase() : '', co.sector && co.sector !== 'Other' ? co.sector : '', co.ask_usd ? 'raising ' + money(co.ask_usd) : '', co.based_in].filter(Boolean).join(' · ');
@@ -254,7 +314,7 @@
     const fire = special.map((x) => `<div class="rd-sp">${FIRE}<div><span class="rd-kind">${esc(x.kind)}</span><b>${esc(x.what)}</b>${x.where ? ' <span class="rd-wh">' + esc(x.where) + '</span>' : ''}<p>${esc(x.why)}</p></div><span class="rd-imp rd-hot">12<i>/10</i></span></div>`).join('');
     const goodBox = good.length || lead || fire ? `<div class="rd-good"><h2>What's good</h2>${fire ? `<p class="rd-cap rd-spcap">Special in your field</p>${fire}` : ''}${good.length ? `<div class="rd-row rd-g rd-hd"><span></span><span>What</span><span>Where</span><span>Score</span><span>Why investors like it</span></div>` + good.map((g) => `<div class="rd-row rd-g">${g.score >= 9 ? CUP : '<i class="rd-dot rd-grn"></i>'}<b>${esc(g.what)}</b><span class="rd-wh">${esc(g.where)}</span><span class="rd-imp rd-grn">${g.score}<i>/10</i></span><span>${esc(g.why)}</span></div>`).join('') : ''}${lead}</div>` : '';
     res.innerHTML = '<p class="rd-made"><img src="/logo.svg" alt="">Made with Regretamin · regretamin.com</p>'   // shown only in the PDF (founder, 26 Nov)
-      + (same ? '<p class="rd-same">You already sent us this deck. Here is the result.</p>' : '') + `<div class="rd-bar"><h1>Your raise report</h1><span class="rd-who">${esc(line)}</span><button type="button" class="rd-btn rd-k" id="rd-pdf">Download PDF</button><button type="button" class="rd-btn" id="rd-again">Upload a new version</button></div>`
+      + (same ? '<p class="rd-same">You already sent us this deck. Here is the result.</p>' : '') + `<div class="rd-bar"><h1>Your raise report</h1><span class="rd-who">${esc(line)}</span><button type="button" class="rd-btn rd-k" id="rd-pdf">Download PDF</button><button type="button" class="rd-btn" id="rd-ai">Copy for AI</button><button type="button" class="rd-btn" id="rd-again">Upload a new version</button></div>`
       + `<div class="rd-verdict"><div><p class="rd-cap">Verdict</p><h2>${esc(r.verdict)}</h2></div>${scores ? tile('Deck', scores.deck) : ''}</div>`   // founder, 26 Nov: the founders score is kept on the report (scores.founders) but not shown; the four-step strip is gone
       + goodBox
       + step(1, `<h2>Get rid of the red flags <small>${reds.length ? reds.length + ' · most important first' : 'none found'}</small></h2>${reds.length ? head('How to fix it') + rows(reds, 'rd-red') : ''}`)
@@ -262,14 +322,18 @@
       + (r.research
         ? step(3, `${PAID_H}<div id="rd-s3">${researchHtml(r.research, r)}</div>`, true, 'rd-st3', 'rd-paid')
         : step(3, `<h2>Know your competitors</h2><div id="rd-s3">${LOCK(!!REPORT)}</div>`, false, 'rd-st3')
-          + step(4, `<h2>Pitch these firms, in this order</h2>${firms.length ? `<div class="rd-sub"><span class="rd-tag">Start here</span><span>They fit your stage and field and are writing cheques now.</span></div>${firms.slice(0, FREE_FIRMS).map(firmRow).join('')}<div id="rd-f4">${moreFirms(r)}</div>` : '<p class="rd-none">We found no firm with a recent deal at your stage in your field.</p>'}`, true, 'rd-st4'));
+          + step(4, `<h2>Pitch these firms, in this order</h2>${firms.length ? `<div class="rd-sub"><span class="rd-tag">Start here</span><span>They fit your stage and field and are writing cheques now.</span></div>${whereBox(r)}${firms.slice(0, FREE_FIRMS).map(firmRow).join('')}<div id="rd-f4">${moreFirms(r)}</div>` : '<p class="rd-none">We found no firm with a recent deal at your stage in your field.</p>'}`, true, 'rd-st4'));
+    res.insertAdjacentHTML('beforeend', `<p class="rd-aip"><b>Hand this to your AI, with your deck:</b> ${esc(AI_ASK)}</p>` + FEEDBACK);
     show(res);
     $('rd-pdf').addEventListener('click', () => window.print());
+    $('rd-ai').addEventListener('click', async () => { const b = $('rd-ai'); try { await navigator.clipboard.writeText(forAI(r)); b.textContent = 'Copied'; } catch (e) { b.textContent = 'Copy failed'; } setTimeout(() => { b.textContent = 'Copy for AI'; }, 1800); });
+    if ($('rd-ctygo')) $('rd-ctygo').addEventListener('click', () => setCountry(r));
+    feedback();
     if ($('rd-buy')) $('rd-buy').addEventListener('click', () => research(r));
     $('rd-again').addEventListener('click', () => { try { history.replaceState(null, '', location.pathname); } catch (e) {} show(up); });
   }
 
-  window.REGRET_READY_DRAW = draw;  // for tests and design checks
+  window.REGRET_READY_DRAW = draw; window.REGRET_READY_AI = forAI;  // for tests and design checks
 
   // A saved report opens by its address: /ready/?report=<id>
   (async function open() {

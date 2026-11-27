@@ -2153,3 +2153,12 @@ a.rd-bg:hover{border-color:#F0861E}.rd-ar{color:#B85F0A}
   .rd-dot,.rd-d{display:none!important}
   .rd-row,.rd-frow,.rd-crow,.rd-trow{break-inside:avoid}
 }
+/* Where are you based, the feedback box, and the line for an AI (the line shows in the PDF only). */
+.rd-where{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border-radius:12px;padding:10px 14px;margin:8px 0 4px}.rd-where span:first-child{font-weight:600}
+.rd-where select{height:40px;border:1px solid #C9D0CC;border-radius:10px;padding:0 10px;font:inherit;background:#fff}.rd-where .rd-btn{height:40px}
+.rd-fb{margin:28px 0 0 56px;background:#F2F4F3;border-radius:24px;padding:20px 24px}.rd-fb h2{font-size:22px;font-weight:600;margin-bottom:10px}
+.rd-fbg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}.rd-fb label{display:flex;flex-direction:column;gap:6px;font-weight:600}
+.rd-fb textarea{min-height:90px;border:1px solid #C9D0CC;border-radius:12px;padding:10px 12px;font:inherit;font-weight:400;resize:vertical;background:#fff}#rd-fbmsg{margin-left:12px;color:#6B7772}
+.rd-aip{display:none}
+@media (max-width:1000px){.rd-fb{margin-left:0}.rd-fbg{grid-template-columns:1fr}}
+@media print{.rd-fb,.rd-where{display:none!important}.rd-aip{display:block!important;margin-top:18px!important}}

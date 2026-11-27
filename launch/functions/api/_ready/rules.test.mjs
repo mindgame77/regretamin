@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CHECKLIST } from './checklist.js';
-import { importance, score, marksOf, assemble, parseModelJson, systemPrompt, FROM_OUR_DATA, sayTo, READY_SCORE } from './rules.js';
+import { importance, score, marksOf, assemble, parseModelJson, systemPrompt, FROM_OUR_DATA, sayTo, READY_SCORE, reFirm } from './rules.js';
 
 test('the checklist holds the 216 questions of the sheet and one added since (217: proof has a shelf life)', () => {
   assert.equal(CHECKLIST.length, 217);
@@ -120,4 +120,13 @@ test('old proof is a rule, and the country is a two-letter code or nothing', () 
   assert.equal(assemble({ company: { stage: 'Seed', country: 'Ukraine' } }, null).company.country, null);
   assert.equal(assemble({ company: { stage: 'Seed' } }, null).company.country, null);
   assert.ok(/never guess it from a founder's name/.test(systemPrompt()));
+});
+
+test('when the founder says where they are based, only the firms change', () => {
+  const report = assemble({ company: { stage: 'Seed', sector: 'Consumer' }, flags: [{ n: 4, level: 'red' }] }, { firms: [{ slug: 'old', name: 'Old', fit: 1, n90: 9 }] });
+  const again = reFirm(report, { firms: [{ slug: 'ta', name: 'TA Ventures', fit: 0, n90: 9, geo: 'country', n_country: 2 }], then: [{ name: 'Big', slug: 'big', after: 'TA Ventures', n: 1 }] }, 'UA');
+  assert.equal(again.company.country, 'UA'); assert.equal(again.company.country_from, 'founder');
+  assert.deepEqual(again.firms.map((f) => f.slug), ['ta']); assert.equal(again.firms[0].geo, 'country');
+  assert.equal(again.firms[0].say, 'It is investing fast right now. Fix your red flags first, then go.');   // the ready-deck rule still holds
+  assert.equal(again.verdict, report.verdict); assert.deepEqual(again.reds, report.reds); assert.equal(again.then[0].slug, 'big');
 });

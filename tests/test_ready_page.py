@@ -130,3 +130,19 @@ def test_feedback_of_26_nov_after_the_first_real_research():
     assert "'Earn it' : 'Rewrite'" in js
     assert "new Date().getFullYear() - 10" in js
     assert "no squares" in css and ".rd-paid .rd-box{background:none!important" in css.replace(",.rd-paid .rd-box{", ".rd-paid .rd-box{")
+
+
+def test_firms_where_you_are_peers_feedback_and_copy_for_ai():
+    """Founder, 26 Nov: firms that invest where the founder is (asked when the deck does not say), what founders who raised as much
+    had, the rounds a firm usually joins, a feedback box, and the report as text for an AI."""
+    for name in ("api.test.mjs",):
+        r = subprocess.run(['node', '--test', os.path.join(ROOT, 'launch', 'functions', 'api', '_ready', name)], capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    js = open(os.path.join(ROOT, "launch", "js", "ready.js")).read()
+    api = open(os.path.join(ROOT, "launch", "functions", "api", "ready.js")).read()
+    assert "v2_ready_firms_geo" in api and "|| (await ask('v2_ready_firms', args))" in api   # the older pick answers until the new one is there
+    assert "Where are you based?" in js and "Update the firms" in js and "body: JSON.stringify({ id: REPORT, country: c })" in js
+    assert "from your country" in js and "Usually joins rounds of" in js and "What the founders who raised" in js
+    assert 'id="rd-ai">Copy for AI' in js and "Do not invent numbers, customers or facts." in js and "navigator.clipboard.writeText(forAI(r))" in js
+    assert "What\\'s good?" in js and "What\\'s missing?" in js and "What\\'s wrong?" in js and "from('ready_feedback').insert(row)" in js
+    assert "probe.error" in js   # the feedback box stays hidden until its table exists

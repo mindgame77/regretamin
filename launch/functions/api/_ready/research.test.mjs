@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { researchPrompt, researchAsk, normUrl, domainOf, pagesSeen, checkSource, answerText, vetted, buildResearch, askLine, investorTips, tooOld } from './research.js';
+import { researchPrompt, researchAsk, normUrl, domainOf, pagesSeen, checkSource, answerText, vetted, buildResearch, askLine, investorTips, tooOld, peersOf } from './research.js';
 import { onRequestPost } from '../research.js';
 
 const CONTENT = [
@@ -104,6 +104,7 @@ test('the function: only the owner of a finished report, made once, saved on the
       return ok({ stop_reason: 'end_turn', content: CONTENT.slice(3), usage: { input_tokens: 200, output_tokens: 300 } });
     }
     if (u.includes('/rpc/v2_firm_signals_for')) { assert.equal(JSON.parse(opt.body).p_slug, 'true-ventures'); return ok({ signals: ['top'], deals_now: 24, led_now: 6 }); }
+    if (u.includes('/rpc/v2_ready_ask_peers')) { assert.equal(JSON.parse(opt.body).p_ask, 1200000); return ok({ rounds: 9, known: 6, uni: 3, co: 3, built: 0, unis: ['Harvard'], cos: [] }); }
     if (u.includes('/rpc/v2_ready_firm_tips')) { assert.deepEqual(JSON.parse(opt.body).p_slugs, ['true-ventures']); return ok([{ slug: 'true-ventures', apply: 'https://www.trueventures.com/pitch', audience: { platform: 'X', followers: 112795, url: 'https://x.com/trueventures' }, cheque: null, deals: 24, led: 6 }]); }
     if (u.includes('/rpc/v2_ready_research')) { const b = JSON.parse(opt.body); assert.deepEqual(b.p_names, ['Halter', 'Nofence']); assert.deepEqual(b.p_domains, ['halterhq.com', 'nofence.no']); return ok({ competitors: [], skip: [], rounds: { n: 14, p25: 1325000, p50: 1500000, p75: 2012500, p90: 4265000 }, stage: 'Pre-seed', sector_known: true }); }
     throw new Error('unexpected ' + u);
@@ -167,4 +168,14 @@ test('news older than ten years is dropped, and "press Pitch" waits for a ready 
   assert.equal(weak.todo.firms, 'Fix the red flags in step 1 first. Then press Pitch.');
   const good = buildResearch({ competitors: [], tried: [] }, {}, { company: {}, scores: { deck: 8 }, firms }, {}, tips, {});
   assert.equal(good.todo.firms, 'Press Pitch on the first one today.');
+});
+
+test('what founders who raised as much had: shares of the rounds we know, and only from five rounds', () => {
+  const r = { n: 127, p25: 2.9e6, p50: 5e6, p75: 7.75e6, p90: 11.7e6 };
+  const p = peersOf({ rounds: 60, known: 40, uni: 22, co: 18, built: 10, unis: ['Stanford', 'Harvard', 'MIT', 'Yale'], cos: ['Google', 'Meta'] }, 8e6, r);
+  assert.deepEqual(p, { known: 40, uni: 55, co: 45, built: 25, unis: ['Stanford', 'Harvard', 'MIT'], cos: ['Google', 'Meta'], line: 'An ask this high needs proof like theirs, or proof that replaces it: customers, revenue, a signed pilot.' });
+  assert.equal(peersOf({ known: 40, uni: 22 }, 3e6, r).line, '');     // an ask at or under the middle gets the facts, not the warning
+  assert.equal(peersOf({ known: 4, uni: 4 }, 8e6, r), null);
+  const built = buildResearch({ competitors: [], tried: [] }, { rounds: r, sector_known: true }, { company: { ask_usd: 8e6, sector: 'Consumer' } }, {}, [], {}, { known: 40, uni: 22, co: 18, built: 10, unis: [], cos: [] });
+  assert.equal(built.rounds.peers.uni, 55);
 });

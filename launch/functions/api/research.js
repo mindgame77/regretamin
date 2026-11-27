@@ -46,9 +46,10 @@ export async function onRequestPost(ctx) {
   const rpc = async (fn, args) => {
     try { const r = await fetch(`${SB}/rest/v1/rpc/${fn}`, { method: 'POST', headers: mine, body: JSON.stringify(args) }); return r.ok ? await r.json() : null; } catch (e) { return null; }
   };
-  const [ours, tips] = await Promise.all([
+  const [ours, tips, peers] = await Promise.all([
     rpc('v2_ready_research', { p_names: rows.competitors.map((c) => c.name), p_domains: rows.competitors.map((c) => c.site || null), p_stage: String(co.stage || 'Seed'), p_sector: String(co.sector || 'Other') }),
     rpc('v2_ready_firm_tips', { p_slugs: (Array.isArray(row.result.firms) ? row.result.firms : []).map((f) => f && f.slug).filter(Boolean).slice(0, 12) }),
+    Number(co.ask_usd) > 0 ? rpc('v2_ready_ask_peers', { p_stage: String(co.stage || 'Seed'), p_sector: String(co.sector || 'Other'), p_ask: Number(co.ask_usd) }) : null,
   ]);
 
   // The badges the site already awards each of those firms (the same read the firm pages use).
@@ -56,7 +57,7 @@ export async function onRequestPost(ctx) {
   const signals = {};
   await Promise.all(slugs.map(async (slug) => { const g = await rpc('v2_firm_signals_for', { p_slug: slug }); if (g && Array.isArray(g.signals)) signals[slug] = g.signals; }));
 
-  const research = buildResearch(rows, ours, row.result, { at: new Date().toISOString(), searches: got.searches, model: got.model, tokens_in: got.usage.in, tokens_out: got.usage.out }, tips, signals);
+  const research = buildResearch(rows, ours, row.result, { at: new Date().toISOString(), searches: got.searches, model: got.model, tokens_in: got.usage.in, tokens_out: got.usage.out }, tips, signals, peers);
   await save({ result: { ...row.result, research }, error: null });
   return json({ research, id });
 }
