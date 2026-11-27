@@ -1,6 +1,6 @@
 /* "Am I ready to pitch?" (founder, 26 Nov 2026). One page, three states: upload, wait, report.
    First working version: the deck goes to private storage, /api/ready reads it with the model and our checklist and
-   answers with the report. A report costs 10 credits and the full research 25, taken only once they are made. No email, PDF only; the page has to stay open while it works. */
+   answers with the report. A report costs 10 credits and the full research 25, taken only once they are made. No email; PDF, PowerPoint or Keynote; the page has to stay open while it works. */
 (function () {
   const C = window.REGRET || {};
   const sb = C.url && C.key && window.supabase ? window.supabase.createClient(C.url, C.key) : null;
@@ -17,19 +17,20 @@
   const COST = { report: 10, research: 25 };
   const words = (t) => (String(t).trim().match(/\S+/g) || []).length;
 
-  // What we say when the file is not a PDF: the format we got, and how to make a PDF from where the deck probably lives (founder, 27 Nov 2026).
-  function notPdf(f) {
+  // The decks we take: PDF, and PowerPoint or Keynote (turned into a PDF on our side). What we say about anything else (founder, 27 Nov 2026).
+  const PRES = /\.(pptx?|pps[xm]?|pot[xm]?|key)$/i;
+  const MIME = { pdf: 'application/pdf', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ppt: 'application/vnd.ms-powerpoint', key: 'application/x-iwork-keynote-sffkey' };
+  const kind = (name) => { const e = (String(name).match(/\.([A-Za-z0-9]+)$/) || [])[1]; return (e || '').toLowerCase(); };
+  const mimeOf = (name) => { const k = kind(name); return MIME[k] || (/^pp|^pot/.test(k) ? MIME.pptx : MIME.pdf); };
+  function notDeck(f) {
     const n = f.name.toLowerCase(), t = f.type || '';
-    if (/\.(pptx?|pps[xm]?|potx?)$/.test(n)) return 'We cannot open PowerPoint files yet. In PowerPoint, choose File, then Save As, then PDF. Then add that PDF here.';
-    if (/\.key$/.test(n)) return 'We cannot open Keynote files yet. In Keynote, choose File, then Export To, then PDF. Then add that PDF here.';
-    if (/^image\//.test(t) || /\.(jpe?g|png|gif|webp|heic|heif|bmp|tiff?|svg)$/.test(n)) return 'We cannot read pictures. Export your whole deck as one PDF and add that.';
-    if (/\.(docx?|pages|odp|odt)$/.test(n)) return 'We read decks as PDF only. Export yours as a PDF and add that.';
-    return 'We read PDF files only. Export your deck as a PDF (in Google Slides: File, Download, PDF) and add that.';
+    if (/^image\//.test(t) || /\.(jpe?g|png|gif|webp|heic|heif|bmp|tiff?|svg)$/.test(n)) return 'We cannot read pictures. Send your deck as a PDF, PowerPoint or Keynote file.';
+    return 'We take PDF, PowerPoint and Keynote files. Send your deck in one of those.';
   }
   function pick(f) {
     if (!f) return;
-    if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') { file = null; return say(notPdf(f)); }
-    if (f.size > MAX) { file = null; return say('That file is over 20 MB. Export a smaller PDF.'); }
+    if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf' && !PRES.test(f.name)) { file = null; return say(notDeck(f)); }
+    if (f.size > MAX) { file = null; return say('That file is over 20 MB. Send a smaller one.'); }
     file = f; say('');
     $('rd-dropb').textContent = f.name;
     $('rd-drops').textContent = (f.size / 1048576).toFixed(1) + ' MB · press to change';
@@ -54,7 +55,7 @@
     timer = setInterval(() => { if (i < items.length - 1) { i++; paint(); } }, 14000);
   }
 
-  const WHY = { no_key: 'The model key is not set on this address yet.', model_no_credit: 'The model account has no credit. Nothing is wrong with your deck.', sign_in: 'Please sign in again.', not_configured: 'This address is not set up yet.', daily_limit: 'That is the limit for 24 hours. Nothing was charged. Try again tomorrow.', credits_unavailable: 'Credits cannot be checked right now. Nothing was charged. Try again in a minute.' };
+  const WHY = { convert_not_configured: 'PowerPoint and Keynote are not set up on this address yet. Export your deck as a PDF and add that.', convert_failed: 'We could not turn that file into a PDF. Export it as a PDF from PowerPoint or Keynote and add that. Nothing was charged.', convert_unreachable: 'The converter did not answer. Try again in a minute. Nothing was charged.', no_key: 'The model key is not set on this address yet.', model_no_credit: 'The model account has no credit. Nothing is wrong with your deck.', sign_in: 'Please sign in again.', not_configured: 'This address is not set up yet.', daily_limit: 'That is the limit for 24 hours. Nothing was charged. Try again tomorrow.', credits_unavailable: 'Credits cannot be checked right now. Nothing was charged. Try again in a minute.' };
   const needMsg = (j, kind) => `You need ${(j && j.need) || COST[kind]} credits for this${j && typeof j.left === 'number' ? ' and have ' + j.left : ''}. Nothing was charged.`;
   async function run(id, token) {
     show(wait); tick();
@@ -89,6 +90,7 @@
     if (!session) { say('Sign in first. It takes a few seconds.'); return $('rd-signin').click(); }
     const go = $('rd-go'); go.disabled = true; say('Uploading…');
     const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, '-').slice(-80) || 'deck.pdf';
+    const ctype = mimeOf(file.name);
     // The deck is read into memory once and uploaded from that copy. A file picked from a cloud drive on a phone can be read
     // but then refused when the browser sends it from the original (27 Nov: three tries from an Android phone, the server saw
     // the preflight and never the upload). From memory the browser never goes back to the file.
@@ -106,14 +108,14 @@
       }
     }
     const path = session.user.id + '/' + (mark ? mark + '-' : '') + Date.now() + '-' + safe;
-    const body = new Blob([buf], { type: 'application/pdf' });
-    let upl = await sb.storage.from('decks').upload(path, body, { contentType: 'application/pdf', upsert: false });
+    const body = new Blob([buf], { type: ctype });
+    let upl = await sb.storage.from('decks').upload(path, body, { contentType: ctype, upsert: false });
     if (upl.error && !(upl.error.statusCode == 413 || upl.error.status == 413)) {  // a dropped connection often works the second time: one more go, quietly
       await new Promise((r) => setTimeout(r, 1500));
-      upl = await sb.storage.from('decks').upload(path, body, { contentType: 'application/pdf', upsert: false });
+      upl = await sb.storage.from('decks').upload(path, body, { contentType: ctype, upsert: false });
       if (upl.error && /already exists|duplicate/i.test(upl.error.message || '')) upl = { error: null };  // the first go got through after all
     }
-    if (upl.error) { go.disabled = false; return say(upl.error.statusCode == 413 || upl.error.status == 413 ? 'That file is too large. Export a smaller PDF.' : 'The upload did not go through. Check your connection and try again.'); }
+    if (upl.error) { go.disabled = false; return say(upl.error.statusCode == 413 || upl.error.status == 413 ? 'That file is too large. Send a smaller one.' : 'The upload did not go through. Check your connection and try again.'); }
     const ins = await sb.from('ready_reports').insert({ deck_path: path, deck_name: file.name.slice(0, 200), linkedin: $('rd-li').value.trim().slice(0, 200) || null, note: note || null }).select('id').single();
     go.disabled = false;
     if (ins.error || !ins.data) return say('Could not start the report. Try again.');

@@ -22,7 +22,7 @@ def render(c):
 <h1>May save years<br>of your life.</h1>
 <p class="rd-lede">We love helping founders at the early stage. Nobody loves this problem like we do, so we built the best tool for it.</p></div>
 <form class="rd-card" id="rd-form" novalidate>
-<label class="rd-drop" id="rd-drop"><input type="file" id="rd-file" accept="application/pdf,.pdf" hidden><b id="rd-dropb">Drop your deck here</b><span id="rd-drops">PDF only, up to 20 MB. From PowerPoint or Keynote? Export as PDF.</span></label>
+<label class="rd-drop" id="rd-drop"><input type="file" id="rd-file" accept="application/pdf,.pdf,.pptx,.ppt,.key" hidden><b id="rd-dropb">Drop your deck here</b><span id="rd-drops">PDF, PowerPoint or Keynote, up to 20 MB</span></label>
 <label class="rd-lab" for="rd-li">Your LinkedIn</label><input class="rd-in" id="rd-li" type="url" inputmode="url" maxlength="200" placeholder="linkedin.com/in/yourname" autocomplete="url">
 <label class="rd-lab" for="rd-note">Anything the deck doesn't say</label>
 <div class="rd-ta"><textarea id="rd-note" rows="4" placeholder="Your strategy, what investors told you, what worries you."></textarea><span id="rd-count">0 / 1,000 words</span></div>
