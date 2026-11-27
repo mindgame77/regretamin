@@ -136,10 +136,13 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   }
   const logoUrl = (slug) => O.root + 'assets/logos/f-' + encodeURIComponent(slug) + '.png';
   const firmUrl = (slug) => O.root + 'vc/' + encodeURIComponent(slug) + '/';
+  // a firm's headquarters country as a small flag picture (assets/flags/<code>.png); no picture when the country is not known
+  const flagUrl = (cc) => O.root + 'assets/flags/' + cc.toLowerCase() + '.png';
+  const cleanCC = (v) => (typeof v === 'string' && /^[A-Za-z]{2}$/.test(v) ? v.toLowerCase() : null);
 
   // rows: one object per firm, in rank order
   function shape(d) {
-    return d.firms.map(([slug, name, v, p, prev], i) => ({ i: i + 1, slug, name, v: +v, p: p == null ? null : +p, prev: prev == null ? null : +prev, mv: move(i + 1, prev == null ? null : +prev) }));
+    return d.firms.map(([slug, name, v, p, prev, cc], i) => ({ i: i + 1, slug, name, cc: cleanCC(cc), v: +v, p: p == null ? null : +p, prev: prev == null ? null : +prev, mv: move(i + 1, prev == null ? null : +prev) }));
   }
   function tipHtml(r) {
     const lines = ['<b>' + r.i + ' · ' + esc(r.name) + '</b>',
@@ -184,7 +187,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   function drawSky() {
     const box = $('#sky'), W = box.clientWidth, H = box.clientHeight;
     if (!W || !H || !ROWS.length) return;
-    const SLOT = W / 25, BW = Math.max(10, Math.min(30, SLOT * 0.62)), L = Math.max(16, Math.min(24, SLOT * 0.5)), GAP = 40, TOPPAD = L + 12;
+    const SLOT = W / 25, BW = Math.max(10, Math.min(30, SLOT * 0.62)), L = Math.max(16, Math.min(24, SLOT * 0.5)), GAP = 48, TOPPAD = L + 12;
     const rowsOf = [0, 1, 2, 3].map((k) => ROWS.slice(k * 25, k * 25 + 25));
     const mx = rowsOf.map((rs) => Math.max(1, ...rs.map((r) => Math.max(r.v, r.p || 0))));
     let K = 1.6;
@@ -200,7 +203,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
       const lg = logos && logos.has(r.slug)
         ? `<image href="${logoUrl(r.slug)}" x="${lx}" y="${ly}" width="${L}" height="${L}" clip-path="url(#c${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="none" stroke="rgba(16,32,28,.14)"/>`
         : `<rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="#fff" stroke="${LINE}"/><text x="${cx}" y="${ly + L * 0.66}" font-size="10" font-weight="600" fill="${SOFT}" text-anchor="middle">${esc(ini(r.name))}</text>`;
-      defs += `<clipPath id="c${r.i}"><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6"/></clipPath>`;
+      defs += `<clipPath id="c${r.i}"><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6"/></clipPath>` + `<clipPath id="f${r.i}"><rect x="${cx - 8}" y="${base + 32}" width="16" height="12" rx="2"/></clipPath>`;
       g += `<a class="b" data-i="${r.i}" href="${firmUrl(r.slug)}" aria-label="${esc(r.i + '. ' + r.name + ', ' + chart.unit(r.v) + ', ' + (r.mv.k === 'nu' ? 'new to the Top 100' : r.mv.k === 'eq' ? 'same place as last year' : 'was ' + ord(r.prev)))}">`
         + `<rect x="${x - 4}" y="${Math.min(ly, top) - 4}" width="${BW + 8}" height="${base - Math.min(ly, top) + 34}" fill="transparent"/>`
         + (gh ? `<rect x="${x - 1.5}" y="${base - gh}" width="${BW + 3}" height="${gh}" rx="5" fill="none" stroke="${INK}" stroke-opacity=".6" stroke-width="1.4" stroke-dasharray="3 2.5"/>` : '')
@@ -208,7 +211,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
         + (h >= 22 ? `<text x="${cx}" y="${top + 15}" font-size="11" font-weight="700" fill="${INK}" stroke="${col}" stroke-width="4" stroke-linejoin="round" paint-order="stroke" text-anchor="middle">${r.v}</text>` : '')
         + lg
         + `<text x="${cx}" y="${base + 14}" font-size="10" fill="${INK}" text-anchor="middle" font-family="Geist Mono,monospace">${r.i}</text>`
-        + `<text x="${cx}" y="${base + 26}" font-size="9" font-weight="700" fill="${MOVE[r.mv.k][1]}" text-anchor="middle">${esc(r.mv.t)}</text></a>`;
+        + `<text x="${cx}" y="${base + 26}" font-size="9" font-weight="700" fill="${MOVE[r.mv.k][1]}" text-anchor="middle">${esc(r.mv.t)}</text>`
+        + (r.cc ? `<image href="${flagUrl(r.cc)}" x="${cx - 8}" y="${base + 32}" width="16" height="12" clip-path="url(#f${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${cx - 8}" y="${base + 32}" width="16" height="12" rx="2" fill="none" stroke="rgba(16,32,28,.25)"/>` : '') + `</a>`;
     });
     box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="group" aria-label="${esc(chart.label)}: the 100 firms as bars"><defs>${defs}</defs>${g}</svg>`;
     box.querySelectorAll('.b').forEach((a) => {
