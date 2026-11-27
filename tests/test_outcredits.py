@@ -17,7 +17,7 @@ CLAIM = (ROOT / "supabase" / "functions" / "claim-checkout" / "index.ts").read_t
 
 def test_signup_popup_copy_unchanged_and_buy_path_does_not_use_it():
     su = COPY["site"]["signup"]
-    assert su["title"] == "New here? Get 4 free credits"
+    assert su["title"] == "New here? Get 10 free credits"
     assert su["sub"] == "Create a free account. No card needed."
     assert su["trust"] == ["Free account", "No card needed"]
     assert su["google"] == "Continue with Google"
@@ -58,7 +58,7 @@ def test_built_pages_keep_sign_in_and_add_the_plan_popup():
     subprocess.run(["python3", "launch/build.py"], cwd=ROOT, check=True, capture_output=True)
     home = (ROOT / "site-launch" / "index.html").read_text()
     su, oc = home.split('id="signup"', 1)[1].split('id="outcredits"', 1)
-    assert "New here? Get 4 free credits" in su and "Create a free account. No card needed." in su and "No card needed" in su
+    assert "New here? Get 10 free credits" in su and "Create a free account. No card needed." in su and "No card needed" in su
     assert "Already have an account?" in su and 'id="sulinkin">Sign in' in su and 'id="sulinknew"' in su
     assert "Sign in to your account. No card needed." not in su
     assert "You've used your free checks" in oc

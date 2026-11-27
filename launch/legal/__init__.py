@@ -3,7 +3,7 @@
 The words live in copy.json -> site.legal (Markdown strings). This module
 turns that copy into the existing legal page: kicker, title, lead, effective
 date, a table of contents from the headings, then one section per heading.
-Plan names and prices come from copy.json through {{plan.starter.price}} style
+Plan names and prices come from copy.json through {{plan.seed.price}} style
 placeholders. Editing site.legal and rebuilding updates the page.
 """
 import html
@@ -14,8 +14,8 @@ import re
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLANS = json.load(open(os.path.join(HERE, '..', 'copy.json')))['plans']
 EMAIL = 'malytskyyo@gmail.com'
-# Friendly names for the plan keys in copy.json. single / m10 / m30 still work.
-ALIASES = {'starter': 'm10', 'pro': 'm30', 'single': 'single'}
+# Plan keys in copy.json: preseed, seed, incubator.
+ALIASES = {'preseed': 'preseed', 'seed': 'seed', 'incubator': 'incubator'}
 
 
 def _lookup(path):

@@ -1,6 +1,7 @@
 // POST /api/ready  { id }  with the visitor's own sign-in token: reads their deck, returns their report.
 // "Am I ready to pitch?", first working version (founder, 26 Nov 2026: "just do it so we could test it, then credits").
-// One request does everything while the page waits: no queue, no credits, no email yet.
+// One request does everything while the page waits: no queue, no email yet. A report costs 10 credits, taken only once it is made
+// (ready_credits_ok before the model is asked, ready_charge after): a run that fails costs nothing.
 //   1. who is asking (their Supabase session), and their report row (they can only read their own);
 //   2. a link to their deck that works for 15 minutes, handed to the model with the checklist;
 //   3. fixed rules turn the model's answers into the verdict and the importance numbers (./_ready/rules.js);
@@ -50,6 +51,16 @@ export async function onRequestPost(ctx) {
   if (row.status === 'done' && row.result) return json({ report: row.result, id });
   if (!String(row.deck_path || '').startsWith(`${user.id}/`)) return json({ error: 'not_found' }, 404);
 
+  // 10 credits for a report (the database decides the amount). Enough credits are checked before the model is asked; they are taken after.
+  const rpc = async (fn, args) => {
+    try { const r = await fetch(`${SB}/rest/v1/rpc/${fn}`, { method: 'POST', headers: mine, body: JSON.stringify(args) }); return r.ok ? await r.json() : null; } catch (e) { return null; }
+  };
+  const gate = await rpc('ready_credits_ok', { p_kind: 'report' });
+  if (!gate) return json({ error: 'credits_unavailable' }, 503);
+  if (gate.status === 'out') return json({ error: 'out_of_credits', need: gate.need, left: gate.left }, 402);
+  if (gate.status === 'limit') return json({ error: 'daily_limit' }, 429);
+  if (gate.status !== 'ok') return json({ error: 'sign_in' }, 401);
+
   const save = (patch) => fetch(`${SB}/rest/v1/ready_reports?id=eq.${id}`, { method: 'PATCH', headers: { ...mine, prefer: 'return=minimal' }, body: JSON.stringify(patch) }).catch(() => {});
   const fail = async (error, status = 502) => { await save({ status: 'failed', error: String(error).slice(0, 1200), finished_at: new Date().toISOString() }); return json({ error: String(error).split(':')[0] }, status); };
   await save({ status: 'working', error: null });
@@ -80,6 +91,8 @@ export async function onRequestPost(ctx) {
   const firms = await pick(answers.company || {}, /^[A-Za-z]{2}$/.test(String((answers.company || {}).country || '').trim()) ? String(answers.company.country).trim().toUpperCase() : null);
 
   const report = assemble(answers, firms);
+  const paid = await rpc('ready_charge', { p_report: id, p_kind: 'report' });
+  if (!paid || paid.status !== 'ok') return fail(paid ? 'out_of_credits' : 'credits_unavailable', paid ? 402 : 503); // not delivered, not charged
   await save({ status: 'done', result: report, model, tokens_in: usage.in || null, tokens_out: usage.out || null, finished_at: new Date().toISOString(), error: null });
   return json({ report, id });
 }

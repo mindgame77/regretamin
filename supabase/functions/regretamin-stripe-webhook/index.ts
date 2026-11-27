@@ -9,7 +9,7 @@ import { ensurePaidUser, normalizeEmail, paidAdmin, sessionEmail } from "../_sha
 const clients = { live: new Stripe(stripeKey(true)), test: new Stripe(stripeKey(false)) };
 const verifier = clients.test; // signature checks need no key
 const admin = paidAdmin();
-// Checks per month. Code-unlocked plans have kind "custom" with checks in subscription metadata (set by create-checkout).
+// Checks per month. Plans sold now (Pre-seed, Seed, Incubator) are made by create-checkout as kind "custom" (below); the keys here are only the retired Starter/Pro plans, kept so their invoices still grant credits. Code-unlocked plans have kind "custom" with checks in subscription metadata (set by create-checkout).
 // Yearly-billed plans are refilled monthly by the DB job refill_yearly_checks(); monthly ones by each paid invoice.
 const PLAN: Record<string, number> = { m10: 10, m30: 30, y10: 10, y30: 30 };
 const monthLater = (t: number) => { const d = new Date(t * 1000); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString(); };

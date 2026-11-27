@@ -29,10 +29,13 @@ def test_terms_and_privacy_render_the_approved_pages():
     assert "not a consumer reporting agency" in terms
     assert "<code>regretamin.anon</code>" in privacy
     assert "2 free credits on your device" in privacy
-    assert "its own 4 credits" in privacy and "Device credits are not transferred" in privacy
+    assert "its own 10 credits" in privacy and "Device credits are not transferred" in privacy
     assert "those searches move to your account" not in privacy
-    assert "Starter" in terms and "$19" in terms and "$190" in terms
-    assert "Pro" in terms and "$49" in terms and "$490" in terms and "$10" in terms
+    assert "Pre-seed" in terms and "$29" in terms and "$290" in terms
+    assert "Seed" in terms and "$99" in terms and "$990" in terms
+    assert "Incubator" in terms and "$199" in terms and "$1,990" in terms
+    assert "costs 10 credits" in terms and "25 credits" in terms and "adds 10 more" in terms
+    assert "Starter" not in terms and "single credit" not in terms.lower()
     assert 'id="8-credits"' in terms and 'id="10-subscriptions-and-promo-codes"' in terms
     # A heading in the table of contents points at the section it names.
     assert '<a href="#1-agreement">1. Agreement</a>' in terms

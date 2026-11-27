@@ -1,6 +1,6 @@
 /* "Am I ready to pitch?" (founder, 26 Nov 2026). One page, three states: upload, wait, report.
    First working version: the deck goes to private storage, /api/ready reads it with the model and our checklist and
-   answers with the report. No credits, no email, PDF only; the page has to stay open while it works. */
+   answers with the report. A report costs 10 credits and the full research 25, taken only once they are made. No email, PDF only; the page has to stay open while it works. */
 (function () {
   const C = window.REGRET || {};
   const sb = C.url && C.key && window.supabase ? window.supabase.createClient(C.url, C.key) : null;
@@ -12,7 +12,9 @@
   let file = null, timer = 0, REPORT = null;   // REPORT: the id of the report on screen (the full research is asked for by it)
 
   const show = (el) => { for (const s of [up, wait, res]) s.hidden = s !== el; window.scrollTo(0, 0); };
-  const say = (t) => { $('rd-msg').textContent = t || ''; };
+  const say = (t, link) => { const m = $('rd-msg'); m.textContent = t || ''; if (link) { m.append(' '); const a = document.createElement('a'); a.href = '/pricing/'; a.textContent = 'See plans'; m.append(a); } };
+  // Costs in credits (the database decides what is really charged; these only label it).
+  const COST = { report: 10, research: 25 };
   const words = (t) => (String(t).trim().match(/\S+/g) || []).length;
 
   function pick(f) {
@@ -43,7 +45,8 @@
     timer = setInterval(() => { if (i < items.length - 1) { i++; paint(); } }, 14000);
   }
 
-  const WHY = { no_key: 'The model key is not set on this address yet.', model_no_credit: 'The model account has no credit. Nothing is wrong with your deck.', sign_in: 'Please sign in again.', not_configured: 'This address is not set up yet.' };
+  const WHY = { no_key: 'The model key is not set on this address yet.', model_no_credit: 'The model account has no credit. Nothing is wrong with your deck.', sign_in: 'Please sign in again.', not_configured: 'This address is not set up yet.', daily_limit: 'That is the limit for 24 hours. Nothing was charged. Try again tomorrow.', credits_unavailable: 'Credits cannot be checked right now. Nothing was charged. Try again in a minute.' };
+  const needMsg = (j, kind) => `You need ${(j && j.need) || COST[kind]} credits for this${j && typeof j.left === 'number' ? ' and have ' + j.left : ''}. Nothing was charged.`;
   async function run(id, token) {
     show(wait); tick();
     let r = null, j = null;
@@ -52,7 +55,7 @@
       j = await r.json();
     } catch (e) { j = null; }
     clearInterval(timer);
-    if (!r || !r.ok || !j || !j.report) { show(up); return say(WHY[j && j.error] || 'Something went wrong reading the deck. Nothing was charged. Try again.'); }
+    if (!r || !r.ok || !j || !j.report) { show(up); return j && j.error === 'out_of_credits' ? say(needMsg(j, 'report'), true) : say(WHY[j && j.error] || 'Something went wrong reading the deck. Nothing was charged. Try again.'); }
     try { history.replaceState(null, '', '?report=' + encodeURIComponent(id)); } catch (e) {}
     REPORT = id; draw(j.report);
   }
@@ -247,8 +250,8 @@
     }
     return parts.map((p, n) => part(letters[n] || '', p[0], p[1], p[2], p[3], p[4])).join('');
   }
-  const LOCK = (on) => `<div class="rd-lock"><div class="rd-blur">${'<div class="rd-row"><i class="rd-dot"></i><b>Company name, city</b><span class="rd-wh">Series A</span><span></span><span>$00M · backed by Firm name, Firm name</span><span>2026</span></div>'.repeat(3)}</div><div class="rd-offer"><div><b>Full research</b><p id="rd-rmsg">Your competitors and who funded them. Who tried this before, and the founders to ask. The firms to skip.</p></div><span class="rd-pr">10 credits</span><button type="button" class="rd-buy" id="rd-buy"${on ? '' : ' disabled'}>Get the full research</button></div></div>`;
-  const WHYR = { no_key: 'The model key is not set on this address yet.', model_no_credit: 'The model account has no credit. Try again later.', sign_in: 'Please sign in again.' };
+  const LOCK = (on) => `<div class="rd-lock"><div class="rd-blur">${'<div class="rd-row"><i class="rd-dot"></i><b>Company name, city</b><span class="rd-wh">Series A</span><span></span><span>$00M · backed by Firm name, Firm name</span><span>2026</span></div>'.repeat(3)}</div><div class="rd-offer"><div><b>Full research</b><p id="rd-rmsg">Your competitors and who funded them. Who tried this before, and the founders to ask. The firms to skip.</p></div><span class="rd-pr">${COST.research} credits</span><button type="button" class="rd-buy" id="rd-buy"${on ? '' : ' disabled'}>Get the full research</button></div></div>`;
+  const WHYR = { no_key: 'The model key is not set on this address yet.', model_no_credit: 'The model account has no credit. Try again later.', sign_in: 'Please sign in again.', daily_limit: 'That is the limit for 24 hours. Nothing was charged. Try again tomorrow.', credits_unavailable: 'Credits cannot be checked right now. Nothing was charged. Try again in a minute.' };
   async function research(r) {
     const b = $('rd-buy'), msg = $('rd-rmsg');
     if (!sb || !REPORT || !b) return;
@@ -262,7 +265,8 @@
     } catch (e) { j = null; }
     if (!res2 || !res2.ok || !j || !j.research) {
       b.disabled = false; b.textContent = 'Get the full research';
-      msg.textContent = WHYR[j && j.error] || 'The research did not go through. Try again.';
+      msg.textContent = j && j.error === 'out_of_credits' ? needMsg(j, 'research') : WHYR[j && j.error] || 'The research did not go through. Nothing was charged. Try again.';
+      if (j && j.error === 'out_of_credits') { msg.append(' '); const a = document.createElement('a'); a.href = '/pricing/'; a.textContent = 'See plans'; msg.append(a); }
       return;
     }
     r.research = j.research;

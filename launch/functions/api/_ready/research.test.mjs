@@ -103,6 +103,8 @@ test('the function: only the owner of a finished report, made once, saved on the
       assert.equal(b.messages[1].role, 'assistant'); assert.equal(b.messages[1].content.length, 3);   // the paused answer goes back unchanged
       return ok({ stop_reason: 'end_turn', content: CONTENT.slice(3), usage: { input_tokens: 200, output_tokens: 300 } });
     }
+    if (u.includes('/rpc/ready_credits_ok')) { assert.deepEqual(JSON.parse(opt.body), { p_kind: 'research' }); return ok({ status: 'ok', need: 25, left: 30 }); }
+    if (u.includes('/rpc/ready_charge')) { assert.deepEqual(JSON.parse(opt.body), { p_report: '11111111-1111-1111-1111-111111111111', p_kind: 'research' }); return ok({ status: 'ok' }); }
     if (u.includes('/rpc/v2_firm_signals_for')) { assert.equal(JSON.parse(opt.body).p_slug, 'true-ventures'); return ok({ signals: ['top'], deals_now: 24, led_now: 6 }); }
     if (u.includes('/rpc/v2_ready_ask_peers')) { assert.equal(JSON.parse(opt.body).p_ask, 1200000); return ok({ rounds: 9, known: 6, uni: 3, co: 3, built: 0, unis: ['Harvard'], cos: [] }); }
     if (u.includes('/rpc/v2_ready_firm_tips')) { assert.deepEqual(JSON.parse(opt.body).p_slugs, ['true-ventures']); return ok([{ slug: 'true-ventures', apply: 'https://www.trueventures.com/pitch', audience: { platform: 'X', followers: 112795, url: 'https://x.com/trueventures' }, cheque: null, deals: 24, led: 6 }]); }

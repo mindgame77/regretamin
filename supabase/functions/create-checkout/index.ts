@@ -1,17 +1,22 @@
-// Creates a Stripe Checkout session. Body { kind, code?, email? }; kind is single|m10|m30|y10|y30, or "code"
+// Creates a Stripe Checkout session. Body { kind, code?, email? }; kind is preseed|preseed_y|seed|seed_y|incubator|incubator_y, or "code"
 // for the hidden plan a valid code unlocks. Discounts come only from a code re-checked here (never from the browser).
 // Signed-in: reuses the user's Stripe customer (check_balances, then the older subscriptions table) and metadata.user_id.
 // Signed-out: email is required and sent as customer_email (prefilled, not a user id). The account is created after payment
 // by the webhook, not here. A user whose subscription is active or trialing cannot start another one: 409 { error: "has_plan" }.
-// Single one-time checks stay open to subscribers.
-// Secrets: STRIPE_MODE + STRIPE_<LIVE|TEST>_SECRET_KEY, price IDs (see _shared/stripe_plans.ts), SITE_URL, SUPABASE_SERVICE_ROLE_KEY.
+// Plans are stored as kind "custom" with their name and credits per month in the metadata, so the webhook and the database need no new plan kinds.
+// Secrets: STRIPE_MODE + STRIPE_<LIVE|TEST>_SECRET_KEY, price IDs STRIPE_<MODE>_PRICE_PRESEED etc. (see _shared/stripe_plans.ts), SITE_URL, SUPABASE_SERVICE_ROLE_KEY.
 import Stripe from "npm:stripe@16";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { type Kind, lookupCode, PRICES } from "../_shared/stripe_plans.ts";
 import { stripeKey } from "../_shared/stripe_env.ts";
 import { normalizeEmail, paidAdmin, userIdForEmail } from "../_shared/paid_user.ts";
 const stripe = new Stripe(stripeKey()); // STRIPE_MODE picks the live or test key
-const CHECKS: Record<Kind, number> = { single: 1, m10: 10, m30: 30, y10: 10, y30: 30 };
+// Credits per month and the name shown on the site. Must match launch/copy.json plans.
+const PLAN: Record<Kind, { checks: number; name: string }> = {
+  preseed: { checks: 100, name: "Pre-seed" }, preseed_y: { checks: 100, name: "Pre-seed" },
+  seed: { checks: 400, name: "Seed" }, seed_y: { checks: 400, name: "Seed" },
+  incubator: { checks: 1000, name: "Incubator" }, incubator_y: { checks: 1000, name: "Incubator" },
+};
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info" };
 const err = (error: string, status: number, extra = {}) => new Response(JSON.stringify({ error, ...extra }), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const admin = paidAdmin();
@@ -74,9 +79,9 @@ async function handle(req: Request): Promise<Response> {
     if (!c?.hidden) return err("bad kind", 400);
     price = c.hidden.price.id; checks = c.hidden.checks; name = c.hidden.name; discount = c.hiddenDiscount;
   } else if (kind in PRICES) {
-    price = PRICES[kind as Kind]; checks = CHECKS[kind as Kind]; discount = !!c?.kinds.includes(kind);
+    price = PRICES[kind as Kind]!; checks = PLAN[kind as Kind].checks; name = PLAN[kind as Kind].name; discount = !!c?.kinds.includes(kind);
   } else return err("bad kind", 400);
-  const plan = kind === "code" ? "custom" : kind, sub = kind !== "single";
+  const plan = "custom", sub = true;
   const site = Deno.env.get("SITE_URL")!;
   // Signed-in purchases keep metadata.user_id. A guest email is prefilled only; the webhook creates the account after payment.
   let meta: Record<string, string>, who: { customer: string } | { customer_email?: string; customer_creation?: "always" }, ref: string | undefined, success: string;

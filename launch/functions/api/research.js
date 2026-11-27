@@ -1,6 +1,6 @@
 // POST /api/research  { id }  with the visitor's own sign-in token: the full research for their finished report.
 // Step 3 of "Am I ready to pitch?" (founder, 26 Nov 2026). One request while the page waits; the result is saved on the
-// report (result.research), so it is made once per report and reopens with it. Free in this version; 10 credits later.
+// report (result.research), so it is made once per report and reopens with it. Costs 25 credits, taken once the research is made (ready_credits_ok before, ready_charge after): a run that fails costs nothing.
 //   1. who is asking, and their own finished report;
 //   2. the model searches the web (Claude's own web search tool) for competitors and for who tried the idea before;
 //   3. rows without a source the search really returned are dropped (./_ready/research.js);
@@ -32,6 +32,15 @@ export async function onRequestPost(ctx) {
   if (!row || row.status !== 'done' || !row.result) return json({ error: 'not_found' }, 404);
   if (row.result.research) return json({ research: row.result.research, id });
 
+  const rpcw = async (fn, args) => {
+    try { const r = await fetch(`${SB}/rest/v1/rpc/${fn}`, { method: 'POST', headers: mine, body: JSON.stringify(args) }); return r.ok ? await r.json() : null; } catch (e) { return null; }
+  };
+  const gate = await rpcw('ready_credits_ok', { p_kind: 'research' });
+  if (!gate) return json({ error: 'credits_unavailable' }, 503);
+  if (gate.status === 'out') return json({ error: 'out_of_credits', need: gate.need, left: gate.left }, 402);
+  if (gate.status === 'limit') return json({ error: 'daily_limit' }, 429);
+  if (gate.status !== 'ok') return json({ error: 'sign_in' }, 401);
+
   const save = (patch) => fetch(`${SB}/rest/v1/ready_reports?id=eq.${id}`, { method: 'PATCH', headers: { ...mine, prefer: 'return=minimal' }, body: JSON.stringify(patch) }).catch(() => {});
   // A failed research leaves the report as it is; the reason is kept on the row so it can be read later.
   const fail = async (error, status = 502) => { await save({ error: `research: ${String(error).slice(0, 1100)}` }); return json({ error: String(error).split(':')[0] }, status); };
@@ -58,6 +67,8 @@ export async function onRequestPost(ctx) {
   await Promise.all(slugs.map(async (slug) => { const g = await rpc('v2_firm_signals_for', { p_slug: slug }); if (g && Array.isArray(g.signals)) signals[slug] = g.signals; }));
 
   const research = buildResearch(rows, ours, row.result, { at: new Date().toISOString(), searches: got.searches, model: got.model, tokens_in: got.usage.in, tokens_out: got.usage.out }, tips, signals, peers);
+  const paid = await rpcw('ready_charge', { p_report: id, p_kind: 'research' });
+  if (!paid || paid.status !== 'ok') return fail(paid ? 'out_of_credits' : 'credits_unavailable', paid ? 402 : 503); // not delivered, not charged
   await save({ result: { ...row.result, research }, error: null });
   return json({ research, id });
 }

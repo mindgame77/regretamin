@@ -1,5 +1,5 @@
 // One switch for Stripe test/live: edge secret STRIPE_MODE = "live" | "test" (default test).
-// Keys: STRIPE_LIVE_SECRET_KEY / STRIPE_TEST_SECRET_KEY. Prices: STRIPE_<MODE>_PRICE_SINGLE|M10|M30|Y10|Y30.
+// Keys: STRIPE_LIVE_SECRET_KEY / STRIPE_TEST_SECRET_KEY. Prices: STRIPE_<MODE>_PRICE_PRESEED|PRESEED_Y|SEED|SEED_Y|INCUBATOR|INCUBATOR_Y.
 // Portal: STRIPE_<MODE>_PORTAL_CONFIG. Going back to test = set STRIPE_MODE=test (no deploy needed).
 export const LIVE = (Deno.env.get("STRIPE_MODE") || "test") === "live";
 const M = LIVE ? "LIVE" : "TEST";

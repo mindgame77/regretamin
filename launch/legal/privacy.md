@@ -20,7 +20,7 @@ This policy covers two groups of people: **users** of the site (sections 2–7) 
 - **Abuse prevention.** When a free credit is used, or information is submitted, we store a one-way hash of your IP address (not the address itself).
 
 ## 3. Free searches and your device
-Without an account you get 2 free credits on your device. To count them, your browser stores a random ID in its local storage (`regretamin.anon`), and our database keeps the count against that ID. It does not contain your name or email. A new account gets its own 4 credits. Device credits are not transferred. Signing in also stores a session token in your browser, and starting a purchase stores a short-lived note of the plan you picked. Clearing your browser storage removes all of these.
+Without an account you get 2 free credits on your device. To count them, your browser stores a random ID in its local storage (`regretamin.anon`), and our database keeps the count against that ID. It does not contain your name or email. A new account gets its own 10 credits. Device credits are not transferred. Signing in also stores a session token in your browser, and starting a purchase stores a short-lived note of the plan you picked. Clearing your browser storage removes all of these.
 
 We don't use advertising cookies or ad trackers. We use **Google Analytics** to count visits and see which pages are useful. Its cookies are set only if you press Accept on the cookie bar. If you decline or don't choose, Google receives only cookieless signals (such as a page view or a click on a button) with nothing stored on your device. To change your choice, clear this site's data in your browser and the bar will ask again.
 
