@@ -391,3 +391,9 @@ def test_a_pressed_place_in_trends_has_the_dollar_button_too():
     assert "money(L.place)" in JS and "p_place: place ? place.p : null" in JS
     assert JS.count('moneyRow(') >= 2 and 'const moneyRow = ' in JS  # the sector list and the place list share one row
     assert "$ raised \\u00b7 ' : ''}last ${perText()} vs before" in JS
+
+
+def test_trends_place_card_names_the_place_in_a_title_like_the_other_cards_not_in_a_label():
+    """Founder, 27 Nov 2026: "this thing should not be here" (the "US East x" label at the top of the Trends place card); Money flow and Pathfinders name the place in a title and have no label."""
+    assert 'id="vm-unplace"' not in JS and "vm-unplace" not in JS
+    assert "<h2>${esc(L.place.n)} · ${num(L.place.f)} firm${L.place.f === 1 ? '' : 's'}</h2>" in JS
