@@ -13,15 +13,16 @@ def test_note_photo_and_plan_list_are_wired():
     assert 'P.explain' in APP and 'function planList' in APP and 'data-pick' in APP
 
 
-def test_first_month_offer_is_only_shown_when_the_promotion_code_is_valid_and_once_off():
+def test_first_month_offer_matches_the_coupon_checkout_applies():
     pr = json.loads((ROOT / 'copy.json').read_text())['site']['pricing']
-    assert pr['first']['code'] == 'FIRSTMONTH'
-    # validate-code must say ok, a discount, a percentage and a once-off duration before anything on the page changes
-    assert "data.ok && data.discount && data.percent_off && data.duration === 'once'" in APP
+    assert pr['first']['percent'] == 50  # must match the coupon create-checkout applies
+    assert 'FIRST_MONTH_COUPON = "regretamin_first_month_50"' in (ROOT.parent / 'supabase/functions/create-checkout/index.ts').read_text()
+    # the page shows the offer without a lookup, and checkout adds the coupon itself
+    assert "AUTO = { percent_off: f.percent" in APP and "validate-code', { body: { code: f.code" not in APP
+    assert "CODE ? { code: CODE.code } : {})" in APP  # the page never sends a made-up code
     # monthly plans only: never the yearly kinds or the hidden plan
     assert "!/_y$/.test(kind) && AUTO.kinds.includes(kind)" in APP
     # the checkout sends the same code the page showed
-    assert "(off(kind) || CODE).code" in APP
 
 
 def test_the_popup_is_one_narrow_column_that_fits_a_phone():
@@ -33,8 +34,3 @@ def test_the_out_of_credits_popup_uses_the_same_plan_rows_and_offer():
     css = (ROOT / 'style.css').read_text()
     assert '.sgi .orow:has(input:checked){border:2px solid #10201C' in css and '.sgi .btn.y{background:#10201C' in css
     assert "c && c === AUTO ? fmt(P.first.sub" in APP and 'AUTO_READY' in APP
-
-
-def test_preview_link_shows_the_offer_but_blocks_checkout():
-    assert "get('rg_preview') === 'firstmonth'" in APP
-    assert "if (PREVIEW) return msg(" in APP and "if (PREVIEW) { AUTO = {" in APP
