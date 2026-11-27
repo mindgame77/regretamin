@@ -62,9 +62,9 @@
 
   // The deck's fingerprint: the same file always gives the same letters. It goes into the stored file's name, so the
   // same deck sent again is found among the founder's own reports (founder, 26 Nov: "you already sent us this deck. Here is the result").
-  async function fingerprint(f) {
+  async function fingerprint(buf) {
     try {
-      const d = await crypto.subtle.digest('SHA-256', await f.arrayBuffer());
+      const d = await crypto.subtle.digest('SHA-256', buf);
       return Array.from(new Uint8Array(d)).slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('');
     } catch (e) { return ''; }
   }
@@ -80,7 +80,13 @@
     if (!session) { say('Sign in first. It takes a few seconds.'); return $('rd-signin').click(); }
     const go = $('rd-go'); go.disabled = true; say('Uploading…');
     const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, '-').slice(-80) || 'deck.pdf';
-    const mark = await fingerprint(file);
+    // The deck is read into memory once and uploaded from that copy. A file picked from a cloud drive on a phone can be read
+    // but then refused when the browser sends it from the original (27 Nov: three tries from an Android phone, the server saw
+    // the preflight and never the upload). From memory the browser never goes back to the file.
+    let buf = null;
+    try { buf = await file.arrayBuffer(); } catch (e) { buf = null; }
+    if (!buf) { go.disabled = false; return say('We could not read that file. Save it to your device, then add it again.'); }
+    const mark = await fingerprint(buf);
     if (mark) {   // the same deck again: no second reading, the saved report is shown
       const old = await sb.from('ready_reports').select('id,result').eq('status', 'done').like('deck_path', session.user.id + '/' + mark + '-%').order('created_at', { ascending: false }).limit(1);
       const hit = old.data && old.data[0];
@@ -91,8 +97,14 @@
       }
     }
     const path = session.user.id + '/' + (mark ? mark + '-' : '') + Date.now() + '-' + safe;
-    const upl = await sb.storage.from('decks').upload(path, file, { contentType: 'application/pdf', upsert: false });
-    if (upl.error) { go.disabled = false; return say('The upload did not go through. Try again.'); }
+    const body = new Blob([buf], { type: 'application/pdf' });
+    let upl = await sb.storage.from('decks').upload(path, body, { contentType: 'application/pdf', upsert: false });
+    if (upl.error && !(upl.error.statusCode == 413 || upl.error.status == 413)) {  // a dropped connection often works the second time: one more go, quietly
+      await new Promise((r) => setTimeout(r, 1500));
+      upl = await sb.storage.from('decks').upload(path, body, { contentType: 'application/pdf', upsert: false });
+      if (upl.error && /already exists|duplicate/i.test(upl.error.message || '')) upl = { error: null };  // the first go got through after all
+    }
+    if (upl.error) { go.disabled = false; return say(upl.error.statusCode == 413 || upl.error.status == 413 ? 'That file is too large. Export a smaller PDF.' : 'The upload did not go through. Check your connection and try again.'); }
     const ins = await sb.from('ready_reports').insert({ deck_path: path, deck_name: file.name.slice(0, 200), linkedin: $('rd-li').value.trim().slice(0, 200) || null, note: note || null }).select('id').single();
     go.disabled = false;
     if (ins.error || !ins.data) return say('Could not start the report. Try again.');
