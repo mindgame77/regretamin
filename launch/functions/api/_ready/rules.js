@@ -184,6 +184,7 @@ For every special thing write "kind" (the exact name from the list), "what" (wha
 For every strength write "what" (what is good, 12 words or fewer), "where" and "why" (one sentence on why an investor likes it).
 
 Proof has a shelf life: a customer, a number, an award or a press mention that is more than four years old does not prove the point today (row 217). Technology is the exception: a patent, published research or a working system keeps its weight.
+Row 217 judges only proof the deck actually shows: when there is no proof at all, it says nothing (other rows cover missing traction). Proof must also come from a source an investor would trust: a named customer, a signed contract, a bank or payment record, an audited number, a respected publication. A number with no source, an unknown blog, "sources say" or the company's own claim alone does not count. Flag proof that is too old or too weak as "proof" (the founder has to earn better proof, wording cannot fix it).
 
 Never say the company will or will not raise money. Never tell the founder to drop the idea. Do not flatter.
 

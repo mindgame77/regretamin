@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { CHECKLIST } from './checklist.js';
 import { importance, score, marksOf, assemble, parseModelJson, systemPrompt, FROM_OUR_DATA, sayTo, READY_SCORE, reFirm } from './rules.js';
 
-test('the checklist holds the 216 questions of the sheet and one added since (217: proof has a shelf life)', () => {
+test('the checklist holds the 216 questions of the sheet and one added since (217: proof is recent and from a trusted source)', () => {
   assert.equal(CHECKLIST.length, 217);
   assert.deepEqual(CHECKLIST.map((r) => r[0]), Array.from({ length: 217 }, (_, i) => i + 1));
   assert.equal(CHECKLIST[3][2], 'Is there one clear ask?');
@@ -115,7 +115,7 @@ test('each flag says whether words can fix it or the founder has to earn it', ()
 });
 
 test('old proof is a rule, and the country is a two-letter code or nothing', () => {
-  assert.ok(/more than four years old does not prove the point/.test(systemPrompt()) && /217 \| Traction \| Is your proof recent\?/.test(systemPrompt()));
+  assert.ok(/more than four years old does not prove the point/.test(systemPrompt()) && /217 \| Traction \| Is the proof you show recent and from a source investors trust\?/.test(systemPrompt()) && /only proof the deck actually shows/.test(systemPrompt()) && /respected publication/.test(systemPrompt()));
   assert.equal(assemble({ company: { stage: 'Seed', country: 'ua' } }, null).company.country, 'UA');
   assert.equal(assemble({ company: { stage: 'Seed', country: 'Ukraine' } }, null).company.country, null);
   assert.equal(assemble({ company: { stage: 'Seed' } }, null).company.country, null);
