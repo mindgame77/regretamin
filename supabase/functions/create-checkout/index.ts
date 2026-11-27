@@ -13,6 +13,10 @@ import { stripeKey } from "../_shared/stripe_env.ts";
 // One Stripe coupon (percent_off 50, duration once) with this fixed id; it is made here the first time if it is missing.
 const FIRST_MONTH_COUPON = "regretamin_first_month_50";
 const MONTHLY: Kind[] = ["preseed", "seed", "incubator"];
+// Owner-only $1 test (Alex, 27 Nov 2026): kind "test1" is never shown on the site. It buys the existing $1 test price as a one-time
+// payment, and only for Alex's own accounts (signed in, or the email of one of them), so the webhook grants that account 1 credit.
+const TEST1_PRICE = "price_1UMuZWHcbGkfjKgmqk9VD909";
+const OWNER_IDS = ["71b72d7b-5899-45e2-a5cb-81b39a02a418", "808da6a4-2ba5-40ae-861d-e01ef0724275", "6040d146-11ce-44aa-a7ac-d2b9bbc8df49", "cd85552c-2b85-4ef7-b3a1-ef1442af4304"];
 let firstMonth: Promise<string> | null = null;
 const firstMonthCoupon = () => firstMonth ??= stripe.coupons.retrieve(FIRST_MONTH_COUPON).then((c) => c.id).catch((e) => {
   if ((e as { code?: string }).code !== "resource_missing") throw e;
@@ -81,6 +85,17 @@ async function handle(req: Request): Promise<Response> {
   const { kind, code, return_path } = body;
   const guest = user ? null : normalizeEmail(body.email);
   if (!user && !guest) return err(body.email ? "bad email" : "sign in", body.email ? 400 : 401);
+  if (kind === "test1") {
+    const uid = user ? user.id : await userIdForEmail(admin, guest!);
+    if (!uid || !OWNER_IDS.includes(uid)) return err("bad kind", 400);
+    const customer = await usable(await customerOf(uid));
+    const meta = { user_id: uid, kind: "single", checks: "1", name: "Test $1" };
+    const t = await stripe.checkout.sessions.create({
+      mode: "payment", line_items: [{ price: TEST1_PRICE, quantity: 1 }], ...(customer ? { customer } : { customer_email: guest ?? user?.email ?? undefined, customer_creation: "always" as const }),
+      client_reference_id: uid, metadata: meta, success_url: Deno.env.get("SITE_URL")! + "?paid=1", cancel_url: cancelUrl(Deno.env.get("SITE_URL")!, return_path),
+    });
+    return new Response(JSON.stringify({ url: t.url }), { headers: { ...cors, "Content-Type": "application/json" } });
+  }
   const c = code ? await lookupCode(stripe, code).catch(() => null) : null;
   if (code && !c) return err("bad code", 400);
   let price: string, checks: number, name = "", discount: boolean;
