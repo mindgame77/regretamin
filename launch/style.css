@@ -2164,3 +2164,10 @@ a.rd-bg:hover{border-color:#F0861E}.rd-ar{color:#B85F0A}
 .rd-aip{display:none}
 @media (max-width:1000px){.rd-fbl{flex-direction:column;align-items:stretch}}
 @media print{.rd-fb,.rd-where{display:none!important}.rd-aip{display:block!important;margin-top:18px!important}}
+.rpr .del{flex:none;display:inline-flex;align-items:center;gap:7px;padding:8px 12px;font:inherit;font-size:14px;border:1px solid #D5DBD8;border-radius:10px;background:#fff;color:#6B7772;cursor:pointer}.rpr .del[hidden]{display:none}
+.rpr .del svg{width:15px;height:15px}.rpr .del:hover{color:#B3261E;border-color:#E8B7B3;background:#FDF4F3}
+.rpr.ask{flex-wrap:wrap;background:#FDF4F3;margin:0 -20px;padding:0 20px;border-radius:10px}
+.rpr .cf{flex-basis:100%;display:flex;align-items:center;gap:14px;padding:0 0 14px;flex-wrap:wrap}
+.rpr .cf p{margin:0;flex:1;min-width:240px;font-size:14.5px;color:#10201C}.rpr .cf p b{font-weight:600;overflow:visible;white-space:normal}
+.rpr .cf .y{padding:9px 16px;border-radius:10px;border:0;background:#B3261E;color:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer}.rpr .cf .y:disabled{opacity:.6;cursor:default}
+.rpr .cf .n{padding:9px 16px;border-radius:10px;border:1px solid #D5DBD8;background:#fff;color:#10201C;font:inherit;font-size:14px;font-weight:600;cursor:pointer}

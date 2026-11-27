@@ -167,10 +167,35 @@
   }
   // My score: the account's "Am I ready to pitch?" reports (founder, 26 Nov: "separate page ... my score ... or you can download the PDF file").
   async function paintMyScore() {
-    const rep = await sb.from('ready_reports').select('id,created_at,deck_name,verdict:result->>verdict,deck:result->scores->>deck').eq('status', 'done').order('created_at', { ascending: false }).limit(50);
+    const rep = await sb.from('ready_reports').select('id,created_at,deck_name,deck_path,verdict:result->>verdict,deck:result->scores->>deck').eq('status', 'done').order('created_at', { ascending: false }).limit(50);
     const list = (rep && rep.data) || [];
-    $('#myrepl').hidden = !list.length; $('#msgo').hidden = !!list.length;
-    $('#myrepl').innerHTML = list.map(r => { const u = ROOT + 'ready/?report=' + encodeURIComponent(r.id); return '<div class="rpr"><a href="' + u + '"><span>' + esc(fmtDate(r.created_at)) + '</span><b>' + esc(r.deck_name || 'Deck') + '</b><span>' + esc(r.verdict || '') + '</span><span class="rps">' + (r.deck ? esc(r.deck) + '<i>/10</i>' : '') + '</span></a><a class="btn o" target="_blank" rel="noopener" href="' + u + '&pdf=1">Download PDF</a></div>'; }).join('');
+    const box = $('#myrepl');
+    const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+    const draw = () => {
+      box.hidden = !list.length; $('#msgo').hidden = !!list.length;
+      box.innerHTML = list.map(r => { const u = ROOT + 'ready/?report=' + encodeURIComponent(r.id); return '<div class="rpr" data-id="' + esc(r.id) + '"><a href="' + u + '"><span>' + esc(fmtDate(r.created_at)) + '</span><b>' + esc(r.deck_name || 'Deck') + '</b><span>' + esc(r.verdict || '') + '</span><span class="rps">' + (r.deck ? esc(r.deck) + '<i>/10</i>' : '') + '</span></a><a class="btn o" target="_blank" rel="noopener" href="' + u + '&pdf=1">Download PDF</a><button type="button" class="del">' + TRASH + 'Delete</button></div>'; }).join('');
+    };
+    draw();
+    // Delete a deck and its report (founder, 26 Nov: "Yes, you can add those buttons"): the file in private storage first, then the report row.
+    box.onclick = async (e) => {
+      const row = e.target.closest('.rpr'); if (!row) return;
+      const r = list.find(x => x.id === row.dataset.id); if (!r) return;
+      if (e.target.closest('.del')) {
+        row.classList.add('ask');
+        row.insertAdjacentHTML('beforeend', '<div class="cf"><p><b>Delete ' + esc(r.deck_name || 'this deck') + ' and its report?</b> The file and the report are removed for good. We cannot bring them back.</p><button type="button" class="y">Delete for good</button><button type="button" class="n">Keep it</button></div>');
+        row.querySelector('.del').hidden = true;
+      } else if (e.target.closest('.n')) {
+        row.classList.remove('ask'); row.querySelector('.cf').remove(); row.querySelector('.del').hidden = false;
+      } else if (e.target.closest('.y')) {
+        const yes = e.target, p = row.querySelector('.cf p'); yes.disabled = true; p.textContent = 'Deleting…';
+        try {
+          if (r.deck_path) { const f = await sb.storage.from('decks').remove([r.deck_path]); if (f.error) throw f.error; }
+          const d = await sb.from('ready_reports').delete().eq('id', r.id).select('id');
+          if (d.error || !d.data || !d.data.length) throw d.error || new Error('not deleted');
+          list.splice(list.indexOf(r), 1); draw();
+        } catch (_) { p.textContent = 'Could not delete this one. Nothing was lost. Try again in a minute.'; yes.disabled = false; }
+      }
+    };
   }
   const BM = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
   if ($('#account')) {

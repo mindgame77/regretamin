@@ -160,3 +160,14 @@ def test_the_upload_form_points_to_the_privacy_policy_and_terms():
     src = open(os.path.join(ROOT, "launch", "pages", "ready.py")).read()
     assert 'By uploading, you agree we can store and use your deck as described in our' in src
     assert 'href="/privacy/" target="_blank"' in src and 'href="/terms/" target="_blank"' in src
+
+
+def test_a_person_can_delete_their_own_deck_and_report():
+    app = read('launch', 'js', 'app.js')
+    assert "storage.from('decks').remove([r.deck_path])" in app and "from('ready_reports').delete().eq('id', r.id)" in app
+    assert app.index("storage.from('decks').remove") < app.index(".delete().eq('id', r.id)")   # the file goes first, then the report
+    assert "We cannot bring them back." in app and "Delete for good" in app and "Keep it" in app    # asks before deleting
+    sql = read('supabase', 'migrations', '20261127021405_ready_delete.sql')
+    assert "ready_reports_owner_delete" in sql and "user_id = auth.uid()" in sql
+    assert "decks_owner_delete" in sql and "(storage.foldername(name))[1] = auth.uid()::text" in sql
+    assert "to anon" not in sql
