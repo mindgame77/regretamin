@@ -2171,3 +2171,25 @@ a.rd-bg:hover{border-color:#F0861E}.rd-ar{color:#B85F0A}
 .rpr .cf p{margin:0;flex:1;min-width:240px;font-size:14.5px;color:#10201C}.rpr .cf p b{font-weight:600;overflow:visible;white-space:normal}
 .rpr .cf .y{padding:9px 16px;border-radius:10px;border:0;background:#B3261E;color:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer}.rpr .cf .y:disabled{opacity:.6;cursor:default}
 .rpr .cf .n{padding:9px 16px;border-radius:10px;border:1px solid #D5DBD8;background:#fff;color:#10201C;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+
+/* Burger menu: on phones the header shows the logo, the credits chip and one button; the links live in a panel under it. */
+body>nav .bg,.mpn{display:none}
+@media (max-width:640px){
+  body>nav{position:relative}
+  body>nav .r>a:not(#zz):not(#zy),body>nav .r>#acct:not(#zz){display:none!important}
+  body>nav .r{overflow:visible;gap:10px;flex:0 1 auto;margin-left:auto}
+  body>nav .bg{display:inline-flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;padding:0;border:1px solid #D5DBD8;border-radius:12px;background:#fff;cursor:pointer}
+  body>nav .bg svg{width:22px;height:22px;stroke:#10201C}
+  body>nav .bg .bx,body>nav .bg[aria-expanded="true"] .bo{display:none}
+  body>nav .bg[aria-expanded="true"] .bx{display:block}
+  body>nav .mpn:not([hidden]){display:block;position:absolute;left:0;right:0;top:100%;z-index:60;background:#fff;border-bottom:1px solid #E2E7E5;box-shadow:0 14px 28px rgba(16,32,28,.10);padding:8px 16px 18px;font-family:'Geist',system-ui,sans-serif}
+  .mpn a{display:block;padding:15px 4px;font-size:18px;color:#10201C;text-decoration:none;border-bottom:1px solid #EEF1EF}
+  .mpn a#readynav,.mpn a[href$="ready/"]{margin-top:14px;padding:15px;background:#F0861E;border:0;border-radius:12px;text-align:center;font-weight:600}
+  .mpn a.mso{margin-top:10px;padding:15px;border:1px solid #10201C;border-radius:12px;text-align:center;font-weight:600}
+  .mpn .mac{display:none}
+  .mpn a.mout{color:#586964}
+  html.au-in .mpn .mac{display:block}
+  html.au-in .mpn a.mso,html.au-wait .mpn a.mso{display:none}
+  .mpn a.on{font-weight:600}
+  .mpn .mac a:last-child{border-bottom:0}
+}

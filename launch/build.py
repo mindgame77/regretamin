@@ -79,6 +79,15 @@ GA_HEAD = ("<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLa
            f'<script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>')
 
 
+def phone_menu(root, active):
+    """Panel opened by the burger button on phones (css hides it on wider screens). Same links as the header, minus Pricing and the ids (ids stay on the real header)."""
+    n = S['nav']
+    main = ''.join(re.sub(r' id="[^"]*"', '', a) for a in re.findall(r'<a [^>]*>.*?</a>', nav_links(S, root, 'main', active))
+                   if not re.search(r'href="(?:[^"]*/)?(?:plans|login)/"', a))
+    acc = re.sub(r' id="[^"]*"', '', nav_links(S, root, 'account', active))
+    return (f'<div class="mpn" id="mpn" hidden>{main}<a class="mso" href="{root}login/" data-open="signup">{n["sign_in"]}</a>'
+            f'<div class="mac">{acc}<a href="#" data-open="paywall">{n["buy_more"]}</a><a class="mout" href="#">{n["sign_out"]}</a></div></div>')
+
 def page(path, body, root, title=S['brand'], company=False, active='', head='', modals='both', firms=False):
     n = S['nav']
     scripts = f'<script defer src="{root}dates.js?v={V["dates"]}"></script>' + (f'<script defer src="{root}company.js?v={V["company"]}"></script>' if company else '') + f'<script defer src="{root}search.js?v={V["search"]}"></script><script defer src="{root}app.js?v={V["app"]}"></script><script defer src="{root}ga.js?v={V["ga"]}"></script>' + (f'<script defer src="{root}firms.js?v={V["firms"]}"></script>' if firms else '')
@@ -86,7 +95,9 @@ def page(path, body, root, title=S['brand'], company=False, active='', head='', 
            f'{nav_links(S, root, "main", active)}'
            f'<span class="navr" id="acct" hidden><button type="button" class="ab" id="acctbtn" aria-haspopup="true" aria-expanded="false"><span class="av" id="av"></span><span class="nm">{n["account_btn"]}</span></button>'
            f'<div class="dd" id="acctdd" hidden><div class="hd2"><div class="em" id="ddem"></div><div class="pl2" id="ddplan"></div><div class="bal"><span>{n["checks_left"]}</span><b id="ddleft"></b></div></div>'
-           f'{nav_links(S, root, "account", active)}<a href="#" data-open="paywall">{n["buy_more"]}</a><div class="sep"></div><a class="so" href="#" id="signout">{n["sign_out"]}</a></div></span></div></nav>')
+           f'{nav_links(S, root, "account", active)}<a href="#" data-open="paywall">{n["buy_more"]}</a><div class="sep"></div><a class="so" href="#" id="signout">{n["sign_out"]}</a></div></span>'
+           f'<button type="button" class="bg" id="burger" aria-label="Menu" aria-expanded="false" aria-controls="mpn"><svg class="bo" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><svg class="bx" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>'
+           f'{phone_menu(root, active)}</nav>')
     modals = (signup_modal() if modals in ('both', 'signup') else '') + (pricing_modal() if modals in ('both', 'pricing') else '') + outcredits_modal()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, 'w').write(f'''<!doctype html><html lang="en"><head>{'<meta name="robots" content="noindex">' if NOINDEX else ''}<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{E(title)}</title>{GA_HEAD}{head}

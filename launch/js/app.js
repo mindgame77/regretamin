@@ -134,6 +134,16 @@
   ab.onclick = (e) => { e.stopPropagation(); menu(dd.hidden); };
   document.addEventListener('click', (e) => { if (!dd.hidden && (!e.target.closest('#acctdd') || e.target.closest('a'))) menu(false); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') menu(false); });
+  // Burger menu (phones): the panel holds the same links as the header
+  const bg = $('#burger'), mpn = $('#mpn');
+  if (bg && mpn) {
+    const burger = (on) => { mpn.hidden = !on; bg.setAttribute('aria-expanded', on); };
+    bg.onclick = (e) => { e.stopPropagation(); burger(mpn.hidden); };
+    document.addEventListener('click', (e) => { if (!mpn.hidden && (!e.target.closest('#mpn') || e.target.closest('a'))) burger(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') burger(false); });
+    window.addEventListener('resize', () => { if (window.innerWidth > 640) burger(false); });
+    mpn.querySelector('.mout').onclick = (e) => { e.preventDefault(); $('#signout').click(); };
+  }
   $('#signout').onclick = async (e) => { e.preventDefault(); if (sb) await sb.auth.signOut(); location.href = ROOT || './'; };
   // Account page
   async function paintAccount() {
