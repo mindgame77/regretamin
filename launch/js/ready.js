@@ -17,9 +17,18 @@
   const COST = { report: 10, research: 25 };
   const words = (t) => (String(t).trim().match(/\S+/g) || []).length;
 
+  // What we say when the file is not a PDF: the format we got, and how to make a PDF from where the deck probably lives (founder, 27 Nov 2026).
+  function notPdf(f) {
+    const n = f.name.toLowerCase(), t = f.type || '';
+    if (/\.(pptx?|pps[xm]?|potx?)$/.test(n)) return 'We cannot open PowerPoint files yet. In PowerPoint, choose File, then Save As, then PDF. Then add that PDF here.';
+    if (/\.key$/.test(n)) return 'We cannot open Keynote files yet. In Keynote, choose File, then Export To, then PDF. Then add that PDF here.';
+    if (/^image\//.test(t) || /\.(jpe?g|png|gif|webp|heic|heif|bmp|tiff?|svg)$/.test(n)) return 'We cannot read pictures. Export your whole deck as one PDF and add that.';
+    if (/\.(docx?|pages|odp|odt)$/.test(n)) return 'We read decks as PDF only. Export yours as a PDF and add that.';
+    return 'We read PDF files only. Export your deck as a PDF (in Google Slides: File, Download, PDF) and add that.';
+  }
   function pick(f) {
     if (!f) return;
-    if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') { file = null; return say('PDF only for now. Export your deck as a PDF.'); }
+    if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') { file = null; return say(notPdf(f)); }
     if (f.size > MAX) { file = null; return say('That file is over 20 MB. Export a smaller PDF.'); }
     file = f; say('');
     $('rd-dropb').textContent = f.name;
