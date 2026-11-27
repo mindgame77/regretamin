@@ -198,7 +198,10 @@
   },
   "pricing": {
    "title": "Pricing",
-   "sub": "Counting is in credits: 1 firm = 1 credit, a pitch report 10, its full research 25. Credits refill every month; if you run out, pick a bigger plan."
+   "note": "We built this because we want your raise to go well. The investor you pick will be part of your life for years, so make it a good match and make it last. Go build a great company, with or without us.",
+   "name": "Olexi Masky",
+   "photo_alt": "Olexi Masky",
+   "explain": "10 credits to find out what's wrong with your pitch. 25 to find out who to pitch and who to skip."
   },
   "landing": {
    "h1": "Check your VC",

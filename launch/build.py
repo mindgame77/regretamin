@@ -44,7 +44,7 @@ def code_field():  # "Have a code?" field for both pricing popups (checked by th
 def pricing_inner(close=True):  # shared by the Pricing popup and /plans/
     p = S['pricing']
     x = '<button class="x" data-close>×</button>' if close else ''
-    return f'{x}<h2 id="pwh">{p["title"]}</h2><p class="s">{p["sub"]}</p>{billing()}<div class="price" data-plans="nav"></div><p class="msg" id="pwmsg"></p>{code_field()}'
+    return f'{x}<h2 id="pwh">{p["title"]}</h2><div class="fnote"><img src="/assets/team/olexi.jpg" width="72" height="72" alt="{p["photo_alt"]}"><div><p>{p["note"]}</p><b>{p["name"]}</b></div></div>{billing()}<div class="price" data-plans="nav"></div><p class="msg" id="pwmsg"></p>{code_field()}'
 
 def pricing_modal():  # nav "Pricing" popup
     return f'<div class="ov" id="paywall" hidden><div class="md w">{pricing_inner()}</div></div>'
@@ -430,6 +430,7 @@ def main():
     for f in ('style.css', 'logo.svg', 'js/app.js', 'js/company.js', 'js/search.js', 'js/dates.js', 'js/firms.js', 'js/map.js', 'js/founders.js', 'js/top100.js', 'js/ga.js', 'js/ready.js'): shutil.copy(os.path.join(HERE, f), OUT)
     shutil.copytree(os.path.join(HERE, 'fav'), os.path.join(OUT, 'fav'))
     shutil.copytree(os.path.join(HERE, 'assets', 'video'), os.path.join(OUT, 'assets', 'video'))
+    shutil.copytree(os.path.join(HERE, 'assets', 'team'), os.path.join(OUT, 'assets', 'team'))  # the photo beside the note in the Pricing popup
     shutil.copytree(os.path.join(HERE, 'assets', 'founders'), os.path.join(OUT, 'assets', 'founders'))  # the Founders view: shapes and where each university and company sits (tools/map/gen_founders.cjs)
     shutil.copytree(os.path.join(HERE, 'assets', 'logos'), os.path.join(OUT, 'assets', 'logos'))  # university and company logos for the Founders view; firm logos (f-<slug>.png)
     open(os.path.join(OUT, 'assets', 'logos', 'firms.json'), 'w').write(json.dumps(FLOGOS, separators=(',', ':')))  # which firms have a logo
