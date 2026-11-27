@@ -47,7 +47,7 @@ def test_one_video_per_chart_with_the_founders_words():
 def test_the_view_invents_nothing_and_opens_firm_pages():
     assert 'is not available right now' in JS  # no answer: it says so
     assert "O.root + 'vc/'" in JS  # a bar and a row open the firm's page
-    assert 'Based on' in JS and 'd.rounds' in JS  # the count under the title comes from the database
+    assert 'Based on' not in JS and 'id="based"' not in JS  # founder, 27 Nov: the one-line explanation replaces the "Based on" line; no extra text
     assert 'attachShadow' in JS  # its styles and the rest of the site never meet
 
 
@@ -138,7 +138,7 @@ def test_biggest_new_funds_chart_shows_money_the_date_and_grey_bars_for_firms_wi
     """Biggest new funds (built 27 Nov), from the founder's picture ui-20-top100-funds.png."""
     assert "key: 'funds', label: 'Biggest new funds', rpc: 'v2_top100_funds'" in JS and "fx: 'fx_top100_funds'" in JS and 'noPrev: true' in JS
     assert "mv: chart.noPrev && pv == null ? { k: 'na', t: '' }" in JS  # no earlier fund: grey, no move
-    assert "na: 'no earlier fund on record'" in JS and "'Based on fund announcements'" in JS
+    assert "na: 'no earlier fund on record'" in JS and 'Based on' not in JS
     assert 'const dayMon' in JS and "' · announced '" in JS  # the list and the hover card carry the announcement date
     assert 'K > 1e-12' in JS  # the bars scale to dollars as well as to startup counts
 
@@ -167,7 +167,7 @@ def test_most_social_reach_chart_stacks_each_bar_by_platform_and_draws_no_moves(
     assert "key: 'social', label: 'Most social reach', rpc: 'v2_top100_social'" in JS and "fx: 'fx_top100_social'" in JS
     assert "const PLAT = [['X', '#10201C'], ['LinkedIn', '#2F6DB5'], ['YouTube', '#D9483B'], ['Instagram', '#B8509E'], ['Substack', '#8C6A4A']]" in JS  # X at the bottom
     assert 'function stackSvg' in JS and 'noPrev: true, stack: true, scale: Math.sqrt' in JS  # segments are shares; heights on a square-root scale
-    assert "'Based on ' + num(d.n) + ' firms with a follower count'" in JS and "'mostly '" in JS
+    assert 'Based on' not in JS and "'mostly '" in JS
     assert 'bar height is scaled, segments = share of followers' in JS
 
 
@@ -196,7 +196,7 @@ def test_biggest_rounds_chart_colours_bars_by_industry__and_has_no_firm_links():
     for g in ['AI', 'Hardware', 'Defense & security', 'Climate', 'Bio & health', 'Fintech & crypto', 'Software', 'Other']:
         assert "['" + g + "', '#" in JS
     assert "legend: 'groups'" in JS and 'last 30 days · ' in JS and 'const FLAME' in JS  # the flame marks a round from the last 30 days
-    assert "have a place on the map'" in JS and "u: chart.noun" in JS  # the card says how many rounds the map shows (the others have no startup place on record)
+    assert 'have a place on the map' not in JS and "u: chart.noun" in JS  # the card says how many rounds the map shows (the others have no startup place on record)
 
 
 def test_biggest_rounds_function_ranks_this_years_rounds_in_dollars_and_counts_a_round_once():
