@@ -3,7 +3,7 @@
 // 100 bars in four rows of 25, a logo on top of each bar, the number inside it, the rank and its move underneath, and a
 // dashed outline at last year's value. The left card lists the same 100. Pressing a bar or a row opens that firm's page.
 // The black button in the head card opens one YouTube video per chart, as an icebreaker (the lines are the founder's words).
-// Data: one read-only database function per chart. Only "Most active" (v2_top100_active) exists so far; the other four
+// Data: one read-only database function per chart. "Most active" (v2_top100_active) and "First in" (v2_top100_first) exist so far; the other three
 // charts plug into CHARTS below when their functions do. No number is made up here: if the answer is missing, the view says so.
 // The list's "Map" button swaps the Skyline for a map: one circle per place, sized by the chart's number added up over the Top 100 firms based there
 // (founder, 27 Nov). The World / United States / Europe buttons are the page's own zoom card (js/map.js), which tells this view the level.
@@ -24,6 +24,9 @@
   const CHARTS = [
     { key: 'active', label: 'Most active', rpc: 'v2_top100_active', args: { p_n: 100 }, fx: 'fx_top100',
       unit: (n) => n + (n === 1 ? ' startup' : ' startups') },
+    // First in: startups where the firm held the earliest shown deal (v2_top100_first); same window and row shape as Most active
+    { key: 'first', label: 'First in', rpc: 'v2_top100_first', args: { p_n: 100 }, fx: 'fx_top100_first',
+      unit: (n) => 'First in on ' + n + (n === 1 ? ' startup' : ' startups') },
   ];
   const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const QS = new URLSearchParams(location.search);

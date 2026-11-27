@@ -9,6 +9,8 @@ MAP = (ROOT / 'launch/js/map.js').read_text()
 CSS = (ROOT / 'launch/style.css').read_text()
 MIG = (ROOT / 'supabase/migrations/20261127150843_v2_top100_active_country.sql').read_text()  # the current version of the function
 FX = json.loads((ROOT / 'tests/fixtures/top100_active.json').read_text())
+FIRST = json.loads((ROOT / 'tests/fixtures/top100_first.json').read_text())
+FIRST_MIG = (ROOT / 'supabase/migrations/20261127164530_v2_top100_first.sql').read_text()
 
 
 def test_the_fifth_view_button_and_its_hooks_are_in_the_map():
@@ -83,7 +85,7 @@ def test_the_map_button_draws_one_circle_per_place_and_uses_the_pages_zoom_card(
     assert 'limit 300' in mig  # no more than 300 slugs
     assert not re.search(r'\b(insert|update|delete|drop|alter)\b\s+(into|table|from|function)?', mig.split('$fn$')[1].lower().replace('create or replace', ''))  # read-only
     places = json.loads((ROOT / 'tests/fixtures/top100_places.json').read_text())
-    assert {p[0] for p in places} == {f[0] for f in FX['firms']}  # the fixture places every firm of the fixture
+    assert {p[0] for p in places} >= {f[0] for f in FX['firms']} | {f[0] for f in FIRST['firms']}  # the fixture places every firm of every saved chart
     for slug, lv, region, area in places:
         assert lv in ('us', 'eu', None) and region and area
 
@@ -93,3 +95,28 @@ def test_the_account_menu_opens_above_the_top_100_and_founders_views():
     m = re.search(r'\.dd\{[^}]*z-index:(\d+)\}', CSS)
     assert m and int(m.group(1)) > 8  # above #vt and #vf (6) and the map's own cards (up to 8)
     assert int(m.group(1)) < 60  # and below the full-page dialogs (60)
+
+
+def test_first_in_chart_is_in_the_drop_down_and_reads_its_own_function():
+    """First in (built 27 Nov): same window and row shape as Most active; the tooltip says 'First in on N startups'."""
+    assert "key: 'first', label: 'First in', rpc: 'v2_top100_first'" in JS and "fx: 'fx_top100_first'" in JS
+    assert "'First in on ' + n" in JS
+
+
+def test_first_in_function_counts_the_earliest_shown_deal_of_each_startup_over_all_firms():
+    assert 'create or replace function public.v2_top100_first(' in FIRST_MIG and 'to anon, authenticated' in FIRST_MIG
+    assert 'security definer' in FIRST_MIG and 'stable' in FIRST_MIG and 'drop function if exists public.v2_top100_first(integer)' in FIRST_MIG
+    assert 'min(deal_date)' in FIRST_MIG and 'e.d0 = d.deal_date' in FIRST_MIG  # the earliest date; firms tied on it all count
+    assert 'where is_current and shown and deal_date is not null' in FIRST_MIG  # the earliest of ALL firms' shown deals, not only the map's
+    assert 'd.firm_id in (select firm_id from counted)' in FIRST_MIG and 'v2_map_counted_places' in FIRST_MIG
+    assert 'count(distinct d.startup_id)' in FIRST_MIG and 'least(coalesce(p_n, 100), 200)' in FIRST_MIG
+    assert not re.search(r'\b(insert|update|delete|alter)\b\s+(into|table|from)', FIRST_MIG.split('$fn$')[1].lower())  # read-only
+
+
+def test_saved_first_in_answer_has_the_shape_the_page_reads():
+    assert len(FIRST['firms']) == 100 and FIRST['rounds'] > 0
+    for slug, name, n, p, prev, cc in FIRST['firms']:
+        assert slug and name and n > 0 and p >= 0
+        assert (prev is None) == (p == 0)
+    ns = [f[2] for f in FIRST['firms']]
+    assert ns == sorted(ns, reverse=True)
