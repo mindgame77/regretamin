@@ -86,3 +86,10 @@ def test_the_map_button_draws_one_circle_per_place_and_uses_the_pages_zoom_card(
     assert {p[0] for p in places} == {f[0] for f in FX['firms']}  # the fixture places every firm of the fixture
     for slug, lv, region, area in places:
         assert lv in ('us', 'eu', None) and region and area
+
+
+def test_the_account_menu_opens_above_the_top_100_and_founders_views():
+    """Founder, 27 Nov 2026: the Account menu hid behind the Skyline. The map views are layers of z-index 6 to 8; the menu must be above them."""
+    m = re.search(r'\.dd\{[^}]*z-index:(\d+)\}', CSS)
+    assert m and int(m.group(1)) > 8  # above #vt and #vf (6) and the map's own cards (up to 8)
+    assert int(m.group(1)) < 60  # and below the full-page dialogs (60)

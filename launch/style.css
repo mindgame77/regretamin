@@ -116,7 +116,7 @@ body.ppopen{overflow:hidden}
 .av{width:34px;height:34px;border-radius:50%;background:var(--vio);color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px}
 .ab{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:99px;padding:3px 10px 3px 3px;font-weight:600;color:var(--ink)}
 .navr{position:relative}
-.dd{position:absolute;right:0;top:50px;width:300px;background:#fff;border:1.5px solid var(--line);border-radius:18px;box-shadow:0 24px 60px rgba(20,17,43,.14);padding:8px;z-index:5}
+.dd{position:absolute;right:0;top:50px;width:300px;background:#fff;border:1.5px solid var(--line);border-radius:18px;box-shadow:0 24px 60px rgba(20,17,43,.14);padding:8px;z-index:50}
 .dd .hd2{padding:12px 12px 14px;border-bottom:1px solid var(--line)}.dd .em{font-weight:700;font-size:15px}.dd .pl2{color:var(--mute);font-size:13.5px;margin-top:2px}
 .dd .bal{display:flex;justify-content:space-between;align-items:center;margin-top:12px;background:var(--viobg);border-radius:12px;padding:10px 12px;font-size:14px;color:var(--ink2)}.dd .bal b{color:var(--vio);font-size:15px}
 .dd a{display:block;padding:11px 12px;border-radius:10px;font-weight:500;color:var(--ink)}.dd a:hover,.dd a.f{background:#F7F6FA}.dd .sep{border-top:1px solid var(--line);margin:6px 0}.dd a.so{color:var(--ink2)}
