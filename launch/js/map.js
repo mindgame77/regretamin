@@ -853,10 +853,9 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
       if (S.unit === 'usd' && L.moneyKey !== mkey) { L.moneyKey = mkey; L.money = null; money(L.place).then((d) => { if (S.list === L && L.moneyKey === mkey) { L.money = d ? (d.sectors || []) : false; if (S.unit === 'usd') drawSide(); } }); }
       const mrows = () => !Array.isArray(L.money) ? `<p class="vm-mu">${L.money === false ? 'Dollar totals are not available right now.' : 'Loading'}</p>` : L.money.length ? (() => { const top = Math.max.apply(null, L.money.map((r) => r[1]).concat([1])); return L.money.map((r) => moneyRow(r, top, L.step === 'firms' && L.sector === r[0], ' vm-secp')).join(''); })() : '<p class="vm-mu">No rounds with an amount here in this period.</p>';
       side.className = 'vm-card vm-side vm-list';
-      side.innerHTML = `<div class="vm-lh vm-lhp"><h2>${esc(L.place.n)} · ${num(L.place.f)} firm${L.place.f === 1 ? '' : 's'}</h2><button type="button" class="vm-x" id="vm-close" aria-label="Close list"></button></div>
-${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw(true)}</div><span class="vm-tag">${S.unit === 'usd' ? '$ raised \u00b7 ' : ''}last ${perText()} vs before</span>
+      side.innerHTML = `${placeFacts(L.place)}<div class="vm-lh vm-lh2"><h3>Sectors here</h3>${unitSw(true)}</div><span class="vm-tag">${S.unit === 'usd' ? '$ raised \u00b7 ' : ''}last ${perText()} vs before</span>
 <div class="vm-rows vm-srows">${S.unit === 'usd' ? mrows() : !L.det ? '<p class="vm-mu">Loading</p>' : rows.length ? rows.map((r) => `<button type="button" class="vm-sec vm-secp${L.step === 'firms' && L.sector === r.name ? ' vm-secon' : ''}" data-s="${esc(r.name)}" title="${num(r.n)} deals, ${num(r.p)} before"><i class="${toneCls(r)}"></i><span>${esc(r.name)}</span>${spark(r.line, r.tone)}<span class="vm-pc ${r.tone === 'up' ? 'vm-tu' : r.tone === 'down' ? 'vm-td' : ''}">${figure(r)}</span><span class="vm-fl">${num(r.f)} firm${r.f === 1 ? '' : 's'}</span></button>`).join('') : '<p class="vm-mu">No deals here in this period.</p>'}</div>`;
-      $('#vm-close').onclick = closeList; units();
+      units();  // no top row here: the card closes with the same circle, the map or Esc
       side.querySelectorAll('.vm-secp').forEach((b) => b.onclick = () => showFirms(b.dataset.s));
       return;
     }
