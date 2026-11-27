@@ -3,15 +3,20 @@
 // 100 bars in four rows of 25, a logo on top of each bar, the number inside it, the rank and its move underneath, and a
 // dashed outline at last year's value. The left card lists the same 100. Pressing a bar or a row opens that firm's page.
 // The black button in the head card opens one YouTube video per chart, as an icebreaker (the lines are the founder's words).
-// Data: one read-only database function per chart. "Most active" (v2_top100_active) and "First in" (v2_top100_first) exist so far; the other three
+// Data: one read-only database function per chart. "Most active" (v2_top100_active) and "First in" (v2_top100_first) and "Biggest new funds" (v2_top100_funds) exist so far; the other two
 // charts plug into CHARTS below when their functions do. No number is made up here: if the answer is missing, the view says so.
 // The list's "Map" button swaps the Skyline for a map: one circle per place, sized by the chart's number added up over the Top 100 firms based there
 // (founder, 27 Nov). The World / United States / Europe buttons are the page's own zoom card (js/map.js), which tells this view the level.
 // Everything is drawn inside its own shadow root, like js/founders.js, so its styles and the rest of the site never meet.
 (function () {
   const INK = '#10201C', SOFT = '#586964', LINE = '#E2E7E5';
-  const MOVE = { up: ['#5CBB8A', '#1E8E5A'], dn: ['#E8877D', '#B3261E'], nu: ['#F0861E', '#C06A0C'], eq: ['#B9C4C0', '#586964'] };
-  const KEY = { up: 'up', dn: 'down', nu: 'new', eq: 'same' };
+  const MOVE = { up: ['#5CBB8A', '#1E8E5A'], dn: ['#E8877D', '#B3261E'], nu: ['#F0861E', '#C06A0C'], eq: ['#B9C4C0', '#586964'], na: ['#B9C4C0', '#586964'] };
+  const KEY = { up: 'up', dn: 'down', nu: 'new', eq: 'same', na: 'no earlier fund on record' };
+  // Dollar amounts the way the Biggest new funds chart shows them: $10B, $5.8B, $850M, $56.6M (short() leaves the dollar sign off, for inside a bar)
+  const short = (v) => { const a = Math.abs(v); const f = (x, d) => String(+x.toFixed(d)); return a >= 1e9 ? f(v / 1e9, 1) + 'B' : a >= 1e7 ? f(v / 1e6, 0) + 'M' : a >= 1e6 ? f(v / 1e6, 1) + 'M' : a >= 1e3 ? f(v / 1e3, 0) + 'K' : f(v, 0); };
+  const usd = (v) => '$' + short(v);
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const dayMon = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? (+m[3]) + ' ' + MON[+m[2] - 1] : ''; };
   // One video per chart (founder, 26 Nov 2026). The line is the button's whole text; the link opens in a new tab.
   const VIDEOS = {
     active: { line: 'Feeling down? Press play', url: 'https://youtu.be/0tBw8cB553E' },
@@ -27,6 +32,14 @@
     // First in: startups where the firm held the earliest shown deal (v2_top100_first); same window and row shape as Most active
     { key: 'first', label: 'First in', rpc: 'v2_top100_first', args: { p_n: 100 }, fx: 'fx_top100_first',
       unit: (n) => 'First in on ' + n + (n === 1 ? ' startup' : ' startups') },
+    // Biggest new funds: each firm's biggest fund announced in the last 12 months against the 12 before (v2_top100_funds). The row's seventh item is the announcement date.
+    // A firm with no fund in the earlier 12 months has nothing to compare with: grey, no move ("no earlier fund on record").
+    { key: 'funds', label: 'Biggest new funds', rpc: 'v2_top100_funds', args: { p_n: 100 }, fx: 'fx_top100_funds', noPrev: true,
+      unit: usd, bar: short, circle: usd, based: () => 'Based on fund announcements',
+      row: (r) => ({ v: usd(r.v), s: dayMon(r.dt) }),
+      under: (r) => usd(r.v),
+      tip: (r) => ['<small>' + esc(usd(r.v)) + (r.dt ? ' · announced ' + esc(dayMon(r.dt)) : '') + '</small>', '<small>' + (r.p ? 'was ' + esc(usd(r.p)) + ' last year' : 'no earlier fund on record') + '</small>'],
+      legend: ['up', 'dn', 'nu', 'eq', 'na'], counts: false },
   ];
   const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const QS = new URLSearchParams(location.search);
@@ -153,9 +166,13 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 
   // rows: one object per firm, in rank order
   function shape(d) {
-    return d.firms.map(([slug, name, v, p, prev, cc], i) => ({ i: i + 1, slug, name, cc: cleanCC(cc), v: +v, p: p == null ? null : +p, prev: prev == null ? null : +prev, mv: move(i + 1, prev == null ? null : +prev) }));
+    return d.firms.map(([slug, name, v, p, prev, cc, dt], i) => {
+      const pv = p == null ? null : +p, pr = prev == null ? null : +prev;
+      return { i: i + 1, slug, name, cc: cleanCC(cc), v: +v, p: pv, prev: pr, dt: dt || null, mv: chart.noPrev && pv == null ? { k: 'na', t: '' } : move(i + 1, pr) };
+    });
   }
   function tipHtml(r) {
+    if (chart.tip) return '<b>' + r.i + ' · ' + esc(r.name) + '</b>' + chart.tip(r).join('');
     const lines = ['<b>' + r.i + ' · ' + esc(r.name) + '</b>',
       '<small>' + esc(chart.unit(r.v)) + ' · ' + (r.p ? num(r.p) + ' last year' : 'none last year') + '</small>'];
     const t = r.mv.k === 'nu' ? '▲ new to the Top 100' + (r.prev ? ' · was ' + ord(r.prev) : ' · not ranked last year')
@@ -186,15 +203,18 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   }
   function hideTip() { $('#tip').style.display = 'none'; }
 
+  // the right-hand end of a list row: the number and, under it, last year's (or the date, for the funds chart)
+  const rowTxt = (r) => { if (chart.row) { const x = chart.row(r); return x.v + '<small>' + esc(x.s) + '</small>'; } return num(r.v) + '<small>' + (r.p ? num(r.p) + ' last year' : 'none last year') + '</small>'; };
   function drawRows() {
     $('#rows').innerHTML = ROWS.map((r) => {
       const lg = logos && logos.has(r.slug) ? `<img class="lg" alt="" loading="lazy" src="${logoUrl(r.slug)}">` : `<span class="lg">${esc(ini(r.name))}</span>`;
-      return `<a class="row" data-i="${r.i}" href="${firmUrl(r.slug)}"><span class="rk"><b>${r.i}</b><em style="color:${MOVE[r.mv.k][1]}">${esc(r.mv.t)}</em></span>${lg}<span class="nm">${esc(r.name)}</span><span class="vv">${num(r.v)}<small>${r.p ? num(r.p) + ' last year' : 'none last year'}</small></span></a>`;
+      return `<a class="row" data-i="${r.i}" href="${firmUrl(r.slug)}"><span class="rk"><b>${r.i}</b><em style="color:${MOVE[r.mv.k][1]}">${esc(r.mv.t)}</em></span>${lg}<span class="nm">${esc(r.name)}</span><span class="vv">${rowTxt(r)}</span></a>`;
     }).join('');
   }
   function drawLegend() {
-    const c = { up: 0, dn: 0, nu: 0, eq: 0 }; ROWS.forEach((r) => { c[r.mv.k]++; });
-    $('#legend').innerHTML = '<div>' + ['up', 'dn', 'nu', 'eq'].map((k) => `<span><i style="background:${MOVE[k][0]}"></i>${KEY[k]} · ${c[k]}</span>`).join('') + '<span><i class="d"></i>last year</span></div>';
+    const c = { up: 0, dn: 0, nu: 0, eq: 0, na: 0 }; ROWS.forEach((r) => { c[r.mv.k]++; });
+    const keys = (chart.legend || ['up', 'dn', 'nu', 'eq']).filter((k) => c[k] > 0 || !chart.legend);
+    $('#legend').innerHTML = '<div>' + keys.map((k) => `<span><i style="background:${MOVE[k][0]}"></i>${KEY[k]}${chart.counts === false ? '' : ' · ' + c[k]}</span>`).join('') + '<span><i class="d"></i>last year</span></div>';
   }
   // The Skyline: four rows of 25. A row is as tall as its tallest bar (this year's or last year's); one scale for all
   // four rows, shrunk until the four rows fit the box.
@@ -206,7 +226,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     const mx = rowsOf.map((rs) => Math.max(1, ...rs.map((r) => Math.max(r.v, r.p || 0))));
     let K = 1.6;
     const total = (k) => mx.reduce((a, m) => a + m * k + TOPPAD + GAP, 0);
-    while (total(K) > H && K > 0.02) K *= 0.99;
+    while (total(K) > H && K > 1e-12) K *= 0.99;  // the bars are in whatever unit the chart has (startups, dollars), so there is no fixed floor
     let y = 0, g = '', defs = '';
     const bases = mx.map((m) => { y += m * K + TOPPAD; const b = y; y += GAP; return b; });
     bases.forEach((b) => { g += `<line x1="0" x2="${W}" y1="${b}" y2="${b}" stroke="${LINE}"/>`; });
@@ -218,14 +238,14 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
         ? `<image href="${logoUrl(r.slug)}" x="${lx}" y="${ly}" width="${L}" height="${L}" clip-path="url(#c${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="none" stroke="rgba(16,32,28,.14)"/>`
         : `<rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="#fff" stroke="${LINE}"/><text x="${cx}" y="${ly + L * 0.66}" font-size="10" font-weight="600" fill="${SOFT}" text-anchor="middle">${esc(ini(r.name))}</text>`;
       defs += `<clipPath id="c${r.i}"><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6"/></clipPath>` + `<clipPath id="f${r.i}"><rect x="${cx - 8}" y="${base + 32}" width="16" height="12" rx="2"/></clipPath>`;
-      g += `<a class="b" data-i="${r.i}" href="${firmUrl(r.slug)}" aria-label="${esc(r.i + '. ' + r.name + ', ' + chart.unit(r.v) + ', ' + (r.mv.k === 'nu' ? 'new to the Top 100' : r.mv.k === 'eq' ? 'same place as last year' : 'was ' + ord(r.prev)))}">`
+      g += `<a class="b" data-i="${r.i}" href="${firmUrl(r.slug)}" aria-label="${esc(r.i + '. ' + r.name + ', ' + chart.unit(r.v) + ', ' + (r.mv.k === 'nu' ? 'new to the Top 100' : r.mv.k === 'eq' ? 'same place as last year' : r.mv.k === 'na' ? KEY.na : 'was ' + ord(r.prev)))}">`
         + `<rect x="${x - 4}" y="${Math.min(ly, top) - 4}" width="${BW + 8}" height="${base - Math.min(ly, top) + 34}" fill="transparent"/>`
         + (gh ? `<rect x="${x - 1.5}" y="${base - gh}" width="${BW + 3}" height="${gh}" rx="5" fill="none" stroke="${INK}" stroke-opacity=".6" stroke-width="1.4" stroke-dasharray="3 2.5"/>` : '')
         + `<rect class="hl" x="${x}" y="${top}" width="${BW}" height="${h}" rx="5" fill="${col}"/>`
-        + (h >= 22 ? `<text x="${cx}" y="${top + 15}" font-size="11" font-weight="700" fill="${INK}" stroke="${col}" stroke-width="4" stroke-linejoin="round" paint-order="stroke" text-anchor="middle">${r.v}</text>` : '')
+        + (h >= 22 ? `<text x="${cx}" y="${top + 15}" font-size="11" font-weight="700" fill="${INK}" stroke="${col}" stroke-width="4" stroke-linejoin="round" paint-order="stroke" text-anchor="middle">${chart.bar ? chart.bar(r.v) : r.v}</text>` : '')
         + lg
         + `<text x="${cx}" y="${base + 14}" font-size="10" fill="${INK}" text-anchor="middle" font-family="Geist Mono,monospace">${r.i}</text>`
-        + `<text x="${cx}" y="${base + 26}" font-size="9" font-weight="700" fill="${MOVE[r.mv.k][1]}" text-anchor="middle">${esc(r.mv.t)}</text>`
+        + `<text x="${cx}" y="${base + 26}" font-size="9" font-weight="700" fill="${MOVE[r.mv.k][1]}" text-anchor="middle">${esc(r.mv.t || (chart.under ? chart.under(r) : ''))}</text>`
         + (r.cc ? `<image href="${flagUrl(r.cc)}" x="${cx - 8}" y="${base + 32}" width="16" height="12" clip-path="url(#f${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${cx - 8}" y="${base + 32}" width="16" height="12" rx="2" fill="none" stroke="rgba(16,32,28,.25)"/>` : '') + `</a>`;
     });
     box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="group" aria-label="${esc(chart.label)}: the 100 firms as bars"><defs>${defs}</defs>${g}</svg>`;
@@ -285,7 +305,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
       const { o, p, r } = c, nm = p.n || o.k, w = (nm.length * 6.6 + 8) / sc;
       const ly = [p.y + r + 14 / sc, p.y - r - 6 / sc].find((y) => !clash(p.x, y, w, c));
       if (ly != null) boxes.push({ x: p.x, y: ly, w });
-      g += `<g class="pl" data-k="${esc(o.k)}"><circle cx="${p.x}" cy="${p.y}" r="${r}" style="stroke-width:${2 / sc}px"/><text class="n" x="${p.x}" y="${p.y + 4.5 / sc}" style="font-size:${(r * sc > 17 ? 13 : 11) / sc}px">${num(o.v)}</text>`
+      const lab = chart.circle ? chart.circle(o.v) : num(o.v), fs = Math.max(8.5, Math.min(r * sc > 17 ? 13 : 11, (2 * r * sc - 6) / (lab.length * 0.62)));  // a long label ($650M) shrinks to stay inside its circle
+      g += `<g class="pl" data-k="${esc(o.k)}"><circle cx="${p.x}" cy="${p.y}" r="${r}" style="stroke-width:${2 / sc}px"/><text class="n" x="${p.x}" y="${p.y + fs * 0.4 / sc}" style="font-size:${fs / sc}px">${lab}</text>`
         + (ly == null ? '' : `<text class="pl-name" x="${p.x}" y="${ly}" style="font-size:${12 / sc}px;stroke-width:${3.5 / sc}px">${esc(nm)}</text>`) + '</g>';
     });
     box.innerHTML = `<svg viewBox="0 0 ${geo.w} ${geo.h}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet" role="group" aria-label="${esc(chart.label)}: the Top 100 by place"><image href="${O.root}assets/map/${lvl}-land.svg${O.mapv || ''}" width="${geo.w}" height="${geo.h}"/>${g}</svg>`;
@@ -325,7 +346,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     const d = await load(chart); await loadLogos();
     if (!d) { $('#based').textContent = ''; $('#sky').innerHTML = '<div class="msg">The Top 100 is not available right now. Try again in a moment.</div>'; return; }
     ROWS = shape(d);
-    $('#based').textContent = 'Based on ' + num(d.rounds) + ' rounds';
+    $('#based').textContent = chart.based ? chart.based(d) : 'Based on ' + num(d.rounds) + ' rounds';
     drawRows(); draw();
   }
 
