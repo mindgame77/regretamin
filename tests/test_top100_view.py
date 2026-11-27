@@ -10,6 +10,8 @@ CSS = (ROOT / 'launch/style.css').read_text()
 MIG = (ROOT / 'supabase/migrations/20261127150843_v2_top100_active_country.sql').read_text()  # the current version of the function
 FX = json.loads((ROOT / 'tests/fixtures/top100_active.json').read_text())
 FIRST = json.loads((ROOT / 'tests/fixtures/top100_first.json').read_text())
+FUNDS = json.loads((ROOT / 'tests/fixtures/top100_funds.json').read_text())
+FUNDS_MIG = (ROOT / 'supabase/migrations/20261127165000_v2_top100_funds.sql').read_text()
 FIRST_MIG = (ROOT / 'supabase/migrations/20261127164530_v2_top100_first.sql').read_text()
 
 
@@ -85,7 +87,7 @@ def test_the_map_button_draws_one_circle_per_place_and_uses_the_pages_zoom_card(
     assert 'limit 300' in mig  # no more than 300 slugs
     assert not re.search(r'\b(insert|update|delete|drop|alter)\b\s+(into|table|from|function)?', mig.split('$fn$')[1].lower().replace('create or replace', ''))  # read-only
     places = json.loads((ROOT / 'tests/fixtures/top100_places.json').read_text())
-    assert {p[0] for p in places} >= {f[0] for f in FX['firms']} | {f[0] for f in FIRST['firms']}  # the fixture places every firm of every saved chart
+    assert {p[0] for p in places} >= {f[0] for f in FX['firms']} | {f[0] for f in FIRST['firms']} | ({f[0] for f in FUNDS['firms']} - {'lockheed-martin-ventures'})  # the fixture places every firm of every saved chart (Lockheed Martin Ventures has no map place)
     for slug, lv, region, area in places:
         assert lv in ('us', 'eu', None) and region and area
 
@@ -120,3 +122,31 @@ def test_saved_first_in_answer_has_the_shape_the_page_reads():
         assert (prev is None) == (p == 0)
     ns = [f[2] for f in FIRST['firms']]
     assert ns == sorted(ns, reverse=True)
+
+
+def test_biggest_new_funds_chart_shows_money_the_date_and_grey_bars_for_firms_with_no_earlier_fund():
+    """Biggest new funds (built 27 Nov), from the founder's picture ui-20-top100-funds.png."""
+    assert "key: 'funds', label: 'Biggest new funds', rpc: 'v2_top100_funds'" in JS and "fx: 'fx_top100_funds'" in JS and 'noPrev: true' in JS
+    assert "mv: chart.noPrev && pv == null ? { k: 'na', t: '' }" in JS  # no earlier fund: grey, no move
+    assert "na: 'no earlier fund on record'" in JS and "'Based on fund announcements'" in JS
+    assert 'const dayMon' in JS and "' · announced '" in JS  # the list and the hover card carry the announcement date
+    assert 'K > 1e-12' in JS  # the bars scale to dollars as well as to startup counts
+
+
+def test_biggest_new_funds_function_takes_each_firms_biggest_fund_announced_in_the_last_12_months():
+    assert 'create or replace function public.v2_top100_funds(' in FUNDS_MIG and 'to anon, authenticated' in FUNDS_MIG
+    assert 'security definer' in FUNDS_MIG and 'stable' in FUNDS_MIG and 'drop function if exists public.v2_top100_funds(integer)' in FUNDS_MIG
+    assert 'from firm_fund_announcements' in FUNDS_MIG and 'a.is_current and not a.archived and a.amount_usd > 0' in FUNDS_MIG
+    assert "(current_date - interval '1 year')::date" in FUNDS_MIG and "(current_date - interval '2 year')::date" in FUNDS_MIG
+    assert 'distinct on (firm_id)' in FUNDS_MIG and 'amount_usd desc' in FUNDS_MIG  # one fund per firm: the biggest
+    assert 'v2_map_counted_places' in FUNDS_MIG and 'least(coalesce(p_n, 100), 200)' in FUNDS_MIG
+    assert not re.search(r'\b(insert|update|delete|alter)\b\s+(into|table|from)', FUNDS_MIG.split('$fn$')[1].lower())  # read-only
+
+
+def test_saved_funds_answer_has_the_shape_the_page_reads():
+    assert len(FUNDS['firms']) == 100
+    for slug, name, amt, prev_amt, prev_rank, cc, dt in FUNDS['firms']:
+        assert slug and name and amt > 0 and re.fullmatch(r'\d{4}-\d{2}-\d{2}', dt)
+        assert (prev_amt is None) == (prev_rank is None)  # no fund a year ago, no rank a year ago
+    amts = [f[2] for f in FUNDS['firms']]
+    assert amts == sorted(amts, reverse=True)
