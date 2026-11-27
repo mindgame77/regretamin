@@ -1214,8 +1214,9 @@ main.wrap.firms-pg{max-width:1320px}
 .vm-stage.vm-ease{transition:transform .35s cubic-bezier(.3,.7,.2,1)}.vm-stage.vm-ease .vm-pl{transition-duration:.35s}
 .vm-stage.vm-live .vm-pl{transition:none}#vm-labs.vm-still .vm-lab{animation:none}
 .vm-map{touch-action:pan-y}.vm-map.vm-zoomed{touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}
-.vm.vm-fview .vm-pm{display:none}
+.vm.vm-fview:not(.vm-tmap) .vm-pm{display:none}
 .vm-pl.vm-path{background:#F0861E;border:1.5px solid #10201C;opacity:.92}
+.vm-pl.vm-top{background:#D9483B;border:1.5px solid #10201C;opacity:.92}  /* Top 100 Map: Pathfinders' circle in red (founder, 27 Nov) */
 .vm.vm-pview #vm-cta{display:none}
 .vm-side .vm-pfs a.vm-pf{display:flex;align-items:center;gap:10px;padding:9px 0;margin:0;border:0;border-top:1px solid #E9EDEB;border-radius:0;background:none;color:inherit;text-decoration:none}
 .vm-pfk{flex:none;width:18px;font:400 12px 'Geist Mono',monospace;color:#5B6B66}
@@ -1895,7 +1896,7 @@ main.prof #where .wmap b span{color:#46544F}  /* the count under a name can sit 
 .vm.vm-fview .vm-colwrap,.vm.vm-fview .vm-legend,.vm.vm-fview .vm-fp,.vm.vm-fview .vm-msg{display:none!important}
 /* The land stays: Founders lays its colours over the same picture, so the map never changes between the views.
    Only Money flow's own circles, names and hover card go. */
-.vm.vm-fview #vm-pls,.vm.vm-fview #vm-labs,.vm.vm-fview .vm-wave,.vm.vm-fview .vm-map .vm-tip{display:none!important}
+.vm.vm-fview:not(.vm-tmap) #vm-pls,.vm.vm-fview:not(.vm-tmap) #vm-labs,.vm.vm-fview .vm-wave,.vm.vm-fview:not(.vm-tmap) .vm-map .vm-tip{display:none!important}  /* the Top 100's Map (vm-tmap) uses the page's own circles, names and card */
 .vm.vm-fview.vm-busy .vm-bg{animation:none}
 .vm.vm-fview .vm-views,.vm.vm-fview .vm-zoom,.vm.vm-fview .vm-dock{z-index:8}  /* the timeline is the same one as on Money flow */
 @media (max-width:900px){.vm.vm-fview .vm-map{display:none!important}#vf{position:static;order:5}.vm.vm-fview .vm-dock{order:4}}

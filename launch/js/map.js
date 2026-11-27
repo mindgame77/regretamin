@@ -441,9 +441,9 @@
     return { from: ymd(a), to: ymd(b), text: all ? 'since 2021' : `from ${MONTHS[a.getMonth()]} ${a.getFullYear()} to ${S.q1 === NQ - 1 ? 'today' : MONTHS[b.getMonth()] + ' ' + b.getFullYear()}` };
   }
   function founders() { land(); const F = window.REGRET_FOUNDERS; if (F) F.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, span: span(), kind: qs.get('fk'), mode: qs.get('fm') }); }
-  // Top 100 (js/top100.js) covers the map with its own view. Its list's Map button draws a map of its own inside that view and asks
-  // for the zoom card (World / United States / Europe) to be shown, where it is on the other maps; the card's level goes back to it.
-  function topview() { const T = window.REGRET_TOP; if (T) T.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, onMode: (m) => el.classList.toggle('vm-tmap', m === 'map') }); }
+  // Top 100 (js/top100.js) covers the map with its own view. Its list's Map button hands this page one row per place (places()) and the page
+  // draws them with its own circles, names, hover card, zoom card and + / - (the same engine as Pathfinders; circles are red, nothing opens on a press).
+  function topview() { const T = window.REGRET_TOP; if (T) T.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, onMode: (m) => el.classList.toggle('vm-tmap', m === 'map'), places: (rows) => { S.topRows = rows; S.pinned = null; tip(null); land(); draw(); } }); }
   function setView(v) {
     if (v === S.view) return;
     stop(); S.view = v; S.list = null; S.pinned = null; zoomReset(); marks();
@@ -455,13 +455,14 @@
   }
   function setLevel(l) {
     if (l === S.level) return;
-    if (S.view === 'top') { S.level = l; marks(); if (window.REGRET_TOP) window.REGRET_TOP.setLevel(l); return; }  // the Top 100 draws its own map; nothing under it is redrawn
     // Zooming in from the world: remember where the parent regions sit on the page, so their places can fly out of them.
     let from = null;
     if (S.level === 'world' && stage._rows) {
       from = {}; stage._rows.forEach((p) => { if (ZOOM[p.p] === l) from[p.p] = { x: S.ox + p.x * S.k, y: S.oy + p.y * S.k }; });
     }
-    S.list = null; S.pinned = null; S.level = l; zoomReset(); land(); draw(from); drawSide();
+    S.list = null; S.pinned = null; S.level = l; zoomReset(); land(); draw(from);
+    if (S.view === 'top') { marks(); remember(); if (window.REGRET_TOP) window.REGRET_TOP.setLevel(l); return; }  // the Top 100 has no side list to redraw
+    drawSide();
     if (S.view === 'founders' && window.REGRET_FOUNDERS) { window.REGRET_FOUNDERS.setLevel(l); marks(); remember(); }
   }
 
@@ -547,12 +548,17 @@
   };
   const unitSw = () => `<span class="vm-unit" role="group" aria-label="Show change as">${[['pct', '%', 'percent'], ['num', '#', 'number of deals']].map(([k, s, l]) => `<button type="button" data-u="${k}" aria-pressed="${S.unit === k}" aria-label="${l}">${s}</button>`).join('')}</span>`;
   const sortRows = (rows) => rows.slice().sort((a, b) => a.few !== b.few ? (a.few ? 1 : -1) : S.unit === 'num' ? b.diff - a.diff : (b.pct == null ? 1e9 : b.pct) - (a.pct == null ? 1e9 : a.pct));
-  const litPlace = () => { const u = S.updates[0]; return !u || S.view === 'hot' || S.view === 'path' ? null : S.level === 'world' ? u.region : u.level === S.level ? (FOLD[u.area] || u.area) : null; };
+  const litPlace = () => { const u = S.updates[0]; return !u || S.view === 'hot' || S.view === 'path' || S.view === 'top' ? null : S.level === 'world' ? u.region : u.level === S.level ? (FOLD[u.area] || u.area) : null; };
   const placesNow = () => {
     const g = S.geo[S.level].places, sector = S.sectors.length > 0;
-    const rows = (S.data.places || []).filter((p) => p.l === S.level && g[p.p] && !FOLD[p.p]).map((p) => Object.assign({}, p, g[p.p], { n: g[p.p].n || p.p }));
+    const rows = (S.view === 'top' ? S.topRows || [] : S.data.places || []).filter((p) => p.l === S.level && g[p.p] && !FOLD[p.p]).map((p) => Object.assign({}, p, g[p.p], { n: g[p.p].n || p.p }));
     const max = Math.max(1, ...rows.map((p) => p.d)), hot = S.view === 'hot';
     rows.forEach((p) => {
+      if (S.view === 'top') {  // Top 100 Map (founder, 27 Nov): the same circle as Pathfinders, in red; d = the chart's number added up over the Top 100 firms of the place
+        p.kind = p.d > 0 ? 'top' : null;
+        p.r = S.level === 'world' ? Math.round(13 + 27 * Math.sqrt(p.d / max)) : Math.round(7 + 29 * Math.sqrt(p.d / max));
+        p.ax = p.x; p.ay = p.y; return;
+      }
       if (S.view === 'path') {  // one plain circle per place: the startups of its firms (those not on the Top 100 list) that a Top 100 firm later backed
         p.kind = p.d > 0 ? 'path' : null;
         p.r = S.level === 'world' ? Math.round(13 + 27 * Math.sqrt(p.d / max)) : Math.round(7 + 29 * Math.sqrt(p.d / max));
@@ -568,7 +574,7 @@
       p.r = p.kind === 'dot' ? 6 : S.level === 'world' ? Math.round(18 + 20 * Math.pow(p.d / max, 0.6)) : sector ? Math.round(7 + 30 * Math.sqrt(p.d / max)) : S.level === 'eu' ? Math.round(11 + 27 * Math.sqrt(p.d / max)) : Math.round(14 + 26 * Math.sqrt(p.d / max));
       p.ax = p.x; p.ay = p.y;
     });
-    if (S.view === 'path' && S.level !== 'world') rows.filter((p) => p.kind).sort((a, b) => b.d - a.d).slice(24).forEach((p) => { p.kind = null; });  // the 24 biggest: the map stays readable
+    if ((S.view === 'path' || S.view === 'top') && S.level !== 'world') rows.filter((p) => p.kind).sort((a, b) => b.d - a.d).slice(24).forEach((p) => { p.kind = null; });  // the 24 biggest: the map stays readable
     rows.forEach((p) => { if (p.r) p.r *= RZ(); });
     // On the US and Europe maps the smallest places are left out so the map stays readable. With narrow filters that
     // could leave it empty while the sector list still shows deals, so when few circles remain the next largest come back.
@@ -614,7 +620,7 @@
     fit();
   }
   function draw(from) {  // from: where the new circles fly out of when zooming in ({ parentPlace: {x, y} } in page pixels)
-    if (!S.data || !S.geo) return;
+    if ((!S.data && S.view !== 'top') || !S.geo) return;
     const g = S.geo[S.level], rows = placesNow(), lit = litPlace(), sector = S.sectors.length > 0;
     const pls = $('#vm-pls');
     land();
@@ -631,13 +637,13 @@
         b.className = 'vm-pl vm-in'; pls.appendChild(b); els.set(key, b); fresh.push([b, p]);
       }
       b.className = `vm-pl vm-${p.kind}${p.kind === 'hot' ? ' ' + toneCls(p) : ''}${lit === p.p ? ' vm-lit' : ''}${S.pinned === p.p ? ' vm-sel' : ''}${b.classList.contains('vm-in') ? ' vm-in' : ''}`;
-      b.dataset.i = i; b.setAttribute('aria-label', S.view === 'path' ? `${p.n}: ${num(p.f)} firms` : `${p.n}: ${num(p.d)} deals, ${num(p.f)} firms`);
+      b.dataset.i = i; b.setAttribute('aria-label', S.view === 'top' ? `${p.n}: ${p.v}, ${num(p.f)} firm${p.f === 1 ? '' : 's'}` : S.view === 'path' ? `${p.n}: ${num(p.f)} firms` : `${p.n}: ${num(p.d)} deals, ${num(p.f)} firms`);
       b.style.left = p.x - p.r + 'px'; b.style.top = p.y - p.r + 'px'; b.style.width = b.style.height = p.r * 2 + 'px';
       if (p.kind === 'ring') { b.style.backgroundColor = ''; setSlices(b, p); }
-      else if (p.kind === 'hot' || p.kind === 'path') b.style.backgroundColor = '';
+      else if (p.kind === 'hot' || p.kind === 'path' || p.kind === 'top') b.style.backgroundColor = '';
       else b.style.backgroundColor = p.kind === 'plain' ? (S.sectors.length === 1 ? COLORS[S.sectors[0]] : '#C9D1CE') : (COLORS[(p.top && p.top[0] && p.top[0][0])] || '#C9D1CE');
       // label: below, else above, else right, else left; dropped if nothing fits
-      const sub = p.kind === 'hot' ? (S.level === 'world' ? toneText(p) + (hotOf(p) && p.tone !== 'few' ? ' · ' + hotOf(p)[0] : '') : num(p.d) + ' · ' + toneText(p)) : num(p.d) + (S.level === 'world' && !sector && p.so ? ' · ' + p.so : ''), small = p.kind === 'dot';
+      const sub = p.kind === 'top' ? p.v : p.kind === 'hot' ? (S.level === 'world' ? toneText(p) + (hotOf(p) && p.tone !== 'few' ? ' · ' + hotOf(p)[0] : '') : num(p.d) + ' · ' + toneText(p)) : num(p.d) + (S.level === 'world' && !sector && p.so ? ' · ' + p.so : ''), small = p.kind === 'dot';
       const q = LZ(), w = (Math.max(p.n.length * (small ? 5.6 : 6.6), small ? 0 : sub.length * 5.9) + 8) * q, h = (small ? 14 : 30) * q;
       const tries = small ? [[p.x + p.r + 6 * q, p.y - 7 * q, 'l'], [p.x - p.r - 6 * q - w, p.y - 7 * q, 'r']] : [[p.x - w / 2, p.y + p.r + 2 * q, 'c'], [p.x - w / 2, p.y - p.r - h - 2 * q, 'c'], [p.x + p.r + 4 * q, p.y - h / 2, 'l'], [p.x - p.r - 4 * q - w, p.y - h / 2, 'r'],
         [p.x + p.r * 0.7 + 2 * q, p.y + p.r * 0.7, 'l'], [p.x - p.r * 0.7 - 2 * q - w, p.y + p.r * 0.7, 'r'], [p.x + p.r * 0.7 + 2 * q, p.y - p.r * 0.7 - h, 'l'], [p.x - p.r * 0.7 - 2 * q - w, p.y - p.r * 0.7 - h, 'r']];
@@ -670,7 +676,7 @@
       setTimeout(() => { b.style.transitionDelay = ''; }, 1200);
     });
     else if (fresh.length) { void pls.offsetWidth; fresh.forEach(([b]) => b.classList.remove('vm-in')); }
-    stage._rows = rows; drawHead();
+    stage._rows = rows; if (S.view !== 'top') drawHead();
     el.querySelectorAll('[data-level]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.level === S.level));
     // Floating layout: the chosen place keeps its card open. Column layout: its numbers move into the column, so the map stays clear.
     const pin = S.pinned && !COL ? rows.find((p) => p.p === S.pinned) : null; tip(pin || null);
@@ -678,7 +684,9 @@
   function tip(p) {
     const t = $('#vm-tip'); if (!t) return;
     if (!p) { t.hidden = true; return; }
-    if (S.view === 'path') {
+    if (S.view === 'top') {
+      t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${esc(p.v)} · ${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>`;
+    } else if (S.view === 'path') {
       t.innerHTML = `<b>${esc(p.n)}</b><span class="vm-mu">${num(p.f)} firm${p.f === 1 ? '' : 's'}</span>`;
     } else if (S.view === 'hot') {
       const per = S.days === 365 ? '12 months' : S.days + ' days';
@@ -723,6 +731,7 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   mapBox.addEventListener('pointerup', endPtr); mapBox.addEventListener('pointercancel', endPtr); mapBox.addEventListener('pointerleave', endPtr);
   stage.addEventListener('click', (e) => {
     if (dragged) { dragged = false; return; }  // the end of a drag is not a click
+    if (S.view === 'top') return;  // the Top 100 map: pressing a circle does nothing (founder, 27 Nov)
     const b = e.target.closest('.vm-pl');
     // Clicking a place opens its sectors (in both views; founder, 25 Nov); clicking it again, or the empty map, closes them.
     if (b) { const p = stage._rows[+b.dataset.i]; if (S.list && S.list.place.p === p.p) closeList(); else openList(p); return; }
