@@ -166,6 +166,9 @@ test('news older than ten years is dropped, and "press Pitch" waits for a ready 
   const firms = [{ slug: 'true-ventures', name: 'True Ventures' }], tips = [{ slug: 'true-ventures', apply: 'https://www.trueventures.com/pitch', deals: 24, led: 6 }];
   const weak = buildResearch({ competitors: [], tried: [] }, {}, { company: {}, scores: { deck: 5 }, firms }, {}, tips, {});
   assert.equal(weak.todo.firms, 'Fix the red flags in step 1 first. Then press Pitch.');
+  // What's good is number 1 on the page, so the red flags are step 2 whenever the report has something good to show.
+  const weak2 = buildResearch({ competitors: [], tried: [] }, {}, { company: {}, scores: { deck: 5 }, firms, good: [{ what: 'x' }] }, {}, tips, {});
+  assert.equal(weak2.todo.firms, 'Fix the red flags in step 2 first. Then press Pitch.');
   const good = buildResearch({ competitors: [], tried: [] }, {}, { company: {}, scores: { deck: 8 }, firms }, {}, tips, {});
   assert.equal(good.todo.firms, 'Press Pitch on the first one today.');
 });

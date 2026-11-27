@@ -109,7 +109,7 @@
   const tile = (label, n) => `<div class="rd-score"><span>${label}</span><b>${n == null ? '–' : n}<i>/10</i></b></div>`;
   const step = (n, body, last, id, cls) => `<div class="rd-step${cls ? ' ' + cls : ''}"${id ? ` id="${id}"` : ''}><div class="rd-rail"><span>${n}</span>${last ? '' : '<i></i>'}</div><div class="rd-box">${body}</div></div>`;
   // The paid part looks different from the free report (founder, 26 Nov: "paid background on a paid thing should be different,
-  // should be orange ... hey, this thing is different, so you paid for it"), and once it is there step 4 is gone: its firms are in part B.
+  // should be orange ... hey, this thing is different, so you paid for it"), and once it is there the firms block is gone: its firms are in part B.
   const PAID_H = '<h2>Full research <span class="rd-tag">Paid</span></h2>';
 
   // Step 4 of the free report shows the first two firms: who they are. Why each one fits, what to say and how to get in are
@@ -227,7 +227,7 @@
     if (picks.length || skip.length) parts.push(['Your investors', OURS, now.firms,
       picks.map(firmBlock).join('')
       + (then.length ? `<p class="rd-cap rd-skipc">Then these: big firms that later invested where the firms above went first</p><div class="rd-cc rd-skips">${then.map((t) => `<div class="rd-fl">${firmA(t)}<span>after ${esc(t.after)}${t.n > 1 ? ', ' + t.n + ' startups' : ''}</span></div>`).join('')}</div>` : '')
-      + (skip.length ? `<p class="rd-cap rd-skipc">Skip these firms: they hold one of your competitors</p><div class="rd-cc rd-skips">${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}</div>` : ''), !ready && picks.length ? 'Fix the red flags in step 1 first. Then press Pitch.' : todo.firms]);
+      + (skip.length ? `<p class="rd-cap rd-skipc">Skip these firms: they hold one of your competitors</p><div class="rd-cc rd-skips">${skip.map((f) => `<div class="rd-fl">${firmA(f)}<span>backed ${esc((f.backed || []).join(', '))}</span></div>`).join('')}</div>` : ''), !ready && picks.length ? `Fix the red flags in step ${redStep(r)} first. Then press Pitch.` : String(todo.firms || '').replace(/in step \d first/, `in step ${redStep(r)} first`)]);
     const who = (t) => (t.founders || []).map((f) => ext('https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(f + ' ' + t.name), f + ' on LinkedIn', 'rd-lb')).join('');
     parts.push(['Who tried this before', WEB, now.tried, tried.length
       ? `<div class="rd-tg">${tried.map((t) => `<div class="rd-cc rd-tc"><div class="rd-cch"><div><b class="rd-cn">${esc(t.name)}</b><p>${esc(t.happened)}</p></div></div><div class="rd-fts rd-col">${fact(OUT[t.outcome] || 'turn', t.outcome || 'Earlier attempt', t.years, false)}</div><div class="rd-lbs">${ext(t.src, 'Read what happened', 'rd-lb')}${who(t)}</div></div>`).join('')}</div>`
@@ -268,8 +268,9 @@
     r.research = j.research;
     $('rd-s3').innerHTML = researchHtml(j.research, r);
     const st3 = $('rd-st3'), st4 = $('rd-st4');
-    if (st3) { st3.classList.add('rd-paid'); const h = st3.querySelector('h2'); if (h) h.outerHTML = PAID_H; const line = st3.querySelector('.rd-rail i'); if (line) line.remove(); }
+    if (st3) { st3.classList.add('rd-paid'); const h = st3.querySelector('h2'); if (h) h.outerHTML = PAID_H; }
     if (st4) st4.remove();
+    renumber();
   }
 
   // The report as plain text with an instruction on top, for the founder to hand to an AI together with the deck
@@ -288,21 +289,43 @@
     if (x && x.rounds && x.rounds.line) L.push('', `MY ASK: ${x.rounds.line}`);
     return L.join('\n');
   }
-  const FEEDBACK = '<div class="rd-fb" id="rd-fb" hidden><h2>Feedback</h2><div class="rd-fbg"><label>What\'s good?<textarea id="rd-fb1" maxlength="4000"></textarea></label><label>What\'s missing?<textarea id="rd-fb2" maxlength="4000"></textarea></label><label>What\'s wrong?<textarea id="rd-fb3" maxlength="4000"></textarea></label></div><button type="button" class="rd-btn rd-k" id="rd-fbgo">Send feedback</button><span id="rd-fbmsg"></span></div>';
+  // Feedback: one box with one line that opens taller when pressed and grows with the text (founder, 26 Nov: "Make it one box
+  // ... just a line, and it can open when you put more information"). It is the last numbered block of the page.
+  // The text is saved in the column `good` of ready_feedback; `missing` and `wrong` stay empty.
+  const FEEDBACK = '<div class="rd-step rd-fb" id="rd-fb" hidden><div class="rd-rail"><span></span></div><div class="rd-box"><h2>Feedback</h2><div class="rd-fbl"><textarea id="rd-fbt" rows="1" maxlength="4000" placeholder="What\'s good, what\'s missing, what\'s wrong?"></textarea><button type="button" class="rd-btn rd-k" id="rd-fbgo">Send feedback</button></div><span id="rd-fbmsg"></span></div></div>';
   async function feedback() {
     const box = $('rd-fb'); if (!box || !sb) return;
     const probe = await sb.from('ready_feedback').select('id').limit(1);   // the box shows only once its table is there
     if (probe.error) return;
-    box.hidden = false;
+    box.hidden = false; renumber();
+    const t = $('rd-fbt');
+    const fit = () => { t.style.height = 'auto'; t.style.height = Math.max(120, t.scrollHeight + 2) + 'px'; };
+    t.addEventListener('focus', () => { t.classList.add('on'); fit(); });
+    t.addEventListener('input', fit);
+    t.addEventListener('blur', () => { if (!t.value.trim()) { t.classList.remove('on'); t.style.height = ''; } });
     $('rd-fbgo').addEventListener('click', async () => {
-      const v = (id) => $(id).value.trim().slice(0, 4000) || null, row = { report_id: REPORT, good: v('rd-fb1'), missing: v('rd-fb2'), wrong: v('rd-fb3') };
-      if (!row.good && !row.missing && !row.wrong) return;
+      const row = { report_id: REPORT, good: t.value.trim().slice(0, 4000) || null };
+      if (!row.good) { t.focus(); return; }
       $('rd-fbgo').disabled = true;
       const ins = await sb.from('ready_feedback').insert(row);
       if (ins.error) { $('rd-fbgo').disabled = false; $('rd-fbmsg').textContent = 'That did not go through. Try again.'; return; }
-      box.innerHTML = '<h2>Feedback</h2><p>Thank you. We read every one.</p>';
+      box.querySelector('.rd-box').innerHTML = '<h2>Feedback</h2><p>Thank you. We read every one.</p>';
     });
   }
+
+  // Every block of the report carries a number, counted down the page: What's good is 1 (founder, 26 Nov: "one should be at
+  // what's good"; "give the box a number as well. So it's 1, 2, and whatever"). Counted from what is on the page, so the
+  // numbers stay right when a block is missing, when the research replaces the firms block, and when the Feedback box shows.
+  function renumber() {
+    const all = Array.from(res.querySelectorAll('.rd-step')).filter((x) => !x.hidden);
+    all.forEach((x, i) => {
+      const rail = x.querySelector('.rd-rail'); if (!rail) return;
+      rail.querySelector('span').textContent = i + 1;
+      const line = rail.querySelector('i'), last = i === all.length - 1;
+      if (last && line) line.remove(); else if (!last && !line) rail.insertAdjacentHTML('beforeend', '<i></i>');
+    });
+  }
+  const redStep = (r) => ((r.good || []).length || r.lead || (r.special || []).length ? 2 : 1);
 
   function draw(r, same) {
     const co = r.company || {};
@@ -312,7 +335,7 @@
     const good = r.good || [], scores = r.scores || null;
     const special = r.special || [];
     const fire = special.map((x) => `<div class="rd-sp">${FIRE}<div><span class="rd-kind">${esc(x.kind)}</span><b>${esc(x.what)}</b>${x.where ? ' <span class="rd-wh">' + esc(x.where) + '</span>' : ''}<p>${esc(x.why)}</p></div><span class="rd-imp rd-hot">12<i>/10</i></span></div>`).join('');
-    const goodBox = good.length || lead || fire ? `<div class="rd-good"><h2>What's good</h2>${fire ? `<p class="rd-cap rd-spcap">Special in your field</p>${fire}` : ''}${good.length ? `<div class="rd-row rd-g rd-hd"><span></span><span>What</span><span>Where</span><span>Score</span><span>Why investors like it</span></div>` + good.map((g) => `<div class="rd-row rd-g">${g.score >= 9 ? CUP : '<i class="rd-dot rd-grn"></i>'}<b>${esc(g.what)}</b><span class="rd-wh">${esc(g.where)}</span><span class="rd-imp rd-grn">${g.score}<i>/10</i></span><span>${esc(g.why)}</span></div>`).join('') : ''}${lead}</div>` : '';
+    const goodBox = good.length || lead || fire ? step(1, `<h2>What's good</h2>${fire ? `<p class="rd-cap rd-spcap">Special in your field</p>${fire}` : ''}${good.length ? `<div class="rd-row rd-g rd-hd"><span></span><span>What</span><span>Where</span><span>Score</span><span>Why investors like it</span></div>` + good.map((g) => `<div class="rd-row rd-g">${g.score >= 9 ? CUP : '<i class="rd-dot rd-grn"></i>'}<b>${esc(g.what)}</b><span class="rd-wh">${esc(g.where)}</span><span class="rd-imp rd-grn">${g.score}<i>/10</i></span><span>${esc(g.why)}</span></div>`).join('') : ''}${lead}`, false, 'rd-st0', 'rd-good') : '';
     res.innerHTML = '<p class="rd-made"><img src="/logo.svg" alt="">Made with Regretamin · regretamin.com</p>'   // shown only in the PDF (founder, 26 Nov)
       + (same ? '<p class="rd-same">You already sent us this deck. Here is the result.</p>' : '') + `<div class="rd-bar"><h1>Your raise report</h1><span class="rd-who">${esc(line)}</span><button type="button" class="rd-btn rd-k" id="rd-pdf">Download PDF</button><button type="button" class="rd-btn" id="rd-ai">Copy for AI</button><button type="button" class="rd-btn" id="rd-again">Upload a new version</button></div>`
       + `<div class="rd-verdict"><div><p class="rd-cap">Verdict</p><h2>${esc(r.verdict)}</h2></div>${scores ? tile('Deck', scores.deck) : ''}</div>`   // founder, 26 Nov: the founders score is kept on the report (scores.founders) but not shown; the four-step strip is gone
@@ -323,7 +346,8 @@
         ? step(3, `${PAID_H}<div id="rd-s3">${researchHtml(r.research, r)}</div>`, true, 'rd-st3', 'rd-paid')
         : step(3, `<h2>Know your competitors</h2><div id="rd-s3">${LOCK(!!REPORT)}</div>`, false, 'rd-st3')
           + step(4, `<h2>Pitch these firms, in this order</h2>${firms.length ? `<div class="rd-sub"><span class="rd-tag">Start here</span><span>They fit your stage and field and are writing cheques now.</span></div>${whereBox(r)}${firms.slice(0, FREE_FIRMS).map(firmRow).join('')}<div id="rd-f4">${moreFirms(r)}</div>` : '<p class="rd-none">We found no firm with a recent deal at your stage in your field.</p>'}`, true, 'rd-st4'));
-    res.insertAdjacentHTML('beforeend', `<p class="rd-aip"><b>Hand this to your AI, with your deck:</b> ${esc(AI_ASK)}</p>` + FEEDBACK);
+    res.insertAdjacentHTML('beforeend', FEEDBACK + `<p class="rd-aip"><b>Hand this to your AI, with your deck:</b> ${esc(AI_ASK)}</p>`);
+    renumber();
     show(res);
     $('rd-pdf').addEventListener('click', () => window.print());
     $('rd-ai').addEventListener('click', async () => { const b = $('rd-ai'); try { await navigator.clipboard.writeText(forAI(r)); b.textContent = 'Copied'; } catch (e) { b.textContent = 'Copy failed'; } setTimeout(() => { b.textContent = 'Copy for AI'; }, 1800); });

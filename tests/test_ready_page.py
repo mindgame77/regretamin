@@ -126,7 +126,7 @@ def test_feedback_of_26_nov_after_the_first_real_research():
     css = open(os.path.join(ROOT, "launch", "style.css")).read()
     assert "'rd-st3', 'rd-paid')" in js and "if (st4) st4.remove();" in js and 'Full research <span class="rd-tag">Paid</span>' in js
     assert ".rd-paid .rd-box{background:#FDEBD7" in css
-    assert "deck >= 8" in js and "Fix your red flags first, then go." in js and "Fix the red flags in step 1 first. Then press Pitch." in js
+    assert "deck >= 8" in js and "Fix your red flags first, then go." in js and "Fix the red flags in step ${redStep(r)} first. Then press Pitch." in js
     assert "'Earn it' : 'Rewrite'" in js
     assert "new Date().getFullYear() - 10" in js
     assert "no squares" in css and ".rd-paid .rd-box{background:none!important" in css.replace(",.rd-paid .rd-box{", ".rd-paid .rd-box{")
@@ -144,5 +144,12 @@ def test_firms_where_you_are_peers_feedback_and_copy_for_ai():
     assert "Where are you based?" in js and "Update the firms" in js and "body: JSON.stringify({ id: REPORT, country: c })" in js
     assert "from your country" in js and "Usually joins rounds of" in js and "What the founders who raised" in js
     assert 'id="rd-ai">Copy for AI' in js and "Do not invent numbers, customers or facts." in js and "navigator.clipboard.writeText(forAI(r))" in js
-    assert "What\\'s good?" in js and "What\\'s missing?" in js and "What\\'s wrong?" in js and "from('ready_feedback').insert(row)" in js
+    # Feedback is one box with one line that opens when pressed (founder, 26 Nov: "Make it one box ... just a line").
+    assert js.count("<textarea") == 1 and 'id="rd-fbt" rows="1"' in js and "What\\'s good, what\\'s missing, what\\'s wrong?" in js
+    assert "from('ready_feedback').insert(row)" in js and "t.classList.add('on')" in js
+    # Every block is numbered down the page, What's good first and Feedback last (founder, 26 Nov: "one should be at what's good").
+    assert "step(1, `<h2>What's good</h2>" in js and 'class="rd-step rd-fb" id="rd-fb" hidden><div class="rd-rail">' in js
+    assert js.count("renumber();") >= 3 and "rail.querySelector('span').textContent = i + 1" in js
+    css = open(os.path.join(ROOT, "launch", "style.css")).read()
+    assert ".rd-step[hidden]{display:none}" in css and ".rd-good .rd-box{background:#EAF4EC}" in css
     assert "probe.error" in js   # the feedback box stays hidden until its table exists
