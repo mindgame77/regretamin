@@ -11,7 +11,7 @@ MIG = (ROOT / 'supabase/migrations/20261127150843_v2_top100_active_country.sql')
 FX = json.loads((ROOT / 'tests/fixtures/top100_active.json').read_text())
 FIRST = json.loads((ROOT / 'tests/fixtures/top100_first.json').read_text())
 FUNDS = json.loads((ROOT / 'tests/fixtures/top100_funds.json').read_text())
-FUNDS_MIG = (ROOT / 'supabase/migrations/20261127165000_v2_top100_funds.sql').read_text()
+FUNDS_MIG = (ROOT / 'supabase/migrations/20261127165158_v2_top100_funds.sql').read_text()
 FIRST_MIG = (ROOT / 'supabase/migrations/20261127164530_v2_top100_first.sql').read_text()
 
 
