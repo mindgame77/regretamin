@@ -187,6 +187,10 @@ export function peersOf(p, ask, r) {
     line: ask > r.p50 ? 'An ask this high needs proof like theirs, or proof that replaces it: customers, revenue, a signed pilot.' : '' };
 }
 
+// The number the page puts on the red flags: 2 when the report opens with "What's good" (number 1; founder, 26 Nov: "one should be at
+// what's good"), 1 when a report has nothing good to show.
+export const redStep = (report) => (report && ((report.good || []).length || report.lead || (report.special || []).length) ? 2 : 1);
+
 // Looked-up rows + our data -> what step 3 of the report draws.
 //   ours: the answer of v2_ready_research; tips: the answer of v2_ready_firm_tips for the report's firms.
 export function buildResearch(rows, ours, report, meta, tips, signals, peers) {
@@ -220,7 +224,7 @@ export function buildResearch(rows, ours, report, meta, tips, signals, peers) {
   // One thing to do per part (founder, 26 Nov: "make it useful for someone who's reading and actionable"). Fixed wording, by rule.
   const todo = {
     competitors: competitors.length ? 'Put these on your competition slide. Have your answer ready for each one.' : '',
-    firms: !ready && nf ? 'Fix the red flags in step 1 first. Then press Pitch.' : investors.some((f) => f.apply) ? `Press Pitch on the first one today.${skip.length ? ' Leave out the firms that hold a competitor.' : ''}` : nf ? 'Write to the first one today, with the line under its name.' : skip.length ? 'Take the firms that hold a competitor off your target list.' : '',
+    firms: !ready && nf ? `Fix the red flags in step ${redStep(report)} first. Then press Pitch.` : investors.some((f) => f.apply) ? `Press Pitch on the first one today.${skip.length ? ' Leave out the firms that hold a competitor.' : ''}` : nf ? 'Write to the first one today, with the line under its name.' : skip.length ? 'Take the firms that hold a competitor off your target list.' : '',
     tried: rows.tried.length ? 'Message one of these founders this week. Ask the three questions.' : '',
     ask: r ? (ask ? 'Be ready to defend your number against these rounds.' : 'Add your ask to the deck: the amount and what it pays for.') : '',
   };
