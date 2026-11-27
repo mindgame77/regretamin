@@ -216,3 +216,11 @@ def test_hover_card_stays_below_the_view_tabs():
     """Founder screenshot 27 Nov 9:14: the card of the tallest bar slid under the Money flow / Trends tabs. It now keeps to the chart area and goes beside a tall bar."""
     assert 'function placeTip(tip, a, gap)' in JS and "$('#sky').getBoundingClientRect().top" in JS
     assert JS.count('placeTip(tip,') >= 3  # bars, map circles and the definition itself
+
+
+def test_back_from_a_firm_page_returns_to_the_same_chart_mode_and_scroll():
+    """Founder 27 Nov 9:16 ("crucial"): after opening a firm from the list and pressing back, the Top 100 must come back as it was left."""
+    assert "const KEEP = 'regretamin.top100'" in JS and "sessionStorage.setItem(KEEP" in JS and "sessionStorage.getItem(KEEP" in JS
+    assert "addEventListener('pagehide'" in JS and 'function restore()' in JS and 'restore(); drawHead();' in JS  # read before the first draw
+    assert "m.m === 'map' && !chart.noMap" in JS and '$(\'#rows\').scrollTop = scrollTo' in JS
+    assert JS.count('keep();') >= 3  # after a chart change, a Map / Skyline change, and on leaving

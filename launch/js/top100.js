@@ -166,6 +166,22 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   let host = null, root = null, O = null, chart = CHARTS[0], logos = null;
   const cache = new Map();
   const $ = (s) => root.querySelector(s);
+  // Back from a firm page (founder, 27 Nov): the view comes back as it was left, in this tab: the same chart, Map or Skyline, and the list where it was scrolled.
+  // The page (js/map.js) already brings back the Top 100 itself; this is what is inside it. Kept in sessionStorage, so a shared link never carries it to someone else.
+  const KEEP = 'regretamin.top100';
+  let scrollTo = 0;
+  function keep() {
+    try { sessionStorage.setItem(KEEP, JSON.stringify({ k: chart.key, m: mode, s: root && $('#rows') ? Math.round($('#rows').scrollTop) : 0 })); } catch (e) { /* private mode */ }
+  }
+  function restore() {
+    try {
+      const m = JSON.parse(sessionStorage.getItem(KEEP) || 'null'); if (!m) return;
+      const c = CHARTS.find((x) => x.key === m.k); if (c) chart = c;
+      if (m.m === 'map' && !chart.noMap) mode = 'map';
+      if (Number.isFinite(m.s) && m.s > 0) scrollTo = m.s;
+    } catch (e) { /* nothing kept */ }
+  }
+  addEventListener('pagehide', () => { if (host && !host.hidden) keep(); });
 
   async function load(c) {
     if (cache.has(c.key)) return cache.get(c.key);
@@ -396,10 +412,12 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     ROWS = shape(d);
     $('#based').textContent = chart.based ? chart.based(d) : 'Based on ' + num(d.rounds) + ' rounds';
     drawRows(); draw();
+    if (scrollTo) { $('#rows').scrollTop = scrollTo; scrollTo = 0; }
+    keep();
   }
 
   function boot() {
-    drawHead();
+    restore(); drawHead();
     const pick = $('#pick');
     pick.addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b) return;
@@ -409,7 +427,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     });
     root.addEventListener('click', (e) => { if (!e.target.closest('#pick')) { const m = pick.querySelector('.menu'); if (m) m.hidden = true; } });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const m = pick.querySelector('.menu'); if (m) m.hidden = true; } });
-    root.querySelector('.unit').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && b.dataset.v && b.dataset.v !== mode && ROWS.length) { mode = b.dataset.v; draw(); } });
+    root.querySelector('.unit').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && b.dataset.v && b.dataset.v !== mode && ROWS.length) { mode = b.dataset.v; draw(); keep(); } });
     root.querySelector('#rows').addEventListener('pointerover', (e) => { const r = e.target.closest('.row'); if (r) mark(+r.dataset.i); });
     root.querySelector('#rows').addEventListener('pointerleave', () => mark(0));
     let rz = 0; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (!host.hidden) draw(); }, 150); });
