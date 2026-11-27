@@ -221,11 +221,18 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   function showTip(i, ev, anchor) {
     const r = ROWS[i - 1], tip = $('#tip'); if (!r) return;
     tip.innerHTML = tipHtml(r); tip.style.display = 'block';
-    const a = anchor.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
-    let x = a.left + a.width / 2 - w / 2, y = a.top - h - 10;
-    if (y < 8) y = a.bottom + 10;
-    x = Math.max(8, Math.min(innerWidth - w - 8, x));
-    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    placeTip(tip, anchor.getBoundingClientRect(), 10);
+  }
+  // The hover card goes above its bar. It must stay below the top of the chart area: the page's own view tabs (Money flow, Trends...) sit above it and would hide it.
+  // When the bar is too tall for that, the card goes beside the bar instead (right, or left when there is no room), level with the top of the chart area.
+  function placeTip(tip, a, gap) {
+    const w = tip.offsetWidth, h = tip.offsetHeight, minY = Math.max(8, $('#sky').getBoundingClientRect().top);
+    let x = a.left + a.width / 2 - w / 2, y = a.top - h - gap;
+    if (y < minY) {
+      y = Math.max(minY, a.top);
+      x = a.right + gap; if (x + w > innerWidth - 8) x = a.left - w - gap;
+    }
+    tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, x)) + 'px'; tip.style.top = y + 'px';
   }
   function hideTip() { $('#tip').style.display = 'none'; }
 
@@ -357,9 +364,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
       e.setAttribute('role', 'img'); e.setAttribute('aria-label', `${nm}: ${chart.unit(o.v)}, ${o.firms} ${o.firms === 1 ? 'firm' : 'firms'}`);
       e.addEventListener('pointerenter', () => {
         const tip = $('#tip'); tip.innerHTML = `<b>${esc(nm)}</b><small>${esc(chart.unit(o.v))} · ${o.firms} ${o.firms === 1 ? 'firm' : 'firms'}</small>`; tip.style.display = 'block';
-        const a = e.querySelector('circle').getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
-        let y = a.top - h - 8; if (y < 8) y = a.bottom + 8;
-        tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, a.left + a.width / 2 - w / 2)) + 'px'; tip.style.top = y + 'px';
+        placeTip(tip, e.querySelector('circle').getBoundingClientRect(), 8);
       });
       e.addEventListener('pointerleave', hideTip);
     });
