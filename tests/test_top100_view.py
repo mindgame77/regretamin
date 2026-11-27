@@ -245,3 +245,15 @@ def test_biggest_rounds_map_places_each_round_by_its_startup_and_the_function_gi
         assert x['l'] in (None, 'us', 'eu') and (x['l'] is None) == (x['a'] is None)
         assert x['a'] is None or x['a'] in geo[x['l']]['places']  # a place the zoom has a position for
     assert sum(1 for f in ROUNDS['firms'] if f[6]['p']) >= 50  # 57 of the 100 have a place today; the rest have no startup country or city on record
+
+
+def test_each_chart_has_a_one_line_explanation_that_fits_and_its_own_circle_colour():
+    # founder, 27 Nov: a one-liner under the drop-down (the card holds about 43 characters of 13 px mono) and a different Map circle colour per chart
+    import re
+    abouts = re.findall(r"about: '([^']+)'", JS)
+    dots = re.findall(r"dot: '(#[0-9A-Fa-f]{6})'", JS)
+    assert len(abouts) == 5 and len(dots) == 5
+    assert all(len(a) <= 41 for a in abouts), abouts
+    assert len(set(d.upper() for d in dots)) == 5
+    assert "id=\"about\"" in JS and "$('#about').textContent = chart.about" in JS
+    assert "c: chart.dot" in JS

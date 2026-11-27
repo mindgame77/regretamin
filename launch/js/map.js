@@ -640,7 +640,8 @@
       b.dataset.i = i; b.setAttribute('aria-label', S.view === 'top' ? `${p.n}: ${p.v}, ${num(p.f)} ${p.u || 'firm'}${p.f === 1 ? '' : 's'}` : S.view === 'path' ? `${p.n}: ${num(p.f)} firms` : `${p.n}: ${num(p.d)} deals, ${num(p.f)} firms`);
       b.style.left = p.x - p.r + 'px'; b.style.top = p.y - p.r + 'px'; b.style.width = b.style.height = p.r * 2 + 'px';
       if (p.kind === 'ring') { b.style.backgroundColor = ''; setSlices(b, p); }
-      else if (p.kind === 'hot' || p.kind === 'path' || p.kind === 'top') b.style.backgroundColor = '';
+      else if (p.kind === 'top') b.style.backgroundColor = p.c || '';  // each Top 100 chart has its own circle colour (founder, 27 Nov)
+      else if (p.kind === 'hot' || p.kind === 'path') b.style.backgroundColor = '';
       else b.style.backgroundColor = p.kind === 'plain' ? (S.sectors.length === 1 ? COLORS[S.sectors[0]] : '#C9D1CE') : (COLORS[(p.top && p.top[0] && p.top[0][0])] || '#C9D1CE');
       // label: below, else above, else right, else left; dropped if nothing fits
       const sub = p.kind === 'top' ? p.v : p.kind === 'hot' ? (S.level === 'world' ? toneText(p) + (hotOf(p) && p.tone !== 'few' ? ' · ' + hotOf(p)[0] : '') : num(p.d) + ' · ' + toneText(p)) : num(p.d) + (S.level === 'world' && !sector && p.so ? ' · ' + p.so : ''), small = p.kind === 'dot';

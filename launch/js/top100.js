@@ -36,13 +36,13 @@
   };
   // The charts that are ready. Each one turns its database answer into rows: [slug, name, value, last year's value or null, last year's rank or null].
   const CHARTS = [
-    { key: 'active', label: 'Most active', rpc: 'v2_top100_active', args: { p_n: 100 }, fx: 'fx_top100',
+    { key: 'active', label: 'Most active', rpc: 'v2_top100_active', args: { p_n: 100 }, fx: 'fx_top100', about: 'Firms backing the most startups this year', dot: '#D9483B',
       unit: (n) => num(n) + (n === 1 ? ' startup' : ' startups') },
     // First in: startups where the firm held the earliest shown deal (v2_top100_first); same window and row shape as Most active
-    { key: 'first', label: 'First in', rpc: 'v2_top100_first', args: { p_n: 100 }, fx: 'fx_top100_first',
+    { key: 'first', label: 'First in', rpc: 'v2_top100_first', args: { p_n: 100 }, fx: 'fx_top100_first', about: 'Most startups backed before anyone else', dot: '#3F9E4A',
       unit: (n) => 'First in on ' + num(n) + (n === 1 ? ' startup' : ' startups') },
     // Most social reach: followers added up over X, LinkedIn, YouTube, Instagram and Substack (v2_top100_social). Only one reading per account so far, so no last year and no moves.
-    { key: 'social', label: 'Most social reach', rpc: 'v2_top100_social', args: { p_n: 100 }, fx: 'fx_top100_social', noPrev: true, stack: true, scale: Math.sqrt,
+    { key: 'social', label: 'Most social reach', rpc: 'v2_top100_social', args: { p_n: 100 }, fx: 'fx_top100_social', about: 'Most followers across social media', dot: '#7B5CD6', noPrev: true, stack: true, scale: Math.sqrt,
       unit: (n) => fol(n) + ' followers', bar: null, circle: fol, based: (d) => 'Based on ' + num(d.n) + ' firms with a follower count',
       row: (r) => { const t = platsOf(r).sort((a, b) => b.n - a.n)[0]; return { v: fol(r.v), s: t ? 'mostly ' + t.k : '' }; },
       under: (r) => fol(r.v),
@@ -50,7 +50,7 @@
       legend: 'platforms' },
     // Biggest new funds: each firm's biggest fund announced in the last 12 months against the 12 before (v2_top100_funds). The row's seventh item is the announcement date.
     // A firm with no fund in the earlier 12 months has nothing to compare with: grey, no move ("no earlier fund on record").
-    { key: 'funds', label: 'Biggest new funds', rpc: 'v2_top100_funds', args: { p_n: 100 }, fx: 'fx_top100_funds', noPrev: true,
+    { key: 'funds', label: 'Biggest new funds', rpc: 'v2_top100_funds', args: { p_n: 100 }, fx: 'fx_top100_funds', about: 'Biggest funds of the past 12 months', dot: '#2F6FDB', noPrev: true,
       unit: usd, bar: short, circle: usd, based: () => 'Based on fund announcements',
       row: (r) => ({ v: usd(r.v), s: dayMon(r.dt) }),
       under: (r) => usd(r.v),
@@ -59,7 +59,7 @@
     // Biggest rounds: the 100 biggest rounds of the year so far (v2_top100_rounds). A row is a round, not a firm: no firm page to open, no last year. Its Map places each round by its STARTUP's country / city
     // (founder, 27 Nov: "startup country"); a round whose startup has no place on record is in the list but not on the map.
     // Seventh item: { r: round name, d: date, i: sector, n: investors we hold in it, h: in the last 30 days, g: industry group, c: startup country, p: world region, l: 'us' | 'eu', a: place on that zoom }.
-    { key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds', args: { p_n: 100 }, fx: 'fx_top100_rounds', noPrev: true, noLink: true, scale: Math.sqrt, noun: 'round',
+    { key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds', args: { p_n: 100 }, fx: 'fx_top100_rounds', about: 'The 100 largest rounds this year so far', dot: '#D13C8C', noPrev: true, noLink: true, scale: Math.sqrt, noun: 'round',
       placeOf: (r, lvl) => { const x = r.parts || {}; return lvl === 'world' ? x.p : x.l === lvl ? x.a : null; },  // the Map: a round sits where its startup is (the function's p / l / a)
       unit: usd, bar: (v) => (v >= 1e9 ? short(v) : ''), under: (r) => usd(r.v), color: gCol, ink: gInk, flame: (r) => !!(r.parts && r.parts.h),
       row: (r) => ({ v: usd(r.v), s: [r.parts && r.parts.r, dayMon(r.parts && r.parts.d)].filter(Boolean).join(' · ') }),
@@ -154,6 +154,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   <aside class="side">
     <section class="card head"><h1>The Top 100.</h1>
       <div class="pick" id="pick"></div>
+      <p class="based" id="about"></p>
       <p class="based" id="based"></p>
       <a class="cta" id="cta" target="_blank" rel="noopener noreferrer" href="#"></a></section>
     <section class="card panel"><div class="lh"><h2 id="ptitle"></h2><span class="unit" role="group" aria-label="Show as"><button type="button" data-v="map" aria-pressed="false">Map</button><button type="button" data-v="sky" aria-pressed="true">Skyline</button></span></div><div class="rows" id="rows"></div></section>
@@ -358,11 +359,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
       ['world', 'us', 'eu'].forEach((l) => {
         const at = {};
         ROWS.forEach((r) => { const k = chart.placeOf(r, l); if (!k) return; const o = at[k] || (at[k] = { v: 0, f: 0 }); o.v += r.v; o.f++; if (l === 'world') placed++; });
-        Object.entries(at).forEach(([k, o]) => rows.push({ p: k, l, d: o.v, f: o.f, v: chart.unit(o.v), u: chart.noun }));
+        Object.entries(at).forEach(([k, o]) => rows.push({ p: k, l, d: o.v, f: o.f, v: chart.unit(o.v), u: chart.noun, c: chart.dot }));
       });
       $('#based').textContent = placed + ' of ' + ROWS.length + ' ' + chart.noun + 's have a place on the map';
     } else {
-      ['world', 'us', 'eu'].forEach((l) => placesFor(l, by).forEach((o) => rows.push({ p: o.k, l, d: o.v, f: o.firms, v: chart.unit(o.v) })));
+      ['world', 'us', 'eu'].forEach((l) => placesFor(l, by).forEach((o) => rows.push({ p: o.k, l, d: o.v, f: o.firms, v: chart.unit(o.v), c: chart.dot })));
     }
     if (O.places) O.places(rows);
   }
@@ -382,6 +383,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   function drawHead() {
     const v = VIDEOS[chart.key], c = $('#cta');
     $('#ptitle').textContent = chart.label;
+    $('#about').textContent = chart.about || '';  // one line under the drop-down: what this chart is (40 characters or fewer, so it never wraps)
     if (v) { c.hidden = false; c.href = v.url; c.innerHTML = `<span class="yt"><svg width="12" height="13" viewBox="0 0 12 13" aria-hidden="true"><path d="M1 1L11 6.500 1 12Z" fill="#fff"/></svg></span><span>${esc(v.line)}</span>`; } else c.hidden = true;
     const menu = CHARTS.map((x) => `<button type="button" role="menuitemradio" aria-checked="${x.key === chart.key}" data-k="${x.key}">${esc(x.label)}</button>`).join('');
     $('#pick').innerHTML = `<button type="button" class="pickbtn" aria-haspopup="true" aria-expanded="false"><span>${esc(chart.label)}</span><svg aria-hidden="true" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="${INK}" stroke-width="1.6"/></svg></button><div class="menu" role="menu" hidden>${menu}</div>`;
