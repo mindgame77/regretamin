@@ -27,7 +27,7 @@ def test_the_page_asks_only_for_the_deck_linkedin_and_a_note():
     html = ready.render(None)
     assert 'May save years<br>of your life.' in html and 'The #1 feedback on your pitch deck' in html
     assert html.count('<input') == 2 and html.count('<textarea') == 1          # the file, LinkedIn, the note
-    assert 'accept="application/pdf,.pdf"' in html and 'up to 20 MB' in html
+    assert 'accept="application/pdf,.pdf,.pptx,.ppt,.key"' in html and 'up to 20 MB' in html
     for gone in ('Stage', 'Raising', 'Based in'):
         assert gone not in html
     assert html.count('<li><i></i>') == 7 and 'Get my report' in html
@@ -177,18 +177,25 @@ def test_the_deck_is_uploaded_from_a_copy_in_memory_and_a_dropped_connection_get
     """27 Nov 2026, 8:02 AM PT: three tries from an Android phone, the server saw the preflight and never the upload."""
     js = open(os.path.join(ROOT, 'launch/js/ready.js')).read()
     assert 'buf = await file.arrayBuffer()' in js and 'We could not read that file' in js   # unreadable file: said plainly, no upload
-    assert 'new Blob([buf], { type: \'application/pdf\' })' in js and "upload(path, body," in js   # uploaded from the copy, never from the picked file
+    assert 'new Blob([buf], { type: ctype })' in js and "upload(path, body," in js   # uploaded from the copy, never from the picked file
     assert js.count("sb.storage.from('decks').upload(") == 2 and 'upsert: false' in js            # one quiet second go
     assert '413' in js and 'That file is too large' in js                                          # too big is not retried and is said as it is
     assert 'Check your connection and try again.' in js
 
 
-def test_a_file_that_is_not_a_pdf_is_told_what_we_accept_and_how_to_make_a_pdf():
-    """Founder, 27 Nov 2026: say which formats we do not take (pictures, PowerPoint, Keynote) and that PDF is the one."""
+def test_powerpoint_and_keynote_decks_are_taken_and_turned_into_a_pdf_before_the_model_reads_them():
+    """Founder, 27 Nov 2026: "we have to support those formats" (PDF, PowerPoint, Keynote). Pictures and the rest are told what we take."""
     js = open(os.path.join(ROOT, 'launch/js/ready.js')).read()
-    assert 'We cannot open PowerPoint files yet' in js and 'File, then Save As, then PDF' in js
-    assert 'We cannot open Keynote files yet' in js and 'File, then Export To, then PDF' in js
-    assert 'We cannot read pictures' in js and 'in Google Slides: File, Download, PDF' in js
-    assert 'notPdf(f)' in js
+    fn = open(os.path.join(ROOT, 'launch/functions/api/ready.js')).read()
     html = open(os.path.join(ROOT, 'launch/pages/ready.py')).read()
-    assert 'PDF only, up to 20 MB. From PowerPoint or Keynote? Export as PDF.' in html
+    assert "const PRES = /\\.(pptx?|pps[xm]?|pot[xm]?|key)$/i;" in js and 'key: \'application/x-iwork-keynote-sffkey\'' in js
+    assert '!PRES.test(f.name)' in js and 'We cannot read pictures' in js and 'We take PDF, PowerPoint and Keynote files' in js
+    assert 'contentType: ctype' in js and "contentType: 'application/pdf'" not in js          # each file goes up as what it is
+    assert 'convert_not_configured' in js and 'convert_failed' in js                         # the page can say what went wrong
+    assert 'accept="application/pdf,.pdf,.pptx,.ppt,.key"' in html and 'PDF, PowerPoint or Keynote, up to 20 MB' in html
+    assert "import { isPresentation, toPdf } from './_ready/convert.js'" in fn
+    assert fn.index('toPdf(env, deckUrl, row.deck_path)') < fn.index('first_(env, deckUrl, ask)')   # converted before any model is asked
+    cv = open(os.path.join(ROOT, 'launch/functions/api/_ready/convert.js')).read()
+    assert 'CLOUDCONVERT_API_KEY' in cv and 'sync.api.cloudconvert.com/v2/jobs' in cv
+    mig = open(os.path.join(ROOT, 'supabase/migrations/20261127170000_decks_accept_presentations.sql')).read()
+    assert "application/x-iwork-keynote-sffkey" in mig and "where id = 'decks'" in mig and 'file_size_limit' not in mig

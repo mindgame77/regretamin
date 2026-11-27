@@ -10,6 +10,7 @@
 // Secrets live in Cloudflare (the founder puts them there): ANTHROPIC_API_KEY (used first) and GEMINI_API_KEY (the spare; founder, 26 Nov: "let's try Gemini ...
 // Neon"). READY_MODEL may name another model of the same maker.
 import { systemPrompt, parseModelJson, assemble, reFirm } from './_ready/rules.js';
+import { isPresentation, toPdf } from './_ready/convert.js';
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
@@ -73,7 +74,13 @@ export async function onRequestPost(ctx) {
 
   const note = [row.note ? `The founder's note:\n${String(row.note).slice(0, 8000)}` : '', row.linkedin ? `The founder's LinkedIn (cannot be opened): ${String(row.linkedin).slice(0, 200)}` : '']
     .filter(Boolean).join('\n\n') || 'The founder sent the deck only.';
-  const deckUrl = `${SB}/storage/v1${link}`;
+  let deckUrl = `${SB}/storage/v1${link}`;
+  // A PowerPoint or Keynote deck is turned into a PDF first (the model reads PDF); the converter's link then stands in for the deck's own.
+  if (isPresentation(row.deck_path)) {
+    const c = await toPdf(env, deckUrl, row.deck_path);
+    if (c.error) return fail(c.error, c.error === 'convert_not_configured' ? 503 : 502);
+    deckUrl = c.url;
+  }
   const ask = `${note}\n\nReview this deck. Answer with the JSON object only.`;
   // Claude first (founder, 26 Nov: Gemini kept answering "quota", which cost time on every report); Gemini is the spare when both keys are set.
   const both = !!(env.GEMINI_API_KEY && env.ANTHROPIC_API_KEY);
