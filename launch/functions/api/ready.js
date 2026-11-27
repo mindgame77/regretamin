@@ -7,8 +7,8 @@
 //   3. fixed rules turn the model's answers into the verdict and the importance numbers (./_ready/rules.js);
 //   4. firms that fit, from our own database (v2_ready_firms);
 //   5. the report is saved on their row and sent back.
-// Secrets live in Cloudflare (the founder puts them there): GEMINI_API_KEY (used first; founder, 26 Nov: "let's try Gemini ...
-// Neon") or ANTHROPIC_API_KEY. READY_MODEL may name another model of the same maker.
+// Secrets live in Cloudflare (the founder puts them there): ANTHROPIC_API_KEY (used first) and GEMINI_API_KEY (the spare; founder, 26 Nov: "let's try Gemini ...
+// Neon"). READY_MODEL may name another model of the same maker.
 import { systemPrompt, parseModelJson, assemble, reFirm } from './_ready/rules.js';
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -75,11 +75,13 @@ export async function onRequestPost(ctx) {
     .filter(Boolean).join('\n\n') || 'The founder sent the deck only.';
   const deckUrl = `${SB}/storage/v1${link}`;
   const ask = `${note}\n\nReview this deck. Answer with the JSON object only.`;
-  let got = env.GEMINI_API_KEY ? await askGemini(env, deckUrl, ask) : await askClaude(env, deckUrl, ask);
-  // The spare key (founder, 26 Nov: "an extra key if Gemini will not work"): when Gemini fails or answers nonsense, Claude is asked.
-  if (env.GEMINI_API_KEY && env.ANTHROPIC_API_KEY && (got.error || !parseModelJson(got.text))) {
+  // Claude first (founder, 26 Nov: Gemini kept answering "quota", which cost time on every report); Gemini is the spare when both keys are set.
+  const both = !!(env.GEMINI_API_KEY && env.ANTHROPIC_API_KEY);
+  const [first_, spare_] = env.ANTHROPIC_API_KEY ? [askClaude, askGemini] : [askGemini, askClaude];
+  let got = await first_(env, deckUrl, ask);
+  if (both && (got.error || !parseModelJson(got.text))) {
     const first = got.error || 'model_answer_unreadable';
-    got = await askClaude(env, deckUrl, ask);
+    got = await spare_(env, deckUrl, ask);
     if (got.error) got.error = `${first}; then ${got.error}`;
   }
   // Whether the last model asked refused for lack of credit: the page then says so instead of blaming the deck.

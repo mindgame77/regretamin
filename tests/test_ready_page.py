@@ -44,7 +44,7 @@ def test_the_function_keeps_the_key_on_the_server_and_only_serves_the_owner():
     fn = read('launch', 'functions', 'api', 'ready.js')
     assert 'env.ANTHROPIC_API_KEY' in fn and 'env.GEMINI_API_KEY' in fn and "error: 'no_key'" in fn
     assert "'gemini-4-neon'" in fn and 'x-goog-api-key' in fn   # Gemini is used when its key is there
-    assert 'env.GEMINI_API_KEY && env.ANTHROPIC_API_KEY && (got.error' in fn      # and Claude is the spare when both keys are set
+    assert 'env.ANTHROPIC_API_KEY ? [askClaude, askGemini] : [askGemini, askClaude]' in fn and 'both && (got.error' in fn   # Claude is asked first; Gemini is the spare when both keys are set
     assert '/auth/v1/user' in fn and 'startsWith(`${user.id}/`)' in fn
     assert "type: 'document', source: { type: 'url'" in fn and 'expiresIn: 900' in fn
     assert 'API_KEY' not in read('launch', 'js', 'ready.js')

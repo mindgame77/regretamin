@@ -82,3 +82,23 @@ test('a report costs 10 credits: checked before the model, taken after, and a re
     assert.ok(!done.calls.some((c) => c.includes('ready_credits_ok') || c.includes('ready_charge'))); // reopening a finished report is free
   } finally { globalThis.fetch = real; }
 });
+
+test('Claude is asked first; Gemini is only the spare', async () => {
+  const real = globalThis.fetch;
+  const run = async (claudeFails) => {
+    const w = world({ geo: true }); const seen = [];
+    globalThis.fetch = async (url, opt) => {
+      const u = String(url);
+      if (u.includes('generativelanguage.googleapis.com')) { seen.push('gemini'); return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ company: { name: 'Obimy', stage: 'Seed', sector: 'Consumer' }, flags: [] }) }] } }], usageMetadata: {} }), { status: 200, headers: { 'content-type': 'application/json' } }); }
+      if (u.includes('api.anthropic.com')) { seen.push('claude'); if (claudeFails) return new Response('{"error":{"message":"overloaded"}}', { status: 529 }); }
+      return w.fetchStub(url, opt);
+    };
+    const res = await onRequestPost({ env: { SUPABASE_URL: 'https://db.example', SUPABASE_ANON_KEY: 'k', ANTHROPIC_API_KEY: 'k', GEMINI_API_KEY: 'g' },
+      request: new Request('https://site.example/api/ready', { method: 'POST', headers: { authorization: 'Bearer t', 'content-type': 'application/json' }, body: JSON.stringify({ id: '11111111-1111-1111-1111-111111111111' }) }) });
+    return { seen, status: res.status };
+  };
+  try {
+    const a = await run(false); assert.deepEqual(a.seen, ['claude']); assert.equal(a.status, 200);        // Gemini is not even asked
+    const b = await run(true); assert.deepEqual(b.seen, ['claude', 'gemini']);                           // the spare answers when Claude fails
+  } finally { globalThis.fetch = real; }
+});
