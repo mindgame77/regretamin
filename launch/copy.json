@@ -204,7 +204,7 @@
    "explain": "10 credits to find out what's wrong with your pitch. 25 to find out who to pitch and who to skip.",
    "title_pick": "Choose your plan",
    "first": {
-    "code": "FIRSTMONTH",
+    "percent": 50,
     "band": "{p}% off your first month",
     "tag": "{p}% off",
     "sub": "first month · then {price}/mo"

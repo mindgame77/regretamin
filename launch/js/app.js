@@ -338,8 +338,8 @@
   const K = C.copy.site.code, PAY = C.copy.site.pay;
   const CHK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
   let YEARLY = false, CODE = null; // CODE = validate-code reply for the applied code
-  let AUTO_READY = false; // false until the first-month offer is known (or 1.5 s passed), so the plan list does not flip from $29 to $14.50 in front of the visitor
-  let AUTO = null, SELB = 'preseed'; // AUTO = validate-code reply for the standing first-month offer (copy.json site.pricing.first.code); SELB = plan picked in the Pricing popup (without _y)
+  let AUTO_READY = false;
+  let AUTO = null, SELB = 'preseed'; // AUTO = the standing first-month offer {percent_off, kinds} (copy.json site.pricing.first.percent); SELB = plan picked in the Pricing popup (without _y)
   const money = (x) => '$' + (Math.round(x * 100) % 100 ? x.toFixed(2) : String(Math.round(x)));
   const offOf = (c) => c.percent_off ? fmt(T.off_pct, { p: c.percent_off }) : fmt(T.off_amt, { a: money(c.amount_off) });
   // How long a code's discount lasts on this kind, from the coupon's real duration (validate-code) and the plan's billing interval.
@@ -392,19 +392,12 @@
       + '<p class="ex">' + esc(P.explain) + '</p>'
       + '<button class="btn" data-buy="' + sel.kind + '">' + esc(fmt(P.start, { name: sel.name, now })) + '</button><p class="pnote">' + esc(fmt(note, { now, price: sel.price, p: pct })) + '</p>';
   }
-  const AUTO_KEY = 'rg_first_offer', PREVIEW = new URLSearchParams(location.search).get('rg_preview') === 'firstmonth';
-  async function autoOffer() { // the standing first-month offer exists only while its promotion code is valid in Stripe; without it nothing changes on the page
-    const f = C.copy.site.pricing.first, done = () => { AUTO_READY = true; drawPlans(); };
-    if (PREVIEW) { AUTO = { ok: true, discount: true, percent_off: 50, duration: 'once', code: f.code, kinds: Object.entries(C.copy.plans).filter(([k, p]) => k[0] !== '_' && p.monthly).map(([k]) => k) }; return done(); } // ?rg_preview=firstmonth: shows the offer as designed, display only, checkout is blocked
-    if (!sb || !f || !f.code) return done();
-    try { const c = JSON.parse(localStorage.getItem(AUTO_KEY) || 'null'); if (c && Date.now() - c.t < 600000) { AUTO = c.d || null; AUTO_READY = true; drawPlans(); } } catch (e) {} // last answer, up to 10 minutes old: the popup opens with the right prices at once
-    if (!AUTO_READY) setTimeout(() => { if (!AUTO_READY) done(); }, 1500);
-    try {
-      const { data } = await sb.functions.invoke('validate-code', { body: { code: f.code } });
-      AUTO = data && data.ok && data.discount && data.percent_off && data.duration === 'once' ? data : null;
-      try { localStorage.setItem(AUTO_KEY, JSON.stringify({ t: Date.now(), d: AUTO })); } catch (e) {}
-    } catch (e) { /* keep what we had */ }
-    done();
+  // The standing first-month offer. create-checkout puts the coupon regretamin_first_month_50 (50% off, once) on every monthly plan by itself,
+  // so the page shows the same thing with no lookup: copy.json site.pricing.first.percent must match that coupon. A typed code that covers the plan wins, here and there.
+  function autoOffer() {
+    const f = C.copy.site.pricing.first;
+    if (f && f.percent) AUTO = { percent_off: f.percent, kinds: Object.entries(C.copy.plans).filter(([k, p]) => k[0] !== '_' && p.monthly).map(([k]) => k) };
+    AUTO_READY = true;
   }
   function cards() {
     const out = Object.entries(C.copy.plans).filter(([k]) => k[0] !== '_').map(([k, p]) => {
@@ -489,9 +482,8 @@
   }
   async function checkout(kind, extra, out) {
     const msg = (t) => { if (out) out.textContent = t; else if (t && !/…$/.test(t)) alert(t); };
-    if (PREVIEW) return msg('Preview only. Nothing was charged and no checkout opened. The half price goes live once the FIRSTMONTH code exists in Stripe.');
     document.querySelectorAll('[data-buy],#outgo').forEach(b => b.disabled = true); msg(T.opening);
-    const { data, error } = await sb.functions.invoke('create-checkout', { body: Object.assign({ kind, return_path: location.pathname }, extra || {}, off(kind) || CODE ? { code: (off(kind) || CODE).code } : {}) });
+    const { data, error } = await sb.functions.invoke('create-checkout', { body: Object.assign({ kind, return_path: location.pathname }, extra || {}, CODE ? { code: CODE.code } : {}) });
     if (error || !data || !data.url) {
       document.querySelectorAll('[data-buy],#outgo').forEach(b => b.disabled = false);
       const j = error && error.context ? await error.context.json().catch(() => null) : null;
@@ -569,7 +561,7 @@
   const main = document.querySelector('main[data-firm]');
   // Search is launch/js/search.js, loaded on every page. This file does not bind a second box.
   const esc = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  drawPlans(); autoOffer();
+  autoOffer(); drawPlans();
   const firmUrl = (slug) => ROOT + 'vc/' + encodeURIComponent(slug) + '/';
   const liveUrl = (q) => ROOT + 'pending/?q=' + encodeURIComponent(q);
   // Unknown firm
