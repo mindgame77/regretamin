@@ -338,6 +338,7 @@
   const K = C.copy.site.code, PAY = C.copy.site.pay;
   const CHK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
   let YEARLY = false, CODE = null; // CODE = validate-code reply for the applied code
+  let AUTO_READY = false; // false until the first-month offer is known (or 1.5 s passed), so the plan list does not flip from $29 to $14.50 in front of the visitor
   let AUTO = null, SELB = 'preseed'; // AUTO = validate-code reply for the standing first-month offer (copy.json site.pricing.first.code); SELB = plan picked in the Pricing popup (without _y)
   const money = (x) => '$' + (Math.round(x * 100) % 100 ? x.toFixed(2) : String(Math.round(x)));
   const offOf = (c) => c.percent_off ? fmt(T.off_pct, { p: c.percent_off }) : fmt(T.off_amt, { a: money(c.amount_off) });
@@ -391,12 +392,18 @@
       + '<p class="ex">' + esc(P.explain) + '</p>'
       + '<button class="btn" data-buy="' + sel.kind + '">' + esc(fmt(P.start, { name: sel.name, now })) + '</button><p class="pnote">' + esc(fmt(note, { now, price: sel.price, p: pct })) + '</p>';
   }
+  const AUTO_KEY = 'rg_first_offer';
   async function autoOffer() { // the standing first-month offer exists only while its promotion code is valid in Stripe; without it nothing changes on the page
-    const f = C.copy.site.pricing.first; if (!sb || !f || !f.code) return;
+    const f = C.copy.site.pricing.first, done = () => { AUTO_READY = true; drawPlans(); };
+    if (!sb || !f || !f.code) return done();
+    try { const c = JSON.parse(localStorage.getItem(AUTO_KEY) || 'null'); if (c && Date.now() - c.t < 600000) { AUTO = c.d || null; AUTO_READY = true; drawPlans(); } } catch (e) {} // last answer, up to 10 minutes old: the popup opens with the right prices at once
+    if (!AUTO_READY) setTimeout(() => { if (!AUTO_READY) done(); }, 1500);
     try {
       const { data } = await sb.functions.invoke('validate-code', { body: { code: f.code } });
-      if (data && data.ok && data.discount && data.percent_off && data.duration === 'once') { AUTO = data; drawPlans(); }
-    } catch (e) { /* no offer shown */ }
+      AUTO = data && data.ok && data.discount && data.percent_off && data.duration === 'once' ? data : null;
+      try { localStorage.setItem(AUTO_KEY, JSON.stringify({ t: Date.now(), d: AUTO })); } catch (e) {}
+    } catch (e) { /* keep what we had */ }
+    done();
   }
   function cards() {
     const out = Object.entries(C.copy.plans).filter(([k]) => k[0] !== '_').map(([k, p]) => {
@@ -418,7 +425,7 @@
     document.querySelectorAll('[data-plans]').forEach((el) => {
       const nav = el.dataset.plans === 'nav';
       el.innerHTML = nav ? planList(cs) : cs.map(v => card(v, false)).join('');
-      el.classList.toggle('four', !nav && cs.length > 3); el.classList.toggle('plist', nav);
+      el.classList.toggle('four', !nav && cs.length > 3); el.classList.toggle('plist', nav); el.classList.toggle('wait', nav && !AUTO_READY);
     });
     document.querySelectorAll('.bt button').forEach((b) => { const on = (b.dataset.yearly === '1') === YEARLY; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
     document.querySelectorAll('[data-fine]').forEach(f => f.textContent = YEARLY ? B.fine_yearly : PAY.fine);
@@ -465,9 +472,10 @@
       const p = C.copy.plans[k]; if (!p) return '';
       const y = p.yearly && OUT_KIND === p.yearly.kind ? p.yearly : null;
       const kind = y ? y.kind : k, on = kind === (OUT_KIND || highlighted());
-      const price = y ? y.price + B.per_year_short : (p.monthly ? p.price + B.per_month_short : p.price);
-      const line = (y ? y.bill : (p.monthly ? pl(p.checks, O.line_month, { n: p.checks }) : pl(p.checks, O.line_once, { n: p.checks }))) + (!y && p.tag ? ' · ' + p.tag : '');
-      return '<label class="orow"><input type="radio" name="outplan" value="' + kind + '"' + (on ? ' checked' : '') + '><span class="tx"><b>' + esc(p.name) + '</b><small>' + esc(line) + '</small></span><em>' + esc(price) + '</em></label>';
+      const c = off(kind), P = C.copy.site.pricing;
+      const price = c ? '<s>' + p.price + '</s> ' + money(after(p.amount, c)) + B.per_month_short : y ? y.price + B.per_year_short : (p.monthly ? p.price + B.per_month_short : p.price);
+      const line = (c && c === AUTO ? fmt(P.first.sub, { price: p.price }) : y ? y.bill : (p.monthly ? pl(p.checks, O.line_month, { n: p.checks }) : pl(p.checks, O.line_once, { n: p.checks }))) + (!y && p.tag ? ' · ' + p.tag : '');
+      return '<label class="orow"><input type="radio" name="outplan" value="' + kind + '"' + (on ? ' checked' : '') + '><span class="tx"><b>' + esc(p.name) + '</b><small>' + esc(line) + '</small></span><em>' + (c ? price : esc(price)) + '</em></label>';
     }).join('');
     box.querySelectorAll('input').forEach((r) => { r.onchange = () => { OUT_KIND = r.value; }; });
   }
