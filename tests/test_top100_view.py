@@ -192,7 +192,7 @@ def test_saved_social_answer_has_the_shape_the_page_reads():
 def test_biggest_rounds_chart_colours_bars_by_industry__and_has_no_firm_links():
     """Biggest rounds (built 27 Nov), from the founder's picture ui-20-top100-rounds.png."""
     assert "key: 'rounds', label: 'Biggest rounds', rpc: 'v2_top100_rounds'" in JS and "fx: 'fx_top100_rounds'" in JS
-    assert "noPrev: true, noLink: true, scale: Math.sqrt, noun: 'round'" in JS and 'placeOf: (r, lvl)' in JS  # a round has no firm page to open; on the Map it sits where its startup is
+    assert "noPrev: true, noLink: true, startups: true, scale: Math.sqrt, noun: 'round'" in JS and 'placeOf: (r, lvl)' in JS  # a round has no firm page to open; on the Map it sits where its startup is
     for g in ['AI', 'Hardware', 'Defense & security', 'Climate', 'Bio & health', 'Fintech & crypto', 'Software', 'Other']:
         assert "['" + g + "', '#" in JS
     assert "legend: 'groups'" in JS and 'last 30 days · ' in JS and 'const FLAME' in JS  # the flame marks a round from the last 30 days
@@ -257,3 +257,16 @@ def test_each_chart_has_a_one_line_explanation_that_fits_and_its_own_circle_colo
     assert len(set(d.upper() for d in dots)) == 5
     assert "id=\"about\"" in JS and "$('#about').textContent = chart.about" in JS
     assert "c: chart.dot" in JS
+
+
+def test_biggest_rounds_tiles_show_a_startup_logo_when_there_is_one():
+    # 27 Nov: logos for the startups with the biggest rounds (assets/logos/startups.json = lower-case startup name -> startup id, pictures s-<id>.png).
+    # Matched by name only for names that belong to ONE startup on record; a name shared with another startup needs the id in the answer (needs the founder's yes for the database function).
+    import json, os
+    root = os.path.join(os.path.dirname(__file__), '..', 'launch', 'assets', 'logos')
+    m = json.load(open(os.path.join(root, 'startups.json')))
+    assert len(m) >= 150
+    for name, sid in m.items():
+        assert name == name.strip().lower() and sid.isdigit()
+        assert os.path.getsize(os.path.join(root, 's-' + sid + '.png')) > 200, name
+    assert "startups: true" in JS and "assets/logos/startups.json" in JS and "assets/logos/s-" in JS
