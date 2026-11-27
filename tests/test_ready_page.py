@@ -62,7 +62,7 @@ def test_the_same_deck_sent_again_shows_the_saved_report():
     assert "You already sent us this deck. Here is the result." in js
     assert "crypto.subtle.digest('SHA-256'" in js                      # the file's fingerprint
     assert ".like('deck_path', session.user.id + '/' + mark + '-%')" in js   # looked up among the founder's own reports only
-    assert js.index("const mark = await fingerprint(file)") < js.index("sb.storage.from('decks').upload")   # before any upload or model call
+    assert js.index("const mark = await fingerprint(buf)") < js.index("sb.storage.from('decks').upload")   # before any upload or model call
 
 
 def test_firm_links_open_in_a_new_page_and_reports_are_listed_in_the_account():
@@ -171,3 +171,13 @@ def test_a_person_can_delete_their_own_deck_and_report():
     assert "ready_reports_owner_delete" in sql and "user_id = auth.uid()" in sql
     assert "decks_owner_delete" in sql and "(storage.foldername(name))[1] = auth.uid()::text" in sql
     assert "to anon" not in sql
+
+
+def test_the_deck_is_uploaded_from_a_copy_in_memory_and_a_dropped_connection_gets_one_more_go():
+    """27 Nov 2026, 8:02 AM PT: three tries from an Android phone, the server saw the preflight and never the upload."""
+    js = open(os.path.join(ROOT, 'launch/js/ready.js')).read()
+    assert 'buf = await file.arrayBuffer()' in js and 'We could not read that file' in js   # unreadable file: said plainly, no upload
+    assert 'new Blob([buf], { type: \'application/pdf\' })' in js and "upload(path, body," in js   # uploaded from the copy, never from the picked file
+    assert js.count("sb.storage.from('decks').upload(") == 2 and 'upsert: false' in js            # one quiet second go
+    assert '413' in js and 'That file is too large' in js                                          # too big is not retried and is said as it is
+    assert 'Check your connection and try again.' in js
