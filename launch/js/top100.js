@@ -43,7 +43,7 @@
       unit: (n) => 'First in on ' + num(n) + (n === 1 ? ' startup' : ' startups') },
     // Most social reach: followers added up over X, LinkedIn, YouTube, Instagram and Substack (v2_top100_social). Only one reading per account so far, so no last year and no moves.
     { key: 'social', label: 'Most social reach', rpc: 'v2_top100_social', args: { p_n: 100 }, fx: 'fx_top100_social', about: 'Most followers across social media', dot: '#7B5CD6', noPrev: true, stack: true, scale: Math.sqrt,
-      unit: (n) => fol(n) + ' followers', bar: null, circle: fol, based: (d) => 'Based on ' + num(d.n) + ' firms with a follower count',
+      unit: (n) => fol(n) + ' followers', bar: null, circle: fol,
       row: (r) => { const t = platsOf(r).sort((a, b) => b.n - a.n)[0]; return { v: fol(r.v), s: t ? 'mostly ' + t.k : '' }; },
       under: (r) => fol(r.v),
       tip: (r) => ['<small>' + esc(fol(r.v)) + ' followers</small>', '<small>' + platsOf(r).sort((a, b) => b.n - a.n).map((x) => esc(x.k) + ' ' + fol(x.n)).join(' · ') + '</small>'],
@@ -51,7 +51,7 @@
     // Biggest new funds: each firm's biggest fund announced in the last 12 months against the 12 before (v2_top100_funds). The row's seventh item is the announcement date.
     // A firm with no fund in the earlier 12 months has nothing to compare with: grey, no move ("no earlier fund on record").
     { key: 'funds', label: 'Biggest new funds', rpc: 'v2_top100_funds', args: { p_n: 100 }, fx: 'fx_top100_funds', about: 'Biggest funds of the past 12 months', dot: '#2F6FDB', noPrev: true,
-      unit: usd, bar: short, circle: usd, based: () => 'Based on fund announcements',
+      unit: usd, bar: short, circle: usd,
       row: (r) => ({ v: usd(r.v), s: dayMon(r.dt) }),
       under: (r) => usd(r.v),
       tip: (r) => ['<small>' + esc(usd(r.v)) + (r.dt ? ' · announced ' + esc(dayMon(r.dt)) : '') + '</small>', '<small>' + (r.p ? 'was ' + esc(usd(r.p)) + ' last year' : 'no earlier fund on record') + '</small>'],
@@ -155,7 +155,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     <section class="card head"><h1>The Top 100.</h1>
       <div class="pick" id="pick"></div>
       <p class="based" id="about"></p>
-      <p class="based" id="based"></p>
       <a class="cta" id="cta" target="_blank" rel="noopener noreferrer" href="#"></a></section>
     <section class="card panel"><div class="lh"><h2 id="ptitle"></h2><span class="unit" role="group" aria-label="Show as"><button type="button" data-v="map" aria-pressed="false">Map</button><button type="button" data-v="sky" aria-pressed="true">Skyline</button></span></div><div class="rows" id="rows"></div></section>
   </aside>
@@ -169,7 +168,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   // Back from a firm page (founder, 27 Nov): the view comes back as it was left, in this tab: the same chart, Map or Skyline, and the list where it was scrolled.
   // The page (js/map.js) already brings back the Top 100 itself; this is what is inside it. Kept in sessionStorage, so a shared link never carries it to someone else.
   const KEEP = 'regretamin.top100';
-  let scrollTo = 0, BASED = '';
+  let scrollTo = 0;
   function keep() {
     try { sessionStorage.setItem(KEEP, JSON.stringify({ k: chart.key, m: mode, s: root && $('#rows') ? Math.round($('#rows').scrollTop) : 0 })); } catch (e) { /* private mode */ }
   }
@@ -355,13 +354,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     $('#legend').innerHTML = ''; $('#sky').innerHTML = '';
     const rows = [];
     if (chart.placeOf) {  // a chart of rounds: each round sits where its startup is; the circle adds up the rounds there
-      let placed = 0;
       ['world', 'us', 'eu'].forEach((l) => {
         const at = {};
-        ROWS.forEach((r) => { const k = chart.placeOf(r, l); if (!k) return; const o = at[k] || (at[k] = { v: 0, f: 0 }); o.v += r.v; o.f++; if (l === 'world') placed++; });
+        ROWS.forEach((r) => { const k = chart.placeOf(r, l); if (!k) return; const o = at[k] || (at[k] = { v: 0, f: 0 }); o.v += r.v; o.f++; });
         Object.entries(at).forEach(([k, o]) => rows.push({ p: k, l, d: o.v, f: o.f, v: chart.unit(o.v), u: chart.noun, c: chart.dot }));
       });
-      $('#based').textContent = placed + ' of ' + ROWS.length + ' ' + chart.noun + 's have a place on the map';
     } else {
       ['world', 'us', 'eu'].forEach((l) => placesFor(l, by).forEach((o) => rows.push({ p: o.k, l, d: o.v, f: o.firms, v: chart.unit(o.v), c: chart.dot })));
     }
@@ -375,7 +372,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     root.querySelectorAll('.unit button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === mode)));
     if (O.onMode) O.onMode(mode);
     hideTip();
-    if (mode !== 'map' && BASED) $('#based').textContent = BASED;
     host.classList.toggle('map', mode === 'map');  // in Map mode this view is see-through on the right: the page's own map shows there
     if (mode === 'map') { drawMap(); return; }
     drawLegend(); drawSky();
@@ -392,9 +388,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     chart = c || chart; drawHead(); hideTip();
     $('#rows').innerHTML = ''; $('#sky').innerHTML = ''; $('#legend').innerHTML = '';
     const d = await load(chart); await loadLogos();
-    if (!d) { $('#based').textContent = ''; $('#sky').innerHTML = '<div class="msg">The Top 100 is not available right now. Try again in a moment.</div>'; return; }
+    if (!d) { $('#sky').innerHTML = '<div class="msg">The Top 100 is not available right now. Try again in a moment.</div>'; return; }
     ROWS = shape(d);
-    BASED = chart.based ? chart.based(d) : 'Based on ' + num(d.rounds) + ' rounds'; $('#based').textContent = BASED;
     drawRows(); draw();
     if (scrollTo) { $('#rows').scrollTop = scrollTo; scrollTo = 0; }
     keep();
