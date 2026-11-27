@@ -3,7 +3,7 @@
 // 100 bars in four rows of 25, a logo on top of each bar, the number inside it, the rank and its move underneath, and a
 // dashed outline at last year's value. The left card lists the same 100. Pressing a bar or a row opens that firm's page.
 // The black button in the head card opens one YouTube video per chart, as an icebreaker (the lines are the founder's words).
-// Data: one read-only database function per chart. "Most active" (v2_top100_active) and "First in" (v2_top100_first) and "Biggest new funds" (v2_top100_funds) exist so far; the other two
+// Data: one read-only database function per chart. "Most active" (v2_top100_active) and "First in" (v2_top100_first) and "Biggest new funds" (v2_top100_funds) and "Most social reach" (v2_top100_social) exist so far; the other one
 // charts plug into CHARTS below when their functions do. No number is made up here: if the answer is missing, the view says so.
 // The list's "Map" button swaps the Skyline for a map: one circle per place, sized by the chart's number added up over the Top 100 firms based there
 // (founder, 27 Nov). The World / United States / Europe buttons are the page's own zoom card (js/map.js), which tells this view the level.
@@ -15,6 +15,10 @@
   // Dollar amounts the way the Biggest new funds chart shows them: $10B, $5.8B, $850M, $56.6M (short() leaves the dollar sign off, for inside a bar)
   const short = (v) => { const a = Math.abs(v); const f = (x, d) => String(+x.toFixed(d)); return a >= 1e9 ? f(v / 1e9, 1) + 'B' : a >= 1e7 ? f(v / 1e6, 0) + 'M' : a >= 1e6 ? f(v / 1e6, 1) + 'M' : a >= 1e3 ? f(v / 1e3, 0) + 'K' : f(v, 0); };
   const usd = (v) => '$' + short(v);
+  // Most social reach: a bar is stacked by platform (X at the bottom), each segment the platform's share of the firm's followers
+  const fol = (v) => (v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? Math.round(v / 1e3) + 'k' : String(v));  // followers: 2.7M, 789k
+  const PLAT = [['X', '#10201C'], ['LinkedIn', '#2F6DB5'], ['YouTube', '#D9483B'], ['Instagram', '#B8509E'], ['Substack', '#8C6A4A']];
+  const platsOf = (r) => PLAT.filter(([k]) => r.parts && r.parts[k] > 0).map(([k, c]) => ({ k, c, n: +r.parts[k] }));
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const dayMon = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? (+m[3]) + ' ' + MON[+m[2] - 1] : ''; };
   // One video per chart (founder, 26 Nov 2026). The line is the button's whole text; the link opens in a new tab.
@@ -32,6 +36,13 @@
     // First in: startups where the firm held the earliest shown deal (v2_top100_first); same window and row shape as Most active
     { key: 'first', label: 'First in', rpc: 'v2_top100_first', args: { p_n: 100 }, fx: 'fx_top100_first',
       unit: (n) => 'First in on ' + n + (n === 1 ? ' startup' : ' startups') },
+    // Most social reach: followers added up over X, LinkedIn, YouTube, Instagram and Substack (v2_top100_social). Only one reading per account so far, so no last year and no moves.
+    { key: 'social', label: 'Most social reach', rpc: 'v2_top100_social', args: { p_n: 100 }, fx: 'fx_top100_social', noPrev: true, stack: true, scale: Math.sqrt,
+      unit: (n) => fol(n) + ' followers', bar: null, circle: fol, based: (d) => 'Based on ' + num(d.n) + ' firms with a follower count',
+      row: (r) => { const t = platsOf(r).sort((a, b) => b.n - a.n)[0]; return { v: fol(r.v), s: t ? 'mostly ' + t.k : '' }; },
+      under: (r) => fol(r.v),
+      tip: (r) => ['<small>' + esc(fol(r.v)) + ' followers</small>', '<small>' + platsOf(r).sort((a, b) => b.n - a.n).map((x) => esc(x.k) + ' ' + fol(x.n)).join(' · ') + '</small>'],
+      legend: 'platforms' },
     // Biggest new funds: each firm's biggest fund announced in the last 12 months against the 12 before (v2_top100_funds). The row's seventh item is the announcement date.
     // A firm with no fund in the earlier 12 months has nothing to compare with: grey, no move ("no earlier fund on record").
     { key: 'funds', label: 'Biggest new funds', rpc: 'v2_top100_funds', args: { p_n: 100 }, fx: 'fx_top100_funds', noPrev: true,
@@ -111,6 +122,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 .legend div{display:flex;align-items:center;gap:26px;height:52px;padding:0 26px;background:#fff;border:1px solid var(--ml);border-radius:16px;box-shadow:0 6px 24px rgba(16,32,28,.08);white-space:nowrap;font-size:13px}
 .legend span{display:flex;align-items:center;gap:8px}
 .legend i{width:12px;height:12px;border-radius:4px;display:inline-block}
+.legend span.note{color:var(--mm)}
 .legend i.d{border:1.4px dashed var(--ink);background:none}
 .tip{position:fixed;z-index:20;pointer-events:none;display:none;background:var(--ink);color:#fff;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.35;box-shadow:0 6px 20px rgba(16,32,28,.28);white-space:nowrap}
 .tip small{display:block;color:#C9D3CF;font-size:12px}
@@ -166,9 +178,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 
   // rows: one object per firm, in rank order
   function shape(d) {
-    return d.firms.map(([slug, name, v, p, prev, cc, dt], i) => {
+    return d.firms.map(([slug, name, v, p, prev, cc, ex], i) => {
       const pv = p == null ? null : +p, pr = prev == null ? null : +prev;
-      return { i: i + 1, slug, name, cc: cleanCC(cc), v: +v, p: pv, prev: pr, dt: dt || null, mv: chart.noPrev && pv == null ? { k: 'na', t: '' } : move(i + 1, pr) };
+      return { i: i + 1, slug, name, cc: cleanCC(cc), v: +v, p: pv, prev: pr, dt: typeof ex === 'string' ? ex : null, parts: ex && typeof ex === 'object' ? ex : null, mv: chart.noPrev && pv == null ? { k: 'na', t: '' } : move(i + 1, pr) };
     });
   }
   function tipHtml(r) {
@@ -212,9 +224,16 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     }).join('');
   }
   function drawLegend() {
+    if (chart.legend === 'platforms') { $('#legend').innerHTML = '<div>' + PLAT.map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join('') + '<span class="note">bar height is scaled, segments = share of followers</span></div>'; return; }
     const c = { up: 0, dn: 0, nu: 0, eq: 0, na: 0 }; ROWS.forEach((r) => { c[r.mv.k]++; });
     const keys = (chart.legend || ['up', 'dn', 'nu', 'eq']).filter((k) => c[k] > 0 || !chart.legend);
     $('#legend').innerHTML = '<div>' + keys.map((k) => `<span><i style="background:${MOVE[k][0]}"></i>${KEY[k]}${chart.counts === false ? '' : ' · ' + c[k]}</span>`).join('') + '<span><i class="d"></i>last year</span></div>';
+  }
+  // a bar made of one segment per platform, X at the bottom; the whole bar is one rounded shape, and rect.hl is its outline for the hover
+  function stackSvg(r, x, top, h, BW) {
+    const ps = platsOf(r), tot = ps.reduce((a, b) => a + b.n, 0) || 1; let y = top + h, g = '';
+    ps.forEach((p) => { const sh = h * p.n / tot; y -= sh; g += `<rect x="${x}" y="${y}" width="${BW}" height="${sh}" fill="${p.c}"/>`; });
+    return `<g clip-path="url(#k${r.i})">${g}</g><rect class="hl" x="${x}" y="${top}" width="${BW}" height="${h}" rx="5" fill="none"/>`;
   }
   // The Skyline: four rows of 25. A row is as tall as its tallest bar (this year's or last year's); one scale for all
   // four rows, shrunk until the four rows fit the box.
@@ -223,7 +242,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     if (!W || !H || !ROWS.length) return;
     const SLOT = W / 25, BW = Math.max(10, Math.min(30, SLOT * 0.62)), L = Math.max(16, Math.min(24, SLOT * 0.5)), GAP = 48, TOPPAD = L + 12;
     const rowsOf = [0, 1, 2, 3].map((k) => ROWS.slice(k * 25, k * 25 + 25));
-    const mx = rowsOf.map((rs) => Math.max(1, ...rs.map((r) => Math.max(r.v, r.p || 0))));
+    const sq = chart.scale || ((x) => x);  // social reach draws bar heights on a square-root scale: 2.7M against 56k would otherwise leave the small bars invisible
+    const mx = rowsOf.map((rs) => Math.max(sq(1), ...rs.map((r) => Math.max(sq(r.v), sq(r.p || 0)))));
     let K = 1.6;
     const total = (k) => mx.reduce((a, m) => a + m * k + TOPPAD + GAP, 0);
     while (total(K) > H && K > 1e-12) K *= 0.99;  // the bars are in whatever unit the chart has (startups, dollars), so there is no fixed floor
@@ -232,17 +252,17 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     bases.forEach((b) => { g += `<line x1="0" x2="${W}" y1="${b}" y2="${b}" stroke="${LINE}"/>`; });
     ROWS.forEach((r) => {
       const ri = Math.floor((r.i - 1) / 25), ci = (r.i - 1) % 25, base = bases[ri];
-      const x = ci * SLOT + (SLOT - BW) / 2, h = Math.max(2, r.v * K), top = base - h, gh = (r.p || 0) * K, col = MOVE[r.mv.k][0];
+      const x = ci * SLOT + (SLOT - BW) / 2, h = Math.max(2, sq(r.v) * K), top = base - h, gh = sq(r.p || 0) * K, col = MOVE[r.mv.k][0];
       const yt = gh ? Math.min(top, base - gh) : top, ly = yt - L - 5, lx = x + (BW - L) / 2, cx = x + BW / 2;
       const lg = logos && logos.has(r.slug)
         ? `<image href="${logoUrl(r.slug)}" x="${lx}" y="${ly}" width="${L}" height="${L}" clip-path="url(#c${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="none" stroke="rgba(16,32,28,.14)"/>`
         : `<rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="#fff" stroke="${LINE}"/><text x="${cx}" y="${ly + L * 0.66}" font-size="10" font-weight="600" fill="${SOFT}" text-anchor="middle">${esc(ini(r.name))}</text>`;
-      defs += `<clipPath id="c${r.i}"><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6"/></clipPath>` + `<clipPath id="f${r.i}"><rect x="${cx - 8}" y="${base + 32}" width="16" height="12" rx="2"/></clipPath>`;
+      defs += `<clipPath id="c${r.i}"><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6"/></clipPath>` + (chart.stack ? `<clipPath id="k${r.i}"><rect x="${x}" y="${top}" width="${BW}" height="${h}" rx="5"/></clipPath>` : '') + `<clipPath id="f${r.i}"><rect x="${cx - 8}" y="${base + 32}" width="16" height="12" rx="2"/></clipPath>`;
       g += `<a class="b" data-i="${r.i}" href="${firmUrl(r.slug)}" aria-label="${esc(r.i + '. ' + r.name + ', ' + chart.unit(r.v) + ', ' + (r.mv.k === 'nu' ? 'new to the Top 100' : r.mv.k === 'eq' ? 'same place as last year' : r.mv.k === 'na' ? KEY.na : 'was ' + ord(r.prev)))}">`
         + `<rect x="${x - 4}" y="${Math.min(ly, top) - 4}" width="${BW + 8}" height="${base - Math.min(ly, top) + 34}" fill="transparent"/>`
         + (gh ? `<rect x="${x - 1.5}" y="${base - gh}" width="${BW + 3}" height="${gh}" rx="5" fill="none" stroke="${INK}" stroke-opacity=".6" stroke-width="1.4" stroke-dasharray="3 2.5"/>` : '')
-        + `<rect class="hl" x="${x}" y="${top}" width="${BW}" height="${h}" rx="5" fill="${col}"/>`
-        + (h >= 22 ? `<text x="${cx}" y="${top + 15}" font-size="11" font-weight="700" fill="${INK}" stroke="${col}" stroke-width="4" stroke-linejoin="round" paint-order="stroke" text-anchor="middle">${chart.bar ? chart.bar(r.v) : r.v}</text>` : '')
+        + (chart.stack ? stackSvg(r, x, top, h, BW) : `<rect class="hl" x="${x}" y="${top}" width="${BW}" height="${h}" rx="5" fill="${col}"/>`)
+        + (h >= 22 && chart.bar !== null ? `<text x="${cx}" y="${top + 15}" font-size="11" font-weight="700" fill="${INK}" stroke="${col}" stroke-width="4" stroke-linejoin="round" paint-order="stroke" text-anchor="middle">${chart.bar ? chart.bar(r.v) : r.v}</text>` : '')
         + lg
         + `<text x="${cx}" y="${base + 14}" font-size="10" fill="${INK}" text-anchor="middle" font-family="Geist Mono,monospace">${r.i}</text>`
         + `<text x="${cx}" y="${base + 26}" font-size="9" font-weight="700" fill="${MOVE[r.mv.k][1]}" text-anchor="middle">${esc(r.mv.t || (chart.under ? chart.under(r) : ''))}</text>`
