@@ -284,3 +284,9 @@ def test_charts_are_picked_with_five_sticker_buttons_not_a_drop_down():
     assert [e for _, e in shorts] == ['⚡', '🏁', '📣', '💰', '🦄']
     assert all(len(s) <= 12 for s, _ in shorts)   # "Top 100 · " plus the name stays on one line in the 341 px card
     assert 'aspect-ratio:1' in JS and 'background:var(--ms)' in JS   # square tiles, grey inside
+
+
+def test_ranks_are_plain_numbers_with_no_moves_under_them():
+    """Founder, 27 Nov 2026: no "+10 / -1" next to a rank, only the plain number (list rows and under the bars)."""
+    assert 'esc(r.mv.t)' not in JS and 'r.mv.t ||' not in JS
+    assert '<span class="rk"><b>${r.i}</b></span>' in JS
