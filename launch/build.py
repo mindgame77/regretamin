@@ -44,7 +44,7 @@ def code_field():  # "Have a code?" field for both pricing popups (checked by th
 def pricing_inner(close=True):  # shared by the Pricing popup and /plans/
     p = S['pricing']
     x = '<button class="x" data-close>×</button>' if close else ''
-    return f'{x}<h2 id="pwh">{p["title"]}</h2><div class="fnote"><img src="/assets/team/olexi.jpg" width="72" height="72" alt="{p["photo_alt"]}"><div><p>{p["note"]}</p><b>{p["name"]}</b></div></div>{billing()}<div class="price" data-plans="nav"></div><p class="msg" id="pwmsg"></p>{code_field()}'
+    return f'{x}<div class="phd"><h2 id="pwh">{p["title_pick"]}</h2>{billing()}</div><div class="fnote"><img src="/assets/team/olexi.jpg" width="72" height="72" alt="{p["photo_alt"]}"><div><p>{p["note"]}</p><b>{p["name"]}</b></div></div><div class="price" data-plans="nav"></div><p class="msg" id="pwmsg"></p>{code_field()}'
 
 def pricing_modal():  # nav "Pricing" popup
     return f'<div class="ov" id="paywall" hidden><div class="md w">{pricing_inner()}</div></div>'

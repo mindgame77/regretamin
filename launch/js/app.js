@@ -338,6 +338,7 @@
   const K = C.copy.site.code, PAY = C.copy.site.pay;
   const CHK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
   let YEARLY = false, CODE = null; // CODE = validate-code reply for the applied code
+  let AUTO = null, SELB = 'preseed'; // AUTO = validate-code reply for the standing first-month offer (copy.json site.pricing.first.code); SELB = plan picked in the Pricing popup (without _y)
   const money = (x) => '$' + (Math.round(x * 100) % 100 ? x.toFixed(2) : String(Math.round(x)));
   const offOf = (c) => c.percent_off ? fmt(T.off_pct, { p: c.percent_off }) : fmt(T.off_amt, { a: money(c.amount_off) });
   // How long a code's discount lasts on this kind, from the coupon's real duration (validate-code) and the plan's billing interval.
@@ -354,17 +355,48 @@
   // The plan kind the "Code applied" note describes: the unlocked plan, else a discounted plan on the shown Monthly/Yearly tab, else Single check
   const noteKind = (c) => c.hidden ? 'code' : c.kinds.find(k => /_y$/.test(k) === YEARLY) || (YEARLY ? 'seed_y' : 'seed');
   const after = (amt, c) => Math.max(0, c.percent_off ? amt * (1 - c.percent_off / 100) : amt - c.amount_off);
-  const off = (kind) => CODE && (kind === 'code' ? CODE.hidden && CODE.hidden.discount : CODE.discount && CODE.kinds.includes(kind)) ? CODE : null; // code discount for this kind, if any
+  // The standing first-month offer: monthly plans only (never yearly or the hidden plan), and only while its coupon really is once-off.
+  const autoOn = (kind) => AUTO && kind !== 'code' && !/_y$/.test(kind) && AUTO.kinds.includes(kind) ? AUTO : null;
+  // Discount for this kind: the code the visitor typed, else the standing first-month offer
+  const off = (kind) => (CODE && (kind === 'code' ? CODE.hidden && CODE.hidden.discount : CODE.discount && CODE.kinds.includes(kind)) ? CODE : null) || autoOn(kind);
   // One plan card: v = {kind, name, amount, price, unit, per, bill, blurb, button, features, tag, save, rec, hid}
   function card(v, nav) {
     const c = off(v.kind), now = c ? money(after(v.amount, c)) : v.price;
     const old = c ? '<s>' + v.price + '</s>' : '';
     const bill = !c ? v.bill : c.duration === 'forever' || v.kind === 'single' ? fmt(T.disc_bill_forever, { label: codeLabel(c, v.kind) }) : fmt(T.disc_bill, { label: codeLabel(c, v.kind), price: v.price, unit: v.unit });
     const save = v.save ? '<span class="save">' + v.save + '</span>' : '';
-    if (nav) return '<div class="pr' + (v.rec ? ' hl' : '') + (v.hid ? ' hid' : '') + '"><h4>' + esc(v.name) + '</h4><b>' + old + now + (v.short ? '<small>' + v.short + '</small>' : '') + '</b>' + save + '<p>' + esc(c ? bill : v.blurb) + '</p><p class="ex">' + esc(C.copy.site.pricing.explain) + '</p><button class="btn' + (v.rec ? '' : ' o') + '" data-buy="' + v.kind + '">' + esc(v.button) + '</button></div>';
+    if (nav) return '';
     return '<div class="pl' + (v.rec ? ' rec' : '') + (v.hid ? ' hid' : '') + '">' + (v.tag ? '<span class="rtag' + (v.hid ? ' g' : '') + '">' + esc(v.tag) + '</span>' : '') + '<h3>' + esc(v.name) + '</h3>'
       + '<div class="pp-price">' + old + '<b>' + now + '</b><span>' + v.unit + '</span><small>' + fmt(PAY.per_check, { price: v.per }) + '</small></div>' + save + '<p class="bill">' + esc(bill) + '</p>'
       + '<button class="pb ' + (v.rec ? 'c' : 'w') + '" data-buy="' + v.kind + '">' + esc(v.button) + '</button><ul>' + v.features.map(f => '<li><i>' + CHK + '</i>' + f + '</li>').join('') + '</ul></div>';
+  }
+  // The Pricing popup: a radio list of plans, one Start button (design: Checkout_F_Monthly / Checkout_F_Yearly)
+  function planList(cs) {
+    const P = C.copy.site.pricing, bk = (k) => k.replace(/_y$/, '');
+    const sel = cs.find(v => bk(v.kind) === SELB) || cs[0]; SELB = bk(sel.kind);
+    const pct = AUTO && AUTO.percent_off, offer = !YEARLY && !!autoOn(sel.kind) && !!pct;
+    const rows = cs.map((v) => {
+      const c = off(v.kind), auto = c && c === AUTO, now = c ? money(after(v.amount, c)) : v.price, on = v === sel;
+      const tag = c ? (auto ? fmt(P.first.tag, { p: pct }) : offOf(c)) : v.hid ? K.hidden_tag : v.save ? P.yearly_tag : '';
+      const sub = auto ? fmt(P.first.sub, { price: v.price }) : c ? codeLabel(c, v.kind) : v.save ? v.save.split(' · ')[0] : '';
+      const px = c ? '<span class="plw">' + v.price + '</span><span>' + now + '</span>' : '<span>' + now + '</span><small>' + (/_y$/.test(v.kind) ? B.per_year : v.short || '') + '</small>';
+      return '<button type="button" role="radio" aria-checked="' + on + '" class="plr' + (on ? ' on' : '') + (v.hid ? ' hid' : '') + '" data-pick="' + v.kind + '"><i class="pld"></i>'
+        + '<span class="pln"><b>' + esc(v.name) + (tag ? '<em>' + esc(tag) + '</em>' : '') + '</b><span>' + esc(v.blurb.replace(/\.$/, '')) + '</span></span>'
+        + '<span class="plx"><b>' + px + '</b>' + (sub ? '<span>' + esc(sub) + '</span>' : '') + '</span></button>';
+    }).join('');
+    const c = off(sel.kind), now = c ? money(after(sel.amount, c)) : sel.price;
+    const band = YEARLY ? P.yearly_band : offer ? fmt(P.first.band, { p: pct }) : '';
+    const note = /_y$/.test(sel.kind) ? P.note_year : offer ? P.note_month_off : P.note_month;
+    return (band ? '<p class="pband"><i></i>' + esc(band) + '</p>' : '') + '<div class="plrs" role="radiogroup" aria-label="' + esc(P.title_pick) + '">' + rows + '</div>'
+      + '<p class="ex">' + esc(P.explain) + '</p>'
+      + '<button class="btn" data-buy="' + sel.kind + '">' + esc(fmt(P.start, { name: sel.name, now })) + '</button><p class="pnote">' + esc(fmt(note, { now, price: sel.price, p: pct })) + '</p>';
+  }
+  async function autoOffer() { // the standing first-month offer exists only while its promotion code is valid in Stripe; without it nothing changes on the page
+    const f = C.copy.site.pricing.first; if (!sb || !f || !f.code) return;
+    try {
+      const { data } = await sb.functions.invoke('validate-code', { body: { code: f.code } });
+      if (data && data.ok && data.discount && data.percent_off && data.duration === 'once') { AUTO = data; drawPlans(); }
+    } catch (e) { /* no offer shown */ }
   }
   function cards() {
     const out = Object.entries(C.copy.plans).filter(([k]) => k[0] !== '_').map(([k, p]) => {
@@ -384,8 +416,9 @@
   function drawPlans() {
     const cs = cards();
     document.querySelectorAll('[data-plans]').forEach((el) => {
-      el.innerHTML = cs.map(v => card(v, el.dataset.plans === 'nav')).join('');
-      el.classList.toggle('four', cs.length > 3);
+      const nav = el.dataset.plans === 'nav';
+      el.innerHTML = nav ? planList(cs) : cs.map(v => card(v, false)).join('');
+      el.classList.toggle('four', !nav && cs.length > 3); el.classList.toggle('plist', nav);
     });
     document.querySelectorAll('.bt button').forEach((b) => { const on = (b.dataset.yearly === '1') === YEARLY; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
     document.querySelectorAll('[data-fine]').forEach(f => f.textContent = YEARLY ? B.fine_yearly : PAY.fine);
@@ -413,6 +446,7 @@
     return fmt(T.code_ok, { label });
   }
   document.addEventListener('click', (e) => {
+    const pk = e.target.closest('[data-pick]'); if (pk) { SELB = pk.dataset.pick.replace(/_y$/, ''); return drawPlans(); }
     const t = e.target.closest('.bt button,[data-codeopen],[data-remove]'); if (!t) return;
     e.preventDefault();
     if (t.matches('.bt button')) { YEARLY = t.dataset.yearly === '1'; return drawPlans(); }
@@ -447,7 +481,7 @@
   async function checkout(kind, extra, out) {
     const msg = (t) => { if (out) out.textContent = t; else if (t && !/…$/.test(t)) alert(t); };
     document.querySelectorAll('[data-buy],#outgo').forEach(b => b.disabled = true); msg(T.opening);
-    const { data, error } = await sb.functions.invoke('create-checkout', { body: Object.assign({ kind, return_path: location.pathname }, extra || {}, CODE ? { code: CODE.code } : {}) });
+    const { data, error } = await sb.functions.invoke('create-checkout', { body: Object.assign({ kind, return_path: location.pathname }, extra || {}, off(kind) || CODE ? { code: (off(kind) || CODE).code } : {}) });
     if (error || !data || !data.url) {
       document.querySelectorAll('[data-buy],#outgo').forEach(b => b.disabled = false);
       const j = error && error.context ? await error.context.json().catch(() => null) : null;
@@ -525,7 +559,7 @@
   const main = document.querySelector('main[data-firm]');
   // Search is launch/js/search.js, loaded on every page. This file does not bind a second box.
   const esc = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  drawPlans();
+  drawPlans(); autoOffer();
   const firmUrl = (slug) => ROOT + 'vc/' + encodeURIComponent(slug) + '/';
   const liveUrl = (q) => ROOT + 'pending/?q=' + encodeURIComponent(q);
   // Unknown firm
