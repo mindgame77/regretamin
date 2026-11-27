@@ -1,6 +1,6 @@
 // The "Top 100" view of the home page map (the fifth button, after Pathfinders). Founder's design, 26 Nov 2026
 // (claude/plans/top-100-view.md): each list is a chart of 100 firms, like 100 songs. The map is replaced by a Skyline:
-// 100 bars in four rows of 25, a logo on top of each bar, the number inside it, the rank and its move underneath, and a
+// 100 bars in four rows of 25, a logo on top of each bar, the number inside it, the plain rank underneath, and a
 // dashed outline at last year's value. The left card lists the same 100. Pressing a bar or a row opens that firm's page.
 // The black button in the head card opens one YouTube video per chart, as an icebreaker (the lines are the founder's words).
 // Data: one read-only database function per chart. "Most active" (v2_top100_active) and "First in" (v2_top100_first) and "Biggest new funds" (v2_top100_funds) and "Most social reach" (v2_top100_social) exist so far; the other one
@@ -261,7 +261,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
       const src = logoSrc(r);
       const lg = src ? `<img class="lg" alt="" loading="lazy" src="${src}">` : chart.color ? `<span class="lg" style="background:${chart.color(r)};border-color:${chart.color(r)};color:${chart.ink(r)}">${esc(ini(r.name))}</span>` : `<span class="lg">${esc(ini(r.name))}</span>`;
       const tag = chart.noLink ? 'div' : 'a', href = chart.noLink ? '' : ` href="${firmUrl(r.slug)}"`;
-      return `<${tag} class="row" data-i="${r.i}"${href}><span class="rk"><b>${r.i}</b><em style="color:${MOVE[r.mv.k][1]}">${esc(r.mv.t)}</em></span>${lg}<span class="nm">${esc(r.name)}</span><span class="vv">${rowTxt(r)}</span></${tag}>`;
+      return `<${tag} class="row" data-i="${r.i}"${href}><span class="rk"><b>${r.i}</b></span>${lg}<span class="nm">${esc(r.name)}</span><span class="vv">${rowTxt(r)}</span></${tag}>`;
     }).join('');
   }
   function drawLegend() {
@@ -313,7 +313,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
         + lg
         + (chart.flame && chart.flame(r) ? `<path d="${FLAME}" transform="translate(${lx + L - 1} ${ly + 1})" fill="#F0861E" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/>` : '')
         + `<text x="${cx}" y="${base + 14}" font-size="10" fill="${INK}" text-anchor="middle" font-family="Geist Mono,monospace">${r.i}</text>`
-        + `<text x="${cx}" y="${base + 26}" font-size="9" font-weight="700" fill="${MOVE[r.mv.k][1]}" text-anchor="middle">${esc(r.mv.t || (chart.under ? chart.under(r) : ''))}</text>`
+        + `<text x="${cx}" y="${base + 26}" font-size="9" font-weight="700" fill="${MOVE[r.mv.k][1]}" text-anchor="middle">${esc(chart.under ? chart.under(r) : '')}</text>`
         + (r.cc ? `<image href="${flagUrl(r.cc)}" x="${cx - 8}" y="${base + 32}" width="16" height="12" clip-path="url(#f${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${cx - 8}" y="${base + 32}" width="16" height="12" rx="2" fill="none" stroke="rgba(16,32,28,.25)"/>` : '') + `</a>`;
     });
     box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="group" aria-label="${esc(chart.label)}: the 100 firms as bars"><defs>${defs}</defs>${g}</svg>`;
