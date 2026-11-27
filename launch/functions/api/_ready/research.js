@@ -176,9 +176,20 @@ export function investorTips(firms, tips, sector, signals) {
   }).filter(Boolean).slice(0, 6);
 }
 
+// What the founders who raised at least this much had (founder, 26 Nov: "someone raised the same, but they studied at Stanford,
+// did this and that. So we should show that they had advantages over you ... if you are pricing yourself [high] you should prove
+// it"). Facts from our founder data; shown only when we know the founders of five such rounds or more.
+export function peersOf(p, ask, r) {
+  const known = Number(p && p.known) || 0;
+  if (!p || known < 5) return null;
+  const pct = (n) => Math.round((100 * (Number(n) || 0)) / known);
+  return { known, uni: pct(p.uni), co: pct(p.co), built: pct(p.built), unis: (Array.isArray(p.unis) ? p.unis : []).slice(0, 3), cos: (Array.isArray(p.cos) ? p.cos : []).slice(0, 3),
+    line: ask > r.p50 ? 'An ask this high needs proof like theirs, or proof that replaces it: customers, revenue, a signed pilot.' : '' };
+}
+
 // Looked-up rows + our data -> what step 3 of the report draws.
 //   ours: the answer of v2_ready_research; tips: the answer of v2_ready_firm_tips for the report's firms.
-export function buildResearch(rows, ours, report, meta, tips, signals) {
+export function buildResearch(rows, ours, report, meta, tips, signals, peers) {
   const o = ours && typeof ours === 'object' ? ours : {};
   const co = (report && report.company) || {};
   const held = new Map((Array.isArray(o.competitors) ? o.competitors : []).map((c) => [String(c.asked || '').toLowerCase(), c]));
@@ -221,7 +232,7 @@ export function buildResearch(rows, ours, report, meta, tips, signals) {
     tried: t ? `${t} compan${t === 1 ? 'y' : 'ies'} tried this before you.` : '',
   };
   return { v: 2, at: (meta && meta.at) || null, competitors, investors, skip, tried: rows.tried, now, todo,
-    rounds: r ? { ...r, ask, stage, sector: o.sector_known ? co.sector || null : null, line: askLine(ask, r) } : null,
+    rounds: r ? { ...r, ask, stage, sector: o.sector_known ? co.sector || null : null, line: askLine(ask, r), peers: r && ask ? peersOf(peers, ask, r) : null } : null,
     stage, sector: co.sector || null,
     searches: (meta && meta.searches) || 0, model: (meta && meta.model) || null, tokens_in: (meta && meta.tokens_in) || null, tokens_out: (meta && meta.tokens_out) || null };
 }

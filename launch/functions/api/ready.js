@@ -8,7 +8,7 @@
 //   5. the report is saved on their row and sent back.
 // Secrets live in Cloudflare (the founder puts them there): GEMINI_API_KEY (used first; founder, 26 Nov: "let's try Gemini ...
 // Neon") or ANTHROPIC_API_KEY. READY_MODEL may name another model of the same maker.
-import { systemPrompt, parseModelJson, assemble } from './_ready/rules.js';
+import { systemPrompt, parseModelJson, assemble, reFirm } from './_ready/rules.js';
 
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
@@ -31,6 +31,22 @@ export async function onRequestPost(ctx) {
   const rr = await fetch(`${SB}/rest/v1/ready_reports?id=eq.${id}&select=id,deck_path,linkedin,note,status,result`, { headers: mine });
   const row = rr.ok ? (await rr.json())[0] : null;
   if (!row) return json({ error: 'not_found' }, 404);
+  // The firms to pitch: firms that invest where the founder is come first (founder, 26 Nov: "you're a Ukrainian startup, here is
+  // the fund that invests in Ukraine"). Until that database function exists, or if it fails, the older pick answers.
+  const pick = async (co, country) => {
+    const args = { p_stage: String(co.stage || 'Seed'), p_sector: String(co.sector || 'Other'), p_limit: 6 };
+    const ask = async (fn, a) => { try { const fr = await fetch(`${SB}/rest/v1/rpc/${fn}`, { method: 'POST', headers: mine, body: JSON.stringify(a) }); return fr.ok ? await fr.json() : null; } catch (e) { return null; } };
+    return (await ask('v2_ready_firms_geo', { ...args, p_country: country || null })) || (await ask('v2_ready_firms', args));
+  };
+  // The founder says where they are based (asked only when the deck did not say): pick the firms again. Not once the research is made.
+  const country = body && typeof body.country === 'string' && /^[A-Za-z]{2}$/.test(body.country) ? body.country.toUpperCase() : null;
+  if (country && row.status === 'done' && row.result && !row.result.research) {
+    const firms = await pick(row.result.company || {}, country);
+    if (!firms) return json({ error: 'firms_unavailable' }, 502);
+    const report = reFirm(row.result, firms, country);
+    await fetch(`${SB}/rest/v1/ready_reports?id=eq.${id}`, { method: 'PATCH', headers: { ...mine, prefer: 'return=minimal' }, body: JSON.stringify({ result: report }) }).catch(() => {});
+    return json({ report, id });
+  }
   if (row.status === 'done' && row.result) return json({ report: row.result, id });
   if (!String(row.deck_path || '').startsWith(`${user.id}/`)) return json({ error: 'not_found' }, 404);
 
@@ -61,12 +77,7 @@ export async function onRequestPost(ctx) {
   const answers = parseModelJson(text);
   if (!answers) return fail('model_answer_unreadable');
 
-  let firms = null;
-  try {
-    const co = answers.company || {};
-    const fr = await fetch(`${SB}/rest/v1/rpc/v2_ready_firms`, { method: 'POST', headers: mine, body: JSON.stringify({ p_stage: String(co.stage || 'Seed'), p_sector: String(co.sector || 'Other'), p_limit: 6 }) });
-    firms = fr.ok ? await fr.json() : null;
-  } catch (e) { firms = null; }
+  const firms = await pick(answers.company || {}, /^[A-Za-z]{2}$/.test(String((answers.company || {}).country || '').trim()) ? String(answers.company.country).trim().toUpperCase() : null);
 
   const report = assemble(answers, firms);
   await save({ status: 'done', result: report, model, tokens_in: usage.in || null, tokens_out: usage.out || null, finished_at: new Date().toISOString(), error: null });

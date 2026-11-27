@@ -114,9 +114,21 @@ export function assemble(model, firms) {
     scores,
     facts: (Array.isArray(m.facts) ? m.facts : []).slice(0, 20).map((x) => ({ claim: clip(x && x.claim, 140), proof: ['proven', 'shown', 'claimed', 'assumed'].includes(x && x.proof) ? x.proof : 'claimed', where: clip(x && x.where, 24) })),
     competitors_named: (Array.isArray(m.competitors_named) ? m.competitors_named : []).slice(0, 10).map((x) => clip(x, 60)),
-    firms: (Array.isArray(f.firms) ? f.firms : []).map((x) => ({ ...x, say: sayTo(x, stage, co.sector, ready), marks: marksOf(x) })),
+    firms: firmsOf(f, stage, co.sector, ready),
     then: Array.isArray(f.then) ? f.then : [],
   };
+}
+
+// The firms as the report keeps them: each with its line of advice and its marks.
+const firmsOf = (f, stage, sector, ready) => (f && Array.isArray(f.firms) ? f.firms : []).map((x) => ({ ...x, say: sayTo(x, stage, sector, ready), marks: marksOf(x) }));
+
+// The founder told us where they are based after the report was made (the deck did not say): the firms are picked again for
+// that country; nothing else in the report changes.
+export function reFirm(report, f, country) {
+  const r = report && typeof report === 'object' ? report : {};
+  const co = r.company || {}, deck = r.scores ? r.scores.deck : null;
+  return { ...r, company: { ...co, country, country_from: 'founder' },
+    firms: firmsOf(f, co.stage || 'Seed', co.sector, deck == null || deck >= READY_SCORE), then: f && Array.isArray(f.then) ? f.then : [] };
 }
 
 // What is great about a firm for this founder, as short marks beside its name (founder, 26 Nov: "mark super great
