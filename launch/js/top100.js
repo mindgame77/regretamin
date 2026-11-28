@@ -256,8 +256,23 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
 
   // the right-hand end of a list row: the number and, under it, last year's (or the date, for the funds chart)
   const rowTxt = (r) => { if (chart.row) { const x = chart.row(r); return x.v + '<small>' + esc(x.s) + '</small>'; } return num(r.v) + '<small>' + (r.p ? num(r.p) + ' last year' : 'none last year') + '</small>'; };
+  // A circle pressed on the Map (founder, 28 Nov): the list shows only that place's rows, and the card's title names the place and counts them,
+  // the way Money flow's card does ("Bay Area · 656 firms"). PICK: { p: place, l: level, n: its name on the map }, or null for all 100.
+  let PICK = null;
+  const inPick = (r) => {
+    if (!PICK) return true;
+    if (chart.placeOf) return chart.placeOf(r, PICK.l) === PICK.p;
+    const f = PL && PL.by[r.slug]; if (!f) return false;
+    return (PICK.l === 'world' ? f.region : f.lv === PICK.l ? (FOLD[f.area] || f.area) : null) === PICK.p;
+  };
+  function drawTitle() {
+    if (!PICK) { $('#ptitle').textContent = chart.label; return; }
+    const k = ROWS.filter(inPick).length, noun = chart.noun || 'firm';
+    $('#ptitle').textContent = `${PICK.n} · ${k} ${noun}${k === 1 ? '' : 's'}`;
+  }
+  function setPick(o) { PICK = o; drawTitle(); drawRows(); $('#rows').scrollTop = 0; }
   function drawRows() {
-    $('#rows').innerHTML = ROWS.map((r) => {
+    $('#rows').innerHTML = ROWS.filter(inPick).map((r) => {
       const src = logoSrc(r);
       const lg = src ? `<img class="lg" alt="" loading="lazy" src="${src}">` : chart.color ? `<span class="lg" style="background:${chart.color(r)};border-color:${chart.color(r)};color:${chart.ink(r)}">${esc(ini(r.name))}</span>` : `<span class="lg">${esc(ini(r.name))}</span>`;
       const tag = chart.noLink ? 'div' : 'a', href = chart.noLink ? '' : ` href="${firmUrl(r.slug)}"`;
@@ -378,13 +393,14 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
     root.querySelectorAll('.unit button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === mode)));
     if (O.onMode) O.onMode(mode);
     hideTip();
+    if (PICK) setPick(null);  // a new picture (another chart, Map or Skyline, the view opened again) starts with all 100
     host.classList.toggle('map', mode === 'map');  // in Map mode this view is see-through on the right: the page's own map shows there
     if (mode === 'map') { drawMap(); return; }
     drawLegend(); drawSky();
   }
   function drawHead() {
     const v = VIDEOS[chart.key], c = $('#cta');
-    $('#ptitle').textContent = chart.label;
+    PICK = null; drawTitle();
     $('#about').textContent = chart.about || '';  // one line under the five chart buttons: what this chart is (40 characters or fewer, so it never wraps)
     if (v) { c.hidden = false; c.href = v.url; c.innerHTML = `<span class="yt"><svg width="12" height="13" viewBox="0 0 12 13" aria-hidden="true"><path d="M1 1L11 6.500 1 12Z" fill="#fff"/></svg></span><span>${esc(v.line)}</span>`; } else c.hidden = true;
     const n = $('#h1n'); n.textContent = '· ' + chart.short; n.style.color = chart.dot;
@@ -425,7 +441,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
       } else { host.hidden = false; if (ROWS.length) draw(); }
     },
     // the page's zoom card changed the level (World, United States, Europe)
-    setLevel(l) { level = l; },  // the page redraws its own map when the zoom card is pressed
+    setLevel(l) { level = l; if (PICK && root) setPick(null); },
+    // the page tells this view which circle is pressed on the Map (null: none)
+    pick(o) { if (root && ROWS.length) setPick(o && o.p ? o : null); },  // the page redraws its own map when the zoom card is pressed
     hide() { if (host) { host.hidden = true; if (root) hideTip(); if (O && O.onMode) O.onMode('sky'); } },
   };
 })();

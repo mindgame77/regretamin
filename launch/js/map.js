@@ -753,7 +753,13 @@ ${S.sectors.length === 1 ? '' : top.map(([n, v], j) => `<span class="vm-tr"><i s
   mapBox.addEventListener('pointerup', endPtr); mapBox.addEventListener('pointercancel', endPtr); mapBox.addEventListener('pointerleave', endPtr);
   stage.addEventListener('click', (e) => {
     if (dragged) { dragged = false; return; }  // the end of a drag is not a click
-    if (S.view === 'top') return;  // the Top 100 map: pressing a circle does nothing (founder, 27 Nov)
+    if (S.view === 'top') {  // the Top 100 map (founder, 28 Nov): pressing a circle narrows the Top 100 list to that place; pressing it again, or the empty map, brings all 100 back
+      const b = e.target.closest('.vm-pl'), p = b ? stage._rows[+b.dataset.i] : null, on = p && S.pinned !== p.p ? p : null;
+      if (!on && !S.pinned) return;
+      S.pinned = on ? on.p : null; draw();
+      if (window.REGRET_TOP && window.REGRET_TOP.pick) window.REGRET_TOP.pick(on ? { p: on.p, l: S.level, n: on.n || on.p } : null);
+      return;
+    }
     const b = e.target.closest('.vm-pl');
     // Clicking a place opens its sectors (in both views; founder, 25 Nov); clicking it again, or the empty map, closes them.
     if (b) { const p = stage._rows[+b.dataset.i]; if (S.list && S.list.place.p === p.p) closeList(); else openList(p); return; }
