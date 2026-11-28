@@ -2764,7 +2764,7 @@
       const words = x => esc(x.s.n) + '<span>' + x.n.toLocaleString('en-US') + (x.n === 1 ? ' startup' : ' startups') + '</span>';
       const label = x => '<b style="visibility:hidden">' + words(x) + '</b>';
       const out = ' elsewhere';  // other countries, or towns the map has no place for
-      const href = ROOT + (level === 'world' ? '' : '?zoom=' + level);
+      const href = ROOT + '?view=flow' + (level === 'world' ? '' : '&zoom=' + level);  // Money flow: Trends is the opening view since 27 Nov
       const card = document.createElement('article');
       card.className = 'mod';
       card.id = 'where';
@@ -2852,7 +2852,7 @@
       const g = GEO && GEO[level], spot = g && key && g.places && g.places[key];
       const label = spot ? spot.n : '';
       const where = level === 'us' ? 'United States' : level === 'eu' ? 'Europe' : 'World';
-      const href = ROOT + (level === 'world' ? '' : '?zoom=' + level);
+      const href = ROOT + '?view=flow' + (level === 'world' ? '' : '&zoom=' + level);  // Money flow: Trends is the opening view since 27 Nov
       card.innerHTML = '<div class="mh"><h3>On the map</h3></div>'
         + '<a class="fmap" href="' + href + '" aria-label="Open the map' + (label ? ' at ' + esc(label) : '') + '">'
         + '<span class="fmapin" style="aspect-ratio:' + (g ? g.w + '/' + g.h : '1060/620') + '"><img src="' + ROOT + 'assets/map/' + level + '-land.svg' + MAPV + '" alt="" loading="lazy">'
