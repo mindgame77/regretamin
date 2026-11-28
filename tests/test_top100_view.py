@@ -87,7 +87,7 @@ def test_the_map_button_draws_one_circle_per_place_and_uses_the_pages_zoom_card(
     # the Map is the page's own engine (founder, 27 Nov, "use assets from the old maps"): rows go to the page; no second land, circles, names or card in top100.js
     assert "places: (rows) => { S.topRows = rows;" in MAP and 'O.places(rows)' in JS
     assert "p.kind = p.d > 0 ? 'top' : null;" in MAP and '.vm-pl.vm-top{background:#D9483B' in CSS
-    assert "if (S.view === 'top') return;  // the Top 100 map: pressing a circle does nothing" in MAP
+    assert "if (S.view === 'top') {  // the Top 100 map (founder, 28 Nov): pressing a circle narrows the Top 100 list to that place" in MAP
     assert 'async function loadGeo' not in JS and 'class="pl"' not in JS and 'pl-name' not in JS
     assert "lvl === 'world' ? f.region : f.lv === lvl" in JS  # world: the region; United States / Europe: the city or country of that zoom
     assert 'GG: \'GB\'' in JS  # the same islands the map folds into the United Kingdom
@@ -296,3 +296,11 @@ def test_flag_sits_beside_the_rank_and_rounds_take_the_startups_flag():
     # Founder, 28 Nov: same flag pictures, placed right under the rank (option B3 on the design canvas); the Biggest rounds chart shows each startup's flag.
     assert 'fy = base + (chart.under ? 32 : 18)' in JS and 'x="${fx}" y="${fy}" width="16" height="12"' in JS  # right under the rank; under the chart's own line where it has one
     assert "cleanCC(cc) || (ex && typeof ex === 'object' ? cleanCC(ex.c) : null)" in JS
+
+
+def test_pressing_a_circle_on_the_map_narrows_the_list_to_that_place():
+    # Founder, 28 Nov: "when I press Europe and press on a circle, it should show me firms only from that circle".
+    assert 'ROWS.filter(inPick).map' in JS and 'pick(o) {' in JS and 'if (PICK) setPick(null);' in JS
+    page = (ROOT / 'launch/js/map.js').read_text()
+    assert "window.REGRET_TOP.pick(on ? { p: on.p, l: S.level, n: on.n || on.p } : null)" in page
+    assert "pressing a circle does nothing" not in page
