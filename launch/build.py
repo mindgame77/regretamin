@@ -91,7 +91,7 @@ def phone_menu(root, active):
 def page(path, body, root, title=S['brand'], company=False, active='', head='', modals='both', firms=False):
     n = S['nav']
     scripts = f'<script defer src="{root}dates.js?v={V["dates"]}"></script>' + (f'<script defer src="{root}company.js?v={V["company"]}"></script>' if company else '') + f'<script defer src="{root}search.js?v={V["search"]}"></script><script defer src="{root}app.js?v={V["app"]}"></script><script defer src="{root}ga.js?v={V["ga"]}"></script>' + (f'<script defer src="{root}firms.js?v={V["firms"]}"></script>' if firms else '')
-    nav = (f'<nav><a class="logo" href="{root}"><img src="{root}logo.svg" alt="">{S["brand"]}</a><div class="r">'
+    nav = (f'<nav><a class="logo" href="{root}"><img src="{root}logo.svg" alt=""><span class="lg"><span>{S["brand"]}</span><span class="lgt">{S["brand_tag"]}</span></span></a><div class="r">'
            f'{nav_links(S, root, "main", active)}'
            f'<span class="navr" id="acct" hidden><button type="button" class="ab" id="acctbtn" aria-haspopup="true" aria-expanded="false"><span class="av" id="av"></span><span class="nm">{n["account_btn"]}</span></button>'
            f'<div class="dd" id="acctdd" hidden><div class="hd2"><div class="em" id="ddem"></div><div class="pl2" id="ddplan"></div><div class="bal"><span>{n["checks_left"]}</span><b id="ddleft"></b></div></div>'

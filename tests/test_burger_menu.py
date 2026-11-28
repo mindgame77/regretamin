@@ -35,3 +35,13 @@ def test_the_panel_keeps_showing_the_signed_in_links_after_the_first_frame():
     assert "root.toggle('is-in', !!signedIn)" in APP
     m = re.search(r'/\* Burger menu.*', CSS, re.S).group(0)
     assert 'html.is-in .mpn a.mso' in m and 'html.is-in .mpn .mac' in m
+
+
+def test_header_carries_the_line_under_the_name_on_desktop_only():
+    # Founder, 27 Nov: "The map of venture capital" under the name (option C), hidden where the header has no room.
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parents[1]
+    assert '"brand_tag": "The map of venture capital"' in (root / 'launch/copy.json').read_text()
+    assert 'class="lgt">{S["brand_tag"]}' in (root / 'launch/build.py').read_text()
+    css = (root / 'launch/style.css').read_text()
+    assert '@media (max-width:1000px){nav .logo .lgt{display:none}}' in css

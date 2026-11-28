@@ -145,6 +145,7 @@
  },
  "site": {
   "brand": "Regretamin",
+  "brand_tag": "The map of venture capital",
   "title_suffix": " · Regretamin",
   "search_placeholder": "Search a VC firm, e.g. Andreessen Horowitz",
   "search_button": "Check",
