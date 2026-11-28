@@ -297,7 +297,7 @@ def test_pathfinders_view_shows_the_small_firms_the_top_100_follow():
     view; same head card, timeline and buttons as the others; circles per place, and a ranked list of firms."""
     js = (ROOT / 'launch/js/map.js').read_text(); css = (ROOT / 'launch/style.css').read_text()
     mig = (ROOT / 'supabase/migrations/20261126030945_v2_map_pathfinders.sql').read_text()
-    assert '<button type="button" data-view="founders">Founders</button><button type="button" data-view="path">Pathfinders</button><button type="button" data-view="top">Top 100</button></div>' in js  # the fifth view comes after it (26 Nov)
+    assert '<button type="button" data-view="founders">Founders</button><button type="button" data-view="path">Pathfinders</button></div>' in js  # the fifth view comes after it (26 Nov)
     assert "sb.rpc('v2_map_pathfinders', a)" in js and "$('#vm-h1').textContent = 'Who the top firms follow.';" in js
     assert "<h2>Most followed</h2></div>" in js and "startups followed" not in js  # he had the small label removed (26 Nov)
     assert "if (S.view === 'path' && !S.list) drawSide();" in js  # the list follows the timeline
@@ -400,3 +400,12 @@ def test_trends_place_card_has_no_top_row():
     card = JS[JS.index("if (hotList) {  // a clicked place opens on its sectors"):JS.index("if (S.list) {  // Money flow works the same way")]
     assert "vm-chips" not in card and "vm-x" not in card and "vm-close" not in card
     assert "if (S.list && S.list.place.p === p.p) closeList(); else openList(p)" in JS  # the same circle closes it
+
+
+def test_trends_opens_first_and_the_buttons_follow_the_new_order():
+    # Founder, 27 Nov: Trends is the first screen; then Top 100, Money flow, Founders, Pathfinders.
+    assert "const S = { view: 'hot'," in JS
+    order = [JS.index('<button type="button" data-view="%s"' % v) for v in ('hot', 'top', 'flow', 'founders', 'path')]
+    assert order == sorted(order)
+    assert "qs.get('view') === 'flow'" in JS and "S.view = 'flow';" in JS  # Money flow links and older links still open Money flow
+    assert "REGRET_TRACK('map_view'" in JS

@@ -36,7 +36,7 @@
 
   const now = new Date();
   const NQ = (now.getFullYear() - 2021) * 4 + Math.floor(now.getMonth() / 3) + 1;  // quarters from 2021 Q1 to this one
-  const S = { view: 'flow', days: 90, level: 'world', q0: 0, q1: NQ - 1, stages: [], sectors: [], who: 'all', unit: 'pct', pinned: null, list: null, data: null, geo: null, updates: [], playing: null };
+  const S = { view: 'hot', days: 90, level: 'world', q0: 0, q1: NQ - 1, stages: [], sectors: [], who: 'all', unit: 'pct', pinned: null, list: null, data: null, geo: null, updates: [], playing: null };
   // "Which firms" in the Hot right now view.
   const KEEP = 'regretamin.map.view';
   const SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M5 12v8h14v-8"/></svg>';
@@ -59,7 +59,9 @@
   // A link can carry the view in its address (view, days, zoom, sectors, stages, firms). The page never rewrites its own address.
   (() => {
     const list = (k, ok) => (qs.get(k) || '').split('|').filter((v) => ok.includes(v)), num = (k) => (/^\d+$/.test(qs.get(k) || '') ? +qs.get(k) : null);
-    if (qs.get('view') === 'hot' || qs.get('view') === 'founders' || qs.get('view') === 'top') S.view = qs.get('view');
+    // Trends opens first (founder, 27 Nov). A link that names Money flow, or an older link with settings and no view, opens Money flow as before.
+    if (qs.get('view') === 'hot' || qs.get('view') === 'flow' || qs.get('view') === 'founders' || qs.get('view') === 'top') S.view = qs.get('view');
+    else if (!qs.has('view') && ['zoom', 'sectors', 'stages', 'from', 'to', 'unit', 'place'].some((k) => qs.has(k))) S.view = 'flow';
     if (qs.get('view') === 'pathfinders') S.view = 'path';
     if ([90, 180, 365].includes(num('days'))) S.days = num('days');
     if (['us', 'eu'].includes(qs.get('zoom'))) S.level = qs.get('zoom');
@@ -242,7 +244,7 @@
   <p class="vm-based" id="vm-based"></p><a class="vm-btn" id="vm-cta" href="${ROOT}investors/">See the investors</a></section>
 <aside class="vm-card vm-side" id="vm-side"></aside></div>
 <aside class="vm-card vm-fp" id="vm-fp" aria-label="Firms" hidden></aside>
-<div class="vm-card vm-views" role="group" aria-label="View"><button type="button" data-view="flow">Money flow</button><button type="button" data-view="hot">Trends</button><button type="button" data-view="founders">Founders</button><button type="button" data-view="path">Pathfinders</button><button type="button" data-view="top">Top 100</button></div>
+<div class="vm-card vm-views" role="group" aria-label="View"><button type="button" data-view="hot">Trends</button><button type="button" data-view="top">Top 100</button><button type="button" data-view="flow">Money flow</button><button type="button" data-view="founders">Founders</button><button type="button" data-view="path">Pathfinders</button></div>
 <div class="vm-card vm-zoom" role="group" aria-label="Zoom to">${LEVELS.map(([k, t]) => `<button type="button" data-level="${k}">${t}</button>`).join('')}</div>
 <div class="vm-card vm-dock"><div class="vm-period" role="group" aria-label="Compare the last period with the same time before">${[[90, 'Last 90 days'], [180, 'Last 180 days'], [365, 'Last 12 months']].map(([d, t]) => `<button type="button" data-days="${d}">${t}</button>`).join('')}</div><button type="button" class="vm-play" id="vm-play" aria-label="Play"></button><button type="button" class="vm-all" id="vm-all">All years</button>
   <div class="vm-time"><div class="vm-track"><div class="vm-fill" id="vm-fill"></div>${Array.from({ length: NQ + 1 }, (_, i) => `<i class="${i % 4 ? '' : 'vm-y'}" style="left:${i / NQ * 100}%"></i>`).join('')}
@@ -457,6 +459,7 @@
   function topview() { const T = window.REGRET_TOP; if (T) T.show({ el, sb, root: ROOT, mapv: MAPV, level: S.level, onMode: (m) => el.classList.toggle('vm-tmap', m === 'map'), places: (rows) => { S.topRows = rows; S.pinned = null; tip(null); land(); draw(); } }); }
   function setView(v) {
     if (v === S.view) return;
+    if (window.REGRET_TRACK) window.REGRET_TRACK('map_view', { view: v === 'path' ? 'pathfinders' : v === 'hot' ? 'trends' : v, from: S.view === 'path' ? 'pathfinders' : S.view === 'hot' ? 'trends' : S.view });  // which view visitors switch to, and from where
     stop(); S.view = v; S.list = null; S.pinned = null; zoomReset(); marks();
     if (v !== 'top' && window.REGRET_TOP) window.REGRET_TOP.hide();
     if (v === 'top') { remember(); if (window.REGRET_FOUNDERS) window.REGRET_FOUNDERS.hide(); topview(); return; }
