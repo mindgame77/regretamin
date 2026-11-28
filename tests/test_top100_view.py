@@ -290,3 +290,9 @@ def test_ranks_are_plain_numbers_with_no_moves_under_them():
     """Founder, 27 Nov 2026: no "+10 / -1" next to a rank, only the plain number (list rows and under the bars)."""
     assert 'esc(r.mv.t)' not in JS and 'r.mv.t ||' not in JS
     assert '<span class="rk"><b>${r.i}</b></span>' in JS
+
+
+def test_flag_sits_beside_the_rank_and_rounds_take_the_startups_flag():
+    # Founder, 28 Nov: same flag pictures, placed on the rank's line (not in a row of their own); the Biggest rounds chart shows each startup's flag.
+    assert 'x="${fx}" y="${base + 5}" width="16" height="12"' in JS and 'base + 32' not in JS
+    assert "cleanCC(cc) || (ex && typeof ex === 'object' ? cleanCC(ex.c) : null)" in JS
