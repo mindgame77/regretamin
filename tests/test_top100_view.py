@@ -293,6 +293,6 @@ def test_ranks_are_plain_numbers_with_no_moves_under_them():
 
 
 def test_flag_sits_beside_the_rank_and_rounds_take_the_startups_flag():
-    # Founder, 28 Nov: same flag pictures, placed on the rank's line (not in a row of their own); the Biggest rounds chart shows each startup's flag.
-    assert 'x="${fx}" y="${base + 5}" width="16" height="12"' in JS and 'base + 32' not in JS
+    # Founder, 28 Nov: same flag pictures, placed right under the rank (option B3 on the design canvas); the Biggest rounds chart shows each startup's flag.
+    assert 'fy = base + 18' in JS and 'x="${fx}" y="${fy}" width="16" height="12"' in JS and 'base + 32' not in JS  # right under the rank
     assert "cleanCC(cc) || (ex && typeof ex === 'object' ? cleanCC(ex.c) : null)" in JS
