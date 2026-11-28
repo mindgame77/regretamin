@@ -14,7 +14,7 @@ E = html.escape
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE); OUT = os.path.join(ROOT, 'site-launch')
 def _v(f):  # query on the script/link. The file path does not change, so _headers makes the CDN revalidate.
     return hashlib.sha1(open(os.path.join(HERE, f), 'rb').read()).hexdigest()[:10]
-V = {k: _v(f) for k, f in (('company', 'js/company.js'), ('app', 'js/app.js'), ('search', 'js/search.js'), ('dates', 'js/dates.js'), ('firms', 'js/firms.js'), ('map', 'js/map.js'), ('founders', 'js/founders.js'), ('top100', 'js/top100.js'), ('ga', 'js/ga.js'), ('css', 'style.css'))}
+V = {k: _v(f) for k, f in (('company', 'js/company.js'), ('app', 'js/app.js'), ('search', 'js/search.js'), ('dates', 'js/dates.js'), ('firms', 'js/firms.js'), ('map', 'js/map.js'), ('founders', 'js/founders.js'), ('top100', 'js/top100.js'), ('ga', 'js/ga.js'), ('track', 'js/track.js'), ('css', 'style.css'))}
 COPY = json.load(open(os.path.join(HERE, 'copy.json')))
 S = COPY['site']
 NOINDEX = os.environ.get('REGRET_NOINDEX') == '1'
@@ -90,7 +90,7 @@ def phone_menu(root, active):
 
 def page(path, body, root, title=S['brand'], company=False, active='', head='', modals='both', firms=False):
     n = S['nav']
-    scripts = f'<script defer src="{root}dates.js?v={V["dates"]}"></script>' + (f'<script defer src="{root}company.js?v={V["company"]}"></script>' if company else '') + f'<script defer src="{root}search.js?v={V["search"]}"></script><script defer src="{root}app.js?v={V["app"]}"></script><script defer src="{root}ga.js?v={V["ga"]}"></script>' + (f'<script defer src="{root}firms.js?v={V["firms"]}"></script>' if firms else '')
+    scripts = f'<script defer src="{root}dates.js?v={V["dates"]}"></script>' + (f'<script defer src="{root}company.js?v={V["company"]}"></script>' if company else '') + f'<script defer src="{root}search.js?v={V["search"]}"></script><script defer src="{root}app.js?v={V["app"]}"></script><script defer src="{root}ga.js?v={V["ga"]}"></script><script defer src="{root}track.js?v={V["track"]}"></script>' + (f'<script defer src="{root}firms.js?v={V["firms"]}"></script>' if firms else '')
     nav = (f'<nav><a class="logo" href="{root}"><img src="{root}logo.svg" alt=""><span class="lg"><span>{S["brand"]}</span><span class="lgt">{S["brand_tag"]}</span></span></a><div class="r">'
            f'{nav_links(S, root, "main", active)}'
            f'<span class="navr" id="acct" hidden><button type="button" class="ab" id="acctbtn" aria-haspopup="true" aria-expanded="false"><span class="av" id="av"></span><span class="nm">{n["account_btn"]}</span></button>'
@@ -427,7 +427,7 @@ def launch_firms():
 
 def main():
     shutil.rmtree(OUT, ignore_errors=True); os.makedirs(OUT)
-    for f in ('style.css', 'logo.svg', 'js/app.js', 'js/company.js', 'js/search.js', 'js/dates.js', 'js/firms.js', 'js/map.js', 'js/founders.js', 'js/top100.js', 'js/ga.js', 'js/ready.js'): shutil.copy(os.path.join(HERE, f), OUT)
+    for f in ('style.css', 'logo.svg', 'js/app.js', 'js/company.js', 'js/search.js', 'js/dates.js', 'js/firms.js', 'js/map.js', 'js/founders.js', 'js/top100.js', 'js/ga.js', 'js/track.js', 'js/ready.js', 'js/admin.js'): shutil.copy(os.path.join(HERE, f), OUT)
     shutil.copytree(os.path.join(HERE, 'fav'), os.path.join(OUT, 'fav'))
     shutil.copytree(os.path.join(HERE, 'assets', 'video'), os.path.join(OUT, 'assets', 'video'))
     shutil.copytree(os.path.join(HERE, 'assets', 'team'), os.path.join(OUT, 'assets', 'team'))  # the photo beside the note in the Pricing popup
@@ -521,6 +521,8 @@ def main():
         '/founders.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/top100.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/ga.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
+        '/track.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
+        '/admin.js\n  Cache-Control: public, max-age=0, must-revalidate\n'
         '/firms.json\n  Cache-Control: public, max-age=0, must-revalidate\n'
         # Map pictures keep one path too; a browser must not hold an old one for hours (the smooth land replaced a blocky file of the same name).
         '/assets/map/*\n  Cache-Control: public, max-age=0, must-revalidate\n'
