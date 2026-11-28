@@ -2241,3 +2241,8 @@ body>nav .bg,.mpn{display:none}
 .sgi .orow em{font:600 20px 'Geist',system-ui,sans-serif;letter-spacing:-.03em}
 .sgi .orow em s{font-weight:500;text-decoration-color:#F0861E;text-decoration-thickness:2px;margin-right:6px}
 .sgi .btn.y{background:#10201C;color:#fff;border:0;font-weight:600}
+
+/* Header: the line under the name (founder picked option C, 27 Nov). Desktop only: there is no room on narrower screens. */
+nav .logo .lg{display:flex;flex-direction:column;gap:3px}
+nav .logo .lgt{font:400 12.5px/1.15 'Geist',system-ui,sans-serif;letter-spacing:0;text-transform:none;color:#586964;white-space:nowrap}
+@media (max-width:1000px){nav .logo .lgt{display:none}}
