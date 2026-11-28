@@ -285,7 +285,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   function drawSky() {
     const box = $('#sky'), W = box.clientWidth, H = box.clientHeight;
     if (!W || !H || !ROWS.length) return;
-    const SLOT = W / 25, BW = Math.max(10, Math.min(30, SLOT * 0.62)), L = Math.max(16, Math.min(24, SLOT * 0.5)), GAP = chart.under ? 50 : 38, TOPPAD = L + 12;  // under each bar: the rank, the flag right under it (founder, 28 Nov), then the chart's own line where it has one
+    const SLOT = W / 25, BW = Math.max(10, Math.min(30, SLOT * 0.62)), L = Math.max(16, Math.min(24, SLOT * 0.5)), GAP = chart.under ? 48 : 38, TOPPAD = L + 12;  // under each bar: the rank, the flag right under it (founder, 28 Nov), then the chart's own line where it has one
     const rowsOf = [0, 1, 2, 3].map((k) => ROWS.slice(k * 25, k * 25 + 25));
     const sq = chart.scale || ((x) => x);  // social reach draws bar heights on a square-root scale: 2.7M against 56k would otherwise leave the small bars invisible
     const mx = rowsOf.map((rs) => Math.max(sq(1), ...rs.map((r) => Math.max(sq(r.v), sq(r.p || 0)))));
@@ -299,7 +299,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
       const ri = Math.floor((r.i - 1) / 25), ci = (r.i - 1) % 25, base = bases[ri];
       const x = ci * SLOT + (SLOT - BW) / 2, h = Math.max(2, sq(r.v) * K), top = base - h, gh = sq(r.p || 0) * K, col = chart.color ? chart.color(r) : MOVE[r.mv.k][0];
       const yt = gh ? Math.min(top, base - gh) : top, ly = yt - L - 5, lx = x + (BW - L) / 2, cx = x + BW / 2;
-      const fx = cx - 8, fy = base + 18;  // the flag: centred, right under the rank
+      const fx = cx - 8, fy = base + (chart.under ? 32 : 18);  // the flag: centred, right under the rank; where the chart has its own line under the rank (social reach, new funds, big rounds), under that line as before
       const src = logoSrc(r);
       const lg = src
         ? `<image href="${src}" x="${lx}" y="${ly}" width="${L}" height="${L}" clip-path="url(#c${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${lx}" y="${ly}" width="${L}" height="${L}" rx="6" fill="none" stroke="rgba(16,32,28,.14)"/>`
@@ -314,7 +314,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
         + lg
         + (chart.flame && chart.flame(r) ? `<path d="${FLAME}" transform="translate(${lx + L - 1} ${ly + 1})" fill="#F0861E" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/>` : '')
         + `<text x="${cx}" y="${base + 14}" font-size="10" fill="${INK}" text-anchor="middle" font-family="Geist Mono,monospace">${r.i}</text>`
-        + `<text x="${cx}" y="${base + 42}" font-size="9" font-weight="700" fill="${MOVE[r.mv.k][1]}" text-anchor="middle">${esc(chart.under ? chart.under(r) : '')}</text>`
+        + `<text x="${cx}" y="${base + 26}" font-size="9" font-weight="700" fill="${MOVE[r.mv.k][1]}" text-anchor="middle">${esc(chart.under ? chart.under(r) : '')}</text>`
         + (r.cc ? `<image href="${flagUrl(r.cc)}" x="${fx}" y="${fy}" width="16" height="12" clip-path="url(#f${r.i})" preserveAspectRatio="xMidYMid slice"/><rect x="${fx}" y="${fy}" width="16" height="12" rx="2" fill="none" stroke="rgba(16,32,28,.25)"/>` : '') + `</a>`;
     });
     box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="group" aria-label="${esc(chart.label)}: the 100 firms as bars"><defs>${defs}</defs>${g}</svg>`;
