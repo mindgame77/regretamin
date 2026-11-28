@@ -21,7 +21,7 @@ def test_terms_and_privacy_render_the_approved_pages():
         assert page.count("<h2>") >= 10
         assert page.count('<a href="#') == page.count("<h2>")
     assert "November 26, 2026" in terms and "7c. Pitch decks you upload" in terms and "reviews your deck" in terms  # pitch decks 26 Nov
-    assert "November 26, 2026" in privacy and "Google Analytics" in privacy  # cookie bar, batch 8; host line corrected 25 Nov; pitch decks 26 Nov
+    assert "November 28, 2026" in privacy and "Google Analytics" in privacy and "count visits ourselves" in privacy  # cookie bar, batch 8; host line corrected 25 Nov; pitch decks 26 Nov
     assert "Pitch decks and reports" in privacy and "Anthropic and Google (Gemini)" in privacy and "sell your deck, and we don" in privacy
     assert "<b>Cloudflare:</b> hosts the website" in privacy and "GitHub Pages" not in privacy  # the site moved to Cloudflare
     assert "Terms of Service" in terms and 'href="../privacy/"' in terms

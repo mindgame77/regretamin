@@ -408,6 +408,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset
   }
   async function show(c) {
     chart = c || chart; drawHead(); hideTip();
+    if (window.REGRET_TRACK) window.REGRET_TRACK('top100_chart', { chart: chart.key });
     $('#rows').innerHTML = ''; $('#sky').innerHTML = ''; $('#legend').innerHTML = '';
     const d = await load(chart); await loadLogos();
     if (!d) { $('#sky').innerHTML = '<div class="msg">The Top 100 is not available right now. Try again in a moment.</div>'; return; }
