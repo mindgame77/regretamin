@@ -34,3 +34,8 @@ def test_the_out_of_credits_popup_uses_the_same_plan_rows_and_offer():
     css = (ROOT / 'style.css').read_text()
     assert '.sgi .orow:has(input:checked){border:2px solid #10201C' in css and '.sgi .btn.y{background:#10201C' in css
     assert "c && c === AUTO ? fmt(P.first.sub" in APP and 'AUTO_READY' in APP
+
+
+def test_owner_test_sale_link_only_calls_the_guarded_kind():
+    assert "get('rg_test') === '1'" in APP and "if (session) checkout('test1')" in APP
+    assert 'OWNER_IDS.includes(uid)' in (ROOT.parent / 'supabase/functions/create-checkout/index.ts').read_text()
